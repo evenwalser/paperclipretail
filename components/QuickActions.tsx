@@ -12,21 +12,21 @@ export function QuickActions() {
       <CardContent>
         <div className="grid grid-cols-3 gap-4">
           <Link href="/inventory/add">
-            <Button variant="outline" className="w-full h-24 flex flex-col items-center justify-center space-y-2">
-              <PlusCircle className="h-6 w-6" />
-              <span>Add New Item</span>
+            <Button variant="outline" className="w-full h-24 flex flex-col items-center justify-center space-y-2 rounded-xl border border-gray-800 bg-card text-card-foreground shadow-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 p-6 pt-0 flex flex-col items-center justify-center h-32">
+              <PlusCircle className="!h-8 !w-8 !text-[#dc2626]" />
+              <span className="text-2xl font-semibold leading-none tracking-tight">Add New Item</span>
             </Button>
           </Link>
           <Link href="/pos">
-            <Button variant="outline" className="w-full h-24 flex flex-col items-center justify-center space-y-2">
-              <ShoppingCart className="h-6 w-6" />
-              <span>New Sale</span>
+            <Button variant="outline" className="w-full h-24 flex flex-col items-center justify-center space-y-2 rounded-xl border border-gray-800 bg-card text-card-foreground shadow-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 p-6 pt-0 flex flex-col items-center justify-center h-32">
+              <ShoppingCart className="!h-8 !w-8 !text-[#dc2626]" />
+              <span className="text-2xl font-semibold leading-none tracking-tight">New Sale</span>
             </Button>
           </Link>
           <Link href="/inventory">
-            <Button variant="outline" className="w-full h-24 flex flex-col items-center justify-center space-y-2">
-              <RotateCcw className="h-6 w-6" />
-              <span>Process Return</span>
+            <Button variant="outline" className="w-full h-24 flex flex-col items-center justify-center space-y-2 rounded-xl border border-gray-800 bg-card text-card-foreground shadow-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 p-6 pt-0 flex flex-col items-center justify-center h-32">
+              <RotateCcw className="!h-8 !w-8 !text-[#dc2626]" />
+              <span className="text-2xl font-semibold leading-none tracking-tight">Process Return</span>
             </Button>
           </Link>
         </div>

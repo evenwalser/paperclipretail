@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Sofia+Pro:wght@400;500;700&display=swap');
+/* @import url('https://fonts.googleapis.com/css2?family=Sofia+Pro:wght@400;500;700&display=swap'); */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+/* Jyxjys-zazbit-3sutzi */
 :root {
   --paperclip-red: #F71D3B;
   --paperclip-dark-grey: #434141;

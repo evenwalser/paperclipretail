@@ -184,13 +184,13 @@ export default function InventoryPage() {
           <Button 
             onClick={sendSelectedToPOS} 
             disabled={selectedItems.length === 0}
-            className="bg-[#FF3B30] hover:bg-[#E6352B] text-white"
+            className="bg-[#FF3B30] hover:bg-[#E6352B] text-white rounded-[8px]"
           >
             Send to POS
           </Button>
           <Button 
             onClick={() => router.push('/inventory/add')}
-            className="bg-[#FF3B30] hover:bg-[#E6352B] text-white"
+            className="bg-[#FF3B30] hover:bg-[#E6352B] text-white rounded-[8px]"
           >
             Add New Item
           </Button>

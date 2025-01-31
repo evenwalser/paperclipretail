@@ -48,6 +48,12 @@ export function Overview({ currency, categoryId, dateRange }: OverviewProps) {
       try {
         setError(null);
         setLoading(true);
+        const { data, error } = await supabase
+          .rpc('handle_new_user',{
+            id: categoryId,
+            email: 'test@gmail.com',
+          })
+          console.log('error', error)
         const { data: sales, error: apiError } = await supabase
           .rpc('get_monthly_category_sales', {
             category_id: categoryId,

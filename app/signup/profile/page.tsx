@@ -10,7 +10,7 @@ import { Camera } from 'lucide-react'
 
 export default function ProfileStep1() {
   const router = useRouter()
-  const { firstName, setFirstName, lastName, setLastName, phoneNumber, setPhoneNumber, profilePicture, setProfilePicture } = useSignupContext()
+  const { firstName, setFirstName, lastName, setLastName, phoneNumber, setPhoneNumber, profilePicture, setProfilePicture } =  useSignupContext()
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {

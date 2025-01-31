@@ -143,7 +143,7 @@ export default function NotificationsPage() {
       </Link>
       <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">Notifications</h1>
       
-      <Card className="overflow-hidden border-0 shadow-lg">
+      <Card className="overflow-hidden border-0 shadow-lg bg-[#0a0a0a]">
         <CardHeader className="border-b bg-gray-50 dark:bg-gray-800/50">
           <CardTitle className="text-xl">Inbox</CardTitle>
         </CardHeader>

@@ -1,0 +1,65 @@
+CREATE TABLE users (
+    user_id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE stores (
+    store_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id) ON DELETE CASCADE,
+    store_name VARCHAR(255) NOT NULL,
+    contact_details TEXT,
+    address TEXT,
+    store_logo VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE items (
+    item_id SERIAL PRIMARY KEY,
+    store_id INT REFERENCES stores(store_id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(100),
+    price DECIMAL(10,2) NOT NULL,
+    available_in_store BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE inventory (
+    inventory_id SERIAL PRIMARY KEY,
+    item_id INT REFERENCES items(item_id) ON DELETE CASCADE,
+    quantity INT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE transactions (
+    transaction_id SERIAL PRIMARY KEY,
+    store_id INT REFERENCES stores(store_id) ON DELETE CASCADE,
+    total_amount DECIMAL(10,2) NOT NULL,
+    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE transaction_items (
+    transaction_item_id SERIAL PRIMARY KEY,
+    transaction_id INT REFERENCES transactions(transaction_id) ON DELETE CASCADE,
+    item_id INT REFERENCES items(item_id) ON DELETE CASCADE,
+    quantity INT NOT NULL,
+    price DECIMAL(10,2) NOT NULL
+);
+
+CREATE TABLE paperclip_sales (
+    sale_id SERIAL PRIMARY KEY,
+    item_id INT REFERENCES items(item_id) ON DELETE CASCADE,
+    sale_price DECIMAL(10,2) NOT NULL,
+    sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(50) DEFAULT 'pending'
+);
+
+CREATE TABLE notifications (
+    notification_id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(user_id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

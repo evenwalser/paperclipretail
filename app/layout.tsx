@@ -1,42 +1,36 @@
-import './globals.css'
-import { Inter } from 'next/font/google'
-import { Sidebar } from '@/components/Sidebar'
-import { Header } from '@/components/Header'
-import { ThemeProvider } from '@/components/ThemeProvider'
-import { CartProvider } from './contexts/CartContext'
-import { ASSETS } from '@/lib/constants'
-import Image from 'next/image'
 
-const inter = Inter({ subsets: ['latin'] })
+import './globals.css';
+import { Inter } from 'next/font/google';
+import { ThemeProvider } from '@/components/ThemeProvider';
+import { CartProvider } from './contexts/CartContext';
+import AuthProviders from './providers/authProviders';
+import ClientLayout from './clientLayout '; // Import the ClientLayout
+const inter = Inter({ subsets: ['latin'] });
+import { Toaster } from '@/components/ui/toast'
 
 export const metadata = {
   title: 'Paperclip Consign MVP',
   description: 'Digital inventory management for consignment stores',
-}
+};
 
 export default function RootLayout({
   children,
+  session,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
+  session: any;
 }) {
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <CartProvider>
-            <div className="flex h-screen">
-              <Sidebar />
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <Header />
-                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gradient-to-br from-gray-900 to-gray-950 p-8">
-                  {children}
-                </main>
-              </div>
-            </div>
-          </CartProvider>
-        </ThemeProvider>
+        <AuthProviders session={session}>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+            <CartProvider>
+              <ClientLayout>{children}<Toaster /></ClientLayout>
+            </CartProvider>
+          </ThemeProvider>
+        </AuthProviders>
       </body>
     </html>
-  )
+  );
 }
-

@@ -109,14 +109,14 @@ const SettingsPage = () => {
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-6xl">
       <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-gray-100">Settings</h1>
       <Tabs defaultValue="store-profile" className="w-full space-y-6">
-        <Card className="bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden">
+        <Card className="bg-white dark:bg-gray-800 shadow-lg rounded-[8px] overflow-hidden">
           <CardHeader className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
             <TabsList className="w-full justify-start bg-transparent p-0 space-x-2">
-              <TabsTrigger value="store-profile" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-lg">Store Profile</TabsTrigger>
-              <TabsTrigger value="inventory" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-lg">Inventory</TabsTrigger>
-              <TabsTrigger value="pos" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-lg">POS</TabsTrigger>
-              <TabsTrigger value="notifications" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-lg">Notifications</TabsTrigger>
-              <TabsTrigger value="integrations" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-lg">Integrations</TabsTrigger>
+              <TabsTrigger value="store-profile" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-[8px]">Store Profile</TabsTrigger>
+              <TabsTrigger value="inventory" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-[8px]">Inventory</TabsTrigger>
+              <TabsTrigger value="pos" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-[8px]">POS</TabsTrigger>
+              <TabsTrigger value="notifications" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-[8px]">Notifications</TabsTrigger>
+              <TabsTrigger value="integrations" className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-[8px]">Integrations</TabsTrigger>
             </TabsList>
           </CardHeader>
           <CardContent className="p-6">
