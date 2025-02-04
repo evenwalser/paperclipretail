@@ -210,11 +210,6 @@ export default function InventoryPage() {
             <SelectItem value="all">All Categories</SelectItem>
             <SelectItem value="clothing">Clothing</SelectItem>
             <SelectItem value="home-decor">Home Decor</SelectItem>
-            <SelectItem value="electronics">Electronics</SelectItem>
-            <SelectItem value="furniture">Furniture</SelectItem>
-            <SelectItem value="accessories">Accessories</SelectItem>
-            <SelectItem value="music">Music</SelectItem>
-            <SelectItem value="sold">Sold Items</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -224,17 +219,7 @@ export default function InventoryPage() {
           Array.from({ length: 9 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardContent className="p-4">
-                <div className="aspect-[4/3] bg-gray-200 rounded-lg mb-4" />
-                <div className="space-y-3">
-                  <div className="h-6 bg-gray-200 rounded w-3/4" />
-                  <div className="h-8 bg-gray-200 rounded w-1/2" />
-                  <div className="h-4 bg-gray-200 rounded w-1/4" />
-                  <div className="grid grid-cols-3 gap-2 mt-4">
-                    <div className="h-8 bg-gray-200 rounded" />
-                    <div className="h-8 bg-gray-200 rounded" />
-                    <div className="h-8 bg-gray-200 rounded" />
-                  </div>
-                </div>
+          
               </CardContent>
             </Card>
           ))
@@ -256,7 +241,7 @@ export default function InventoryPage() {
                     loading="lazy"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     placeholder="blur"
-                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx4eHRoaHSQtJSEkMjU1LC0yMi4xODY6OTg2MDQ0PkE5OD5FRU1NTy9RUVFRUVFRUVH/2wBDAR"
+                   
                   />
                   {selectedItems.includes(item.id) && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
