@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   // Define the routes that should exclude the layout
-  const authRoutes = ['/login', '/reset-password','/update-password']; // Add more routes as needed
+  const authRoutes = ['/login', '/reset-password','/update-password','/accept-invite']; // Add more routes as needed
 
   // Check if the current route is an auth route
   const isAuthRoute = authRoutes.includes(pathname);

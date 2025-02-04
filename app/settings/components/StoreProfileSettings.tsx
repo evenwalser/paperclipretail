@@ -1,570 +1,331 @@
-// 'use client'
+"use client";
 
-// import { useState } from 'react'
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-// import { Button } from "@/components/ui/button"
-// import { Input } from "@/components/ui/input"
-// import { Label } from "@/components/ui/label"
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-// import { Upload } from 'lucide-react'
-// import { createClient } from '@/utils/supabase/client'
-
-// interface Address {
-//   line_1: string
-//   line_2: string
-//   post_town: string
-//   postcode: string
-//   county: string
-// }
-
-// export function StoreProfileSettings() {
-//   const [logo, setLogo] = useState<string | null>(null)
-//   const [storefrontImage, setStorefrontImage] = useState<string | null>(null)
-//   const [postcode, setPostcode] = useState('')
-//   const [addresses, setAddresses] = useState<Address[]>([])
-//   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null)
-//   const [isManualEdit, setIsManualEdit] = useState(false)
-//   const [isLoading, setIsLoading] = useState(false)
-//   const [storeDetails, setStoreDetails] = useState({
-//     name: '',
-//     phone: '',
-//     email: ''
-//   })
-//   const [error, setError] = useState<string | null>(null)
-//   const [isValidPostcode, setIsValidPostcode] = useState(true)
-
-//   // const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, setter: (value: string | null) => void) => {
-//   //   const file = event.target.files?.[0];
-//   //   if (file) {
-//   //     const reader = new FileReader();
-//   //     reader.onloadend = () => {
-//   //       setter(reader.result as string);
-//   //     };
-//   //     reader.readAsDataURL(file);
-//   //   }
-//   // };
-
-//   const handleImageUpload = async (
-//     event: React.ChangeEvent<HTMLInputElement>,
-//     setter: (value: string | null) => void
-//   ) => {
-//     const file = event.target.files?.[0];
-//     if (!file) return;
-  
-//     const supabase = createClient();
-    
-//     // Verify user session
-//     const { data: { user } } = await supabase.auth.getUser();
-//     if (!user) {
-//       alert('Please login to upload images');
-//       return;
-//     }
-  
-//     const fileExt = file.name.split('.').pop();
-//     const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-//     const filePath = `${fileName}`;
-  
-//     try {
-//       // Upload with user token
-//       const { error: uploadError } = await supabase.storage
-//         .from('store-logos')
-//         .upload(filePath, file, {
-//           cacheControl: '3600',
-//           upsert: false
-//         });
-  
-//       if (uploadError) throw uploadError;
-  
-//       // Get public URL
-//       const { data: { publicUrl } } = supabase.storage
-//         .from('store-logos')
-//         .getPublicUrl(filePath);
-  
-//       setter(publicUrl);
-//     } catch (error) {
-//       console.error('Upload failed:', error);
-//       // Handle error (e.g., show toast notification)
-//     }
-//   };
-
-
-//   // const handleSubmit = async () => {
-//   //   const supabase = createClient();
-//   //   const { data: { user } } = await supabase.auth.getUser();
-  
-//   //   if (!user) {
-//   //     alert('Authentication required');
-//   //     return;
-//   //   }
-  
-//   //   try {
-//   //     const { error } = await supabase.from('stores').insert({
-//   //       user_id: user.id,
-//   //       store_name: storeName,
-//   //       store_logo: logoUrl,
-//   //       contact_details,
-//   //       address
-//   //     });
-  
-//   //     if (error) throw error;
-      
-//   //     // Success handling
-//   //   } catch (err) {
-//   //     console.error('Submission error:', err);
-//   //   }
-//   // };
-
-//   const handlePostcodeLookup = async () => {
-//     setError(null);
-//     setAddresses([]);
-    
-//     const postcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
-//     if (!postcodeRegex.test(postcode)) {
-//       setIsValidPostcode(false);
-//       setError('Please enter a valid postcode');
-//       return;
-//     }
-    
-//     setIsLoading(true);
-//     setIsValidPostcode(true);
-    
-//     try {
-//       const formattedPostcode = postcode.replace(/\s/g, '');
-//       const response = await fetch(
-//         `https://api.ideal-postcodes.co.uk/v1/postcodes/${formattedPostcode}?api_key=ak_m4cyo8cboJvXHXWlphQPCNLYRAHfq`
-//       );
-      
-//       const data = await response.json();
-      
-//       if (!response.ok) {
-//         throw new Error(data.message || 'Failed to lookup postcode');
-//       }
-
-//       if (!data.result || data.result.length === 0) {
-//         setError('No addresses found for this postcode');
-//         return;
-//       }
-
-//       const formattedAddresses = data.result.map((item: any) => ({
-//         line_1: item.line_1 || '',
-//         line_2: item.line_2 || '',
-//         post_town: item.post_town || '',
-//         postcode: item.postcode || '',
-//         county: item.county || ''
-//       }));
-
-//       setAddresses(formattedAddresses);
-      
-//       if (formattedAddresses.length === 1) {
-//         handleAddressSelect(formattedAddresses[0]);
-//       }
-      
-//     } catch (error) {
-//       console.error('Error looking up postcode:', error);
-//       setError(error instanceof Error ? error.message : 'Failed to lookup postcode');
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   const handleAddressSelect = (address: Address) => {
-//     setSelectedAddress(address);
-//     setIsManualEdit(false);
-//   };
-
-//   return (
-//     <Card>
-//       <CardHeader>
-//         <CardTitle>Store Profile</CardTitle>
-//       </CardHeader>
-//       <CardContent className="space-y-6">
-//         {/* Store Images Section */}
-//         <div className="space-y-4">
-//           <Label>Store Images</Label>
-//           <div className="flex flex-col items-center space-y-4">
-//             <Label
-//               htmlFor="image-upload"
-//               className="cursor-pointer inline-flex items-center px-6 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-[8px] hover:bg-gray-50 dark:hover:bg-gray-700"
-//             >
-//               <Upload className="mr-2 h-5 w-5" />
-//               Upload Logo or Storefront Image
-//             </Label>
-//             <Input
-//               id="image-upload"
-//               type="file"
-//               accept="image/*"
-//               onChange={(e) => handleImageUpload(e, setLogo)}
-//               className="hidden"
-//               multiple
-//             />
-//           </div>
-//           <div className="flex flex-wrap gap-4 mt-4">
-//             {logo && (
-//               <div className="relative w-32 h-32">
-//                 <img src={logo} alt="Store Logo" className="w-full h-full object-cover rounded" />
-//                 <span className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs py-1 text-center">
-//                   Logo
-//                 </span>
-//               </div>
-//             )}
-//             {storefrontImage && (
-//               <div className="relative w-32 h-32">
-//                 <img src={storefrontImage} alt="Storefront" className="w-full h-full object-cover rounded" />
-//                 <span className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs py-1 text-center">
-//                   Storefront
-//                 </span>
-//               </div>
-//             )}
-//           </div>
-//         </div>
-
-//         {/* Address Section */}
-//         <div className="space-y-4">
-//           <Label>Address</Label>
-//           <div className="flex gap-2">
-//             <div className="flex-1">
-//               <Input 
-//                 placeholder="Enter postcode" 
-//                 value={postcode} 
-//                 onChange={(e) => {
-//                   setPostcode(e.target.value.toUpperCase());
-//                   setError(null);
-//                   setIsValidPostcode(true);
-//                 }}
-//                 className={!isValidPostcode ? 'border-red-500' : ''}
-//               />
-//               {error && (
-//                 <p className="text-sm text-red-500 mt-1">{error}</p>
-//               )}
-//             </div>
-//             <Button 
-//               onClick={handlePostcodeLookup}
-//               disabled={isLoading || !postcode}
-//               className="min-w-[100px] bg-[#dc2626] text-[#fff] rounded-[8px]"
-//             >
-//               {isLoading ? (
-//                 <div className="flex items-center">
-//                   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-//                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-//                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-//                   </svg>
-//                   Loading...
-//                 </div>
-//               ) : (
-//                 "Lookup"
-//               )}
-//             </Button>
-//           </div>
-
-//           {addresses.length > 0 && (
-//             <div className="space-y-2">
-//               <Label>Select your address</Label>
-//               <Select onValueChange={(value) => handleAddressSelect(JSON.parse(value))}>
-//                 <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-//                   <SelectValue placeholder="Choose an address" />
-//                 </SelectTrigger>
-//                 <SelectContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-//                   {addresses.map((address, index) => (
-//                     <SelectItem 
-//                       key={index} 
-//                       value={JSON.stringify(address)}
-//                       className="hover:bg-gray-100 dark:hover:bg-gray-700 focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer"
-//                     >
-//                       {[address.line_1, address.line_2, address.post_town]
-//                         .filter(Boolean)
-//                         .join(', ')}
-//                     </SelectItem>
-//                   ))}
-//                 </SelectContent>
-//               </Select>
-//             </div>
-//           )}
-
-//           {selectedAddress && (
-//             <div className="space-y-2">
-//               <Input 
-//                 placeholder="Address Line 1" 
-//                 value={selectedAddress.line_1}
-//                 readOnly={!isManualEdit}
-//                 onChange={(e) => setSelectedAddress({...selectedAddress, line_1: e.target.value})}
-//               />
-//               <Input 
-//                 placeholder="Address Line 2" 
-//                 value={selectedAddress.line_2}
-//                 readOnly={!isManualEdit}
-//                 onChange={(e) => setSelectedAddress({...selectedAddress, line_2: e.target.value})}
-//               />
-//               <Input 
-//                 placeholder="Town/City" 
-//                 value={selectedAddress.post_town}
-//                 readOnly={!isManualEdit}
-//                 onChange={(e) => setSelectedAddress({...selectedAddress, post_town: e.target.value})}
-//               />
-//               <Input 
-//                 placeholder="County" 
-//                 value={selectedAddress.county}
-//                 readOnly={!isManualEdit}
-//                 onChange={(e) => setSelectedAddress({...selectedAddress, county: e.target.value})}
-//               />
-//               <Input 
-//                 placeholder="Postcode" 
-//                 value={selectedAddress.postcode}
-//                 readOnly={!isManualEdit}
-//                 onChange={(e) => setSelectedAddress({...selectedAddress, postcode: e.target.value})}
-//               />
-//               <div className="flex justify-end">
-//                 <Button variant="link" onClick={() => setIsManualEdit(!isManualEdit)}>
-//                   {isManualEdit ? 'Finish Editing' : 'Edit Manually'}
-//                 </Button>
-//               </div>
-//             </div>
-//           )}
-//         </div>
-
-//         {/* Store Details Section */}
-//         <div className="space-y-4">
-//           <Label>Store Details</Label>
-//           <Input 
-//             placeholder="Store Name" 
-//             value={storeDetails.name}
-//             onChange={(e) => setStoreDetails({...storeDetails, name: e.target.value})}
-//           />
-//           <Input 
-//             placeholder="Phone Number" 
-//             value={storeDetails.phone}
-//             onChange={(e) => setStoreDetails({...storeDetails, phone: e.target.value})}
-//           />
-//           <Input 
-//             placeholder="Store Email" 
-//             type="email"
-//             value={storeDetails.email}
-//             onChange={(e) => setStoreDetails({...storeDetails, email: e.target.value})}
-//           />
-//         </div>
-
-//         <div className='text-end'>
-//           <Button className="bg-[#FF3B30] hover:bg-[#E6352B] text-white rounded-[8px]">
-//             Save Changes
-//           </Button>
-//         </div>
-//       </CardContent>
-//     </Card>
-//   )
-// } 
-
-
-
-
-
-
-
-
-
-
-
-
-
-'use client'
-
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Upload } from 'lucide-react'
-import { createClient } from '@/utils/supabase/client'
-import { User } from 'next-auth'
-import { toast } from 'sonner'
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useRouter } from "next/navigation";
+import { Upload } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
+import { User } from "next-auth";
+import { toast } from "sonner";
+import { InviteForm } from "@/components/InviteForm";
 
 interface Address {
-  line_1: string
-  line_2: string
-  post_town: string
-  postcode: string
-  county: string
+  line_1: string;
+  line_2: string;
+  post_town: string;
+  postcode: string;
+  county: string;
 }
 
 export function StoreProfileSettings() {
-  const supabase = createClient()
-  const [user, setUser] = useState<User | null>(null)
-  const [logo, setLogo] = useState<string | null>(null)
-  const [storefrontImage, setStorefrontImage] = useState<string | null>(null)
-  const [postcode, setPostcode] = useState('')
-  const [addresses, setAddresses] = useState<Address[]>([])
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null)
-  const [isManualEdit, setIsManualEdit] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
+  const [storefrontImage, setStorefrontImage] = useState<string | null>(null);
+  const [postcode, setPostcode] = useState("");
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [isManualEdit, setIsManualEdit] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [storeDetails, setStoreDetails] = useState({
-    name: '',
-    phone: '',
-    email: ''
-  })
-  const [error, setError] = useState<string | null>(null)
-  const [isValidPostcode, setIsValidPostcode] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+    name: "",
+    phone: "",
+    email: "",
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [isValidPostcode, setIsValidPostcode] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
+
+  const storeOwener = "abc"
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-    }
-    getSession()
-  }, [supabase])
+    const getSessionAndStore = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setUser(user);
+
+      if (user) {
+        // Fetch existing store data
+        const { data: storeData, error } = await supabase
+          .from("stores")
+          .select("*")
+          .eq("owner_id", user.id)
+          .single();
+
+        if (storeData) {
+          setStoreDetails({
+            name: storeData.store_name,
+            phone: storeData.contact_details?.phone || "",
+            email: storeData.contact_details?.email || "",
+          });
+          setSelectedAddress(storeData.address || null);
+          setLogo(storeData.store_logo);
+          setStorefrontImage(storeData.storefront_image);
+          if (storeData.address) {
+            setPostcode(storeData.address.postcode);
+          }
+        }
+      }
+    };
+    getSessionAndStore();
+  }, []);
 
   const handleImageUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
-    setter: (value: string | null) => void
+    imageType: "logo" | "storefront"
   ) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
 
-    if (!user) {
-      toast.error("Authentication required", {
-        description: "Please login to upload images"
-      })
-      return
+    // Delete previous image if exists
+    const currentImageUrl = imageType === "logo" ? logo : storefrontImage;
+    let pathToDelete = "";
+
+    if (currentImageUrl) {
+      try {
+        // Extract path from URL
+        const urlParts = currentImageUrl.split("/");
+        const bucket = urlParts[3];
+        const fileName = urlParts.slice(4).join("/");
+        pathToDelete = fileName;
+      } catch (error) {
+        console.error("Error parsing image URL:", error);
+      }
     }
 
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${user.id}-${Date.now()}.${fileExt}`
-    const filePath = `${fileName}`
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${user.id}/${imageType}-${Date.now()}.${fileExt}`;
 
     try {
+      if (pathToDelete) {
+        const { error: deleteError } = await supabase.storage
+          .from("store-images")
+          .remove([pathToDelete]);
+
+        if (deleteError) throw deleteError;
+      }
+
       const { error: uploadError } = await supabase.storage
-        .from('store-logos')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
+        .from("store-images")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
 
-      if (uploadError) throw uploadError
+      if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('store-logos')
-        .getPublicUrl(filePath)
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("store-images").getPublicUrl(fileName);
 
-      setter(publicUrl)
-      toast.success("Image uploaded successfully")
+      if (imageType === "logo") {
+        setLogo(publicUrl);
+      } else {
+        setStorefrontImage(publicUrl);
+      }
+
+      toast.success("Image uploaded successfully");
     } catch (error) {
-      console.error('Upload failed:', error)
+      console.error("Upload failed:", error);
       toast.error("Upload failed", {
-        description: error instanceof Error ? error.message : "Could not upload image"
-      })
+        description:
+          error instanceof Error ? error.message : "Could not upload image",
+      });
     }
-  }
+  };
 
   const handleSubmit = async () => {
-    setIsSubmitting(true)
-    setError(null)
+    setIsSubmitting(true);
+    setError(null);
 
     if (!user) {
-      toast.error("Authentication required", {
-        description: "Please login to save changes"
-      })
-      setIsSubmitting(false)
-      return
+      toast.error("Authentication required");
+      setIsSubmitting(false);
+      return;
     }
 
     if (!storeDetails.name || !selectedAddress) {
-      setError("Store name and address are required fields")
-      setIsSubmitting(false)
-      return
+      setError("Store name and address are required fields");
+      setIsSubmitting(false);
+      return;
     }
 
     try {
-      const { error } = await supabase.from('stores').insert({
-        user_id: user.id,
-        store_name: storeDetails.name,
-        contact_details: {
-          phone: storeDetails.phone,
-          email: storeDetails.email
+      // Upsert the store data into the 'stores' table
+      // Upsert the store data into the 'stores' table
+      const { data, error: storeError } = await supabase.from("stores").upsert(
+        {
+          owner_id: user.id,
+          store_name: storeDetails.name,
+          contact_details: {
+            phone: storeDetails.phone,
+            email: storeDetails.email,
+          },
+          address: selectedAddress,
+          store_logo: logo,
+          storefront_image: storefrontImage,
+          updated_at: new Date().toISOString(),
         },
-        address: {
-          ...selectedAddress,
-          full_address: [
-            selectedAddress.line_1,
-            selectedAddress.line_2,
-            selectedAddress.post_town,
-            selectedAddress.county,
-            selectedAddress.postcode
-          ].filter(Boolean).join(', ')
-        },
-        store_logo: logo,
-        // storefront_image: storefrontImage
-      })
+        {
+          onConflict: "owner_id",
+        }
+      );
 
-      if (error) throw error
+      if (storeError) {
+        throw storeError;
+      }
+
+      // After upsert, explicitly fetch the store to ensure you have the full data with id
+      const { data: storeData, error: fetchError } = await supabase
+        .from("stores")
+        .select("id") // Select the ID and any other fields you need
+        .eq("owner_id", user.id)
+        .single(); // .single() ensures only one row is returned
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      const Pass = storeData?.id;
+      console.log("here is store data", storeData);
+      // Update the user's role to 'store_owner' and associate the store_id
+      const { error: profileError } = await supabase
+        .from("users")
+        .update({
+          role: "store_owner",
+          store_id: Pass,
+        })
+        .eq("id", user.id);
+        console.log('store id', storeId)
+
+      if (profileError) throw profileError;
+
+      // Redirect to the dashboard after successful profile update
+      // router.push('/dashboard');
 
       toast.success("Store profile saved", {
-        description: "Your store details have been successfully saved"
-      })
-
-      // Reset form
-      setStoreDetails({ name: '', phone: '', email: '' })
-      setSelectedAddress(null)
-      setPostcode('')
-      setLogo(null)
-      setStorefrontImage(null)
-
+        description: "Your store details have been successfully updated",
+      });
     } catch (err) {
-      console.error('Submission error:', err)
+      console.error("Submission error:", err);
       toast.error("Submission failed", {
-        description: err instanceof Error ? err.message : "Could not save store profile. Please try again."
-      })
+        description:
+          err instanceof Error ? err.message : "Could not save store profile",
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
+
+  // const handleSubmit = async () => {
+  //   setIsSubmitting(true)
+  //   setError(null)
+
+  //   if (!user) {
+  //     toast.error("Authentication required")
+  //     setIsSubmitting(false)
+  //     return
+  //   }
+
+  //   if (!storeDetails.name || !selectedAddress) {
+  //     setError("Store name and address are required fields")
+  //     setIsSubmitting(false)
+  //     return
+  //   }
+
+  //   try {
+  //     const { error } = await supabase.from('stores').upsert({
+  //       owner_id: user.id,
+  //       store_name: storeDetails.name,
+  //       contact_details: {
+  //         phone: storeDetails.phone,
+  //         email: storeDetails.email
+  //       },
+  //       address: selectedAddress,
+  //       store_logo: logo,
+  //       storefront_image: storefrontImage,
+  //       updated_at: new Date().toISOString()
+  //     }, {
+  //       onConflict: 'owner_id'
+  //     })
+
+  //     if (error) throw error
+
+  //     toast.success("Store profile saved", {
+  //       description: "Your store details have been successfully updated"
+  //     })
+
+  //   } catch (err) {
+  //     console.error('Submission error:', err)
+  //     toast.error("Submission failed", {
+  //       description: err instanceof Error ? err.message : "Could not save store profile"
+  //     })
+  //   } finally {
+  //     setIsSubmitting(false)
+  //   }
+  // }
 
   const handlePostcodeLookup = async () => {
     setError(null);
     setAddresses([]);
-    
+
     const postcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
     if (!postcodeRegex.test(postcode)) {
       setIsValidPostcode(false);
-      setError('Please enter a valid postcode');
+      setError("Please enter a valid postcode");
       return;
     }
-    
+
     setIsLoading(true);
     setIsValidPostcode(true);
-    
+
     try {
-      const formattedPostcode = postcode.replace(/\s/g, '');
+      const formattedPostcode = postcode.replace(/\s/g, "");
       const response = await fetch(
         `https://api.ideal-postcodes.co.uk/v1/postcodes/${formattedPostcode}?api_key=ak_m4cyo8cboJvXHXWlphQPCNLYRAHfq`
       );
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to lookup postcode');
+        throw new Error(data.message || "Failed to lookup postcode");
       }
 
       if (!data.result || data.result.length === 0) {
-        setError('No addresses found for this postcode');
+        setError("No addresses found for this postcode");
         return;
       }
 
       const formattedAddresses = data.result.map((item: any) => ({
-        line_1: item.line_1 || '',
-        line_2: item.line_2 || '',
-        post_town: item.post_town || '',
-        postcode: item.postcode || '',
-        county: item.county || ''
+        line_1: item.line_1 || "",
+        line_2: item.line_2 || "",
+        post_town: item.post_town || "",
+        postcode: item.postcode || "",
+        county: item.county || "",
       }));
 
       setAddresses(formattedAddresses);
-      
+
       if (formattedAddresses.length === 1) {
         handleAddressSelect(formattedAddresses[0]);
       }
-      
     } catch (error) {
-      console.error('Error looking up postcode:', error);
-      setError(error instanceof Error ? error.message : 'Failed to lookup postcode');
+      console.error("Error looking up postcode:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to lookup postcode"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -582,42 +343,85 @@ export function StoreProfileSettings() {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Store Images Section */}
+        {/* <InviteForm storeId={14} storeName={storeOwener} /> */}
         <div className="space-y-4">
-          <Label>Store Images</Label>
-          <div className="flex flex-col items-center space-y-4">
-            <Label
-              htmlFor="image-upload"
-              className="cursor-pointer inline-flex items-center px-6 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-[8px] hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              <Upload className="mr-2 h-5 w-5" />
-              Upload Logo or Storefront Image
-            </Label>
-            <Input
-              id="image-upload"
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleImageUpload(e, setLogo)}
-              className="hidden"
-              multiple
-            />
-          </div>
-          <div className="flex flex-wrap gap-4 mt-4">
-            {logo && (
-              <div className="relative w-32 h-32">
-                <img src={logo} alt="Store Logo" className="w-full h-full object-cover rounded" />
-                <span className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs py-1 text-center">
-                  Logo
-                </span>
+          <div className="space-y-4">
+            <Label>Store Images</Label>
+            <div className="flex gap-4">
+              {/* Logo Upload */}
+              <div className="flex-1">
+                <Label htmlFor="logo-upload" className="block mb-2">
+                  Store Logo
+                </Label>
+                <div className="flex flex-col items-center space-y-2">
+                  <Label
+                    htmlFor="logo-upload"
+                    className="cursor-pointer inline-flex items-center px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-[8px] hover:bg-gray-50 dark:hover:bg-gray-700 w-full"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Logo
+                  </Label>
+                  <Input
+                    id="logo-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e, "logo")}
+                    className="hidden"
+                  />
+                </div>
               </div>
-            )}
-            {storefrontImage && (
-              <div className="relative w-32 h-32">
-                <img src={storefrontImage} alt="Storefront" className="w-full h-full object-cover rounded" />
-                <span className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs py-1 text-center">
-                  Storefront
-                </span>
+
+              {/* Storefront Upload */}
+              <div className="flex-1">
+                <Label htmlFor="storefront-upload" className="block mb-2">
+                  Storefront Image
+                </Label>
+                <div className="flex flex-col items-center space-y-2">
+                  <Label
+                    htmlFor="storefront-upload"
+                    className="cursor-pointer inline-flex items-center px-4 py-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-[8px] hover:bg-gray-50 dark:hover:bg-gray-700 w-full"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Storefront
+                  </Label>
+                  <Input
+                    id="storefront-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e, "storefront")}
+                    className="hidden"
+                  />
+                </div>
               </div>
-            )}
+            </div>
+
+            {/* Image Previews */}
+            <div className="flex flex-wrap gap-4 mt-4">
+              {logo && (
+                <div className="relative w-32 h-32">
+                  <img
+                    src={logo}
+                    alt="Store Logo"
+                    className="w-full h-full object-cover rounded"
+                  />
+                  <span className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs py-1 text-center">
+                    Logo
+                  </span>
+                </div>
+              )}
+              {storefrontImage && (
+                <div className="relative w-32 h-32">
+                  <img
+                    src={storefrontImage}
+                    alt="Storefront"
+                    className="w-full h-full object-cover rounded"
+                  />
+                  <span className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs py-1 text-center">
+                    Storefront
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -626,30 +430,44 @@ export function StoreProfileSettings() {
           <Label>Address</Label>
           <div className="flex gap-2">
             <div className="flex-1">
-              <Input 
-                placeholder="Enter postcode" 
-                value={postcode} 
+              <Input
+                placeholder="Enter postcode"
+                value={postcode}
                 onChange={(e) => {
                   setPostcode(e.target.value.toUpperCase());
-                  setError(null); 
+                  setError(null);
                   setIsValidPostcode(true);
                 }}
-                className={!isValidPostcode ? 'border-red-500' : ''}
+                className={!isValidPostcode ? "border-red-500" : ""}
               />
-              {error && (
-                <p className="text-sm text-red-500 mt-1">{error}</p>
-              )}
+              {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
             </div>
-            <Button 
+            <Button
               onClick={handlePostcodeLookup}
               disabled={isLoading || !postcode}
               className="min-w-[100px] bg-[#dc2626] text-[#fff] rounded-[8px]"
             >
               {isLoading ? (
                 <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Loading...
                 </div>
@@ -662,20 +480,24 @@ export function StoreProfileSettings() {
           {addresses.length > 0 && (
             <div className="space-y-2">
               <Label>Select your address</Label>
-              <Select onValueChange={(value) => handleAddressSelect(JSON.parse(value))}>
+              <Select
+                onValueChange={(value) =>
+                  handleAddressSelect(JSON.parse(value))
+                }
+              >
                 <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <SelectValue placeholder="Choose an address" />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                   {addresses.map((address, index) => (
-                    <SelectItem 
-                      key={index} 
+                    <SelectItem
+                      key={index}
                       value={JSON.stringify(address)}
                       className="hover:bg-gray-100 dark:hover:bg-gray-700 focus:bg-gray-100 dark:focus:bg-gray-700 cursor-pointer"
                     >
                       {[address.line_1, address.line_2, address.post_town]
                         .filter(Boolean)
-                        .join(', ')}
+                        .join(", ")}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -685,39 +507,67 @@ export function StoreProfileSettings() {
 
           {selectedAddress && (
             <div className="space-y-2">
-              <Input 
-                placeholder="Address Line 1" 
+              <Input
+                placeholder="Address Line 1"
                 value={selectedAddress.line_1}
                 readOnly={!isManualEdit}
-                onChange={(e) => setSelectedAddress({...selectedAddress, line_1: e.target.value})}
+                onChange={(e) =>
+                  setSelectedAddress({
+                    ...selectedAddress,
+                    line_1: e.target.value,
+                  })
+                }
               />
-              <Input 
-                placeholder="Address Line 2" 
+              <Input
+                placeholder="Address Line 2"
                 value={selectedAddress.line_2}
                 readOnly={!isManualEdit}
-                onChange={(e) => setSelectedAddress({...selectedAddress, line_2: e.target.value})}
+                onChange={(e) =>
+                  setSelectedAddress({
+                    ...selectedAddress,
+                    line_2: e.target.value,
+                  })
+                }
               />
-              <Input 
-                placeholder="Town/City" 
+              <Input
+                placeholder="Town/City"
                 value={selectedAddress.post_town}
                 readOnly={!isManualEdit}
-                onChange={(e) => setSelectedAddress({...selectedAddress, post_town: e.target.value})}
+                onChange={(e) =>
+                  setSelectedAddress({
+                    ...selectedAddress,
+                    post_town: e.target.value,
+                  })
+                }
               />
-              <Input 
-                placeholder="County" 
+              <Input
+                placeholder="County"
                 value={selectedAddress.county}
                 readOnly={!isManualEdit}
-                onChange={(e) => setSelectedAddress({...selectedAddress, county: e.target.value})}
+                onChange={(e) =>
+                  setSelectedAddress({
+                    ...selectedAddress,
+                    county: e.target.value,
+                  })
+                }
               />
-              <Input 
-                placeholder="Postcode" 
+              <Input
+                placeholder="Postcode"
                 value={selectedAddress.postcode}
                 readOnly={!isManualEdit}
-                onChange={(e) => setSelectedAddress({...selectedAddress, postcode: e.target.value})}
+                onChange={(e) =>
+                  setSelectedAddress({
+                    ...selectedAddress,
+                    postcode: e.target.value,
+                  })
+                }
               />
               <div className="flex justify-end">
-                <Button variant="link" onClick={() => setIsManualEdit(!isManualEdit)}>
-                  {isManualEdit ? 'Finish Editing' : 'Edit Manually'}
+                <Button
+                  variant="link"
+                  onClick={() => setIsManualEdit(!isManualEdit)}
+                >
+                  {isManualEdit ? "Finish Editing" : "Edit Manually"}
                 </Button>
               </div>
             </div>
@@ -727,35 +577,57 @@ export function StoreProfileSettings() {
         {/* Store Details Section */}
         <div className="space-y-4">
           <Label>Store Details</Label>
-          <Input 
-            placeholder="Store Name" 
+          <Input
+            placeholder="Store Name"
             value={storeDetails.name}
-            onChange={(e) => setStoreDetails({...storeDetails, name: e.target.value})}
+            onChange={(e) =>
+              setStoreDetails({ ...storeDetails, name: e.target.value })
+            }
           />
-          <Input 
-            placeholder="Phone Number" 
+          <Input
+            placeholder="Phone Number"
             value={storeDetails.phone}
-            onChange={(e) => setStoreDetails({...storeDetails, phone: e.target.value})}
+            onChange={(e) =>
+              setStoreDetails({ ...storeDetails, phone: e.target.value })
+            }
           />
-          <Input 
-            placeholder="Store Email" 
+          <Input
+            placeholder="Store Email"
             type="email"
             value={storeDetails.email}
-            onChange={(e) => setStoreDetails({...storeDetails, email: e.target.value})}
+            onChange={(e) =>
+              setStoreDetails({ ...storeDetails, email: e.target.value })
+            }
           />
         </div>
 
-        <div className='text-end'>
-          <Button 
+        <div className="text-end">
+          <Button
             onClick={handleSubmit}
             disabled={isSubmitting}
             className="bg-[#FF3B30] hover:bg-[#E6352B] text-white rounded-[8px]"
           >
             {isSubmitting ? (
               <div className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 Saving...
               </div>
@@ -763,13 +635,9 @@ export function StoreProfileSettings() {
               "Save Changes"
             )}
           </Button>
-          {error && (
-            <p className="text-sm text-red-500 mt-2">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
         </div>
       </CardContent>
     </Card>
-  )
-} 
-
-
+  );
+}

@@ -200,3 +200,18 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+// export function DashboardRouter() {
+//   const { role, storeId } = useProfile();
+
+//   if (!role) return <LoadingScreen />;
+
+//   return (
+//     <>
+//       {role === 'user' && <OnboardingScreen />}
+//       {role === 'store_owner' && <StoreDashboard storeId={storeId} />}
+//       {role === 'sales_associate' && <AssociateDashboard storeId={storeId} />}
+//     </>
+//   );
+// }
