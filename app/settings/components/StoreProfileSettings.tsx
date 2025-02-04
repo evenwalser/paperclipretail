@@ -18,6 +18,7 @@ import { createClient } from "@/utils/supabase/client";
 import { User } from "next-auth";
 import { toast } from "sonner";
 import { InviteForm } from "@/components/InviteForm";
+import SendInviteForm from "@/components/SendInviteForm";
 
 interface Address {
   line_1: string;
@@ -344,6 +345,7 @@ export function StoreProfileSettings() {
       <CardContent className="space-y-6">
         {/* Store Images Section */}
         {/* <InviteForm storeId={14} storeName={storeOwener} /> */}
+        <SendInviteForm />
         <div className="space-y-4">
           <div className="space-y-4">
             <Label>Store Images</Label>
@@ -351,7 +353,7 @@ export function StoreProfileSettings() {
               {/* Logo Upload */}
               <div className="flex-1">
                 <Label htmlFor="logo-upload" className="block mb-2">
-                  Store Logo
+                  Store Logo  
                 </Label>
                 <div className="flex flex-col items-center space-y-2">
                   <Label

@@ -1,5 +1,5 @@
-
-
+"use client";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { login, signup } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -13,21 +13,36 @@ export default function LoginPage({
 }) {
   const currentTab = searchParams.tab || "login";
   const isLogin = currentTab === "login";
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    const formData = new FormData(e.currentTarget);
+    if (isLogin) {
+      await login(formData);
+    } else {
+      await signup(formData);
+    }
+    setLoading(false);
+  }
 
   return (
     <div className="flex justify-center items-center h-[-webkit-fill-available] absolute w-full flex-col">
       <div className="p-6">
-        <img 
-          src={'/paperclip_logo_red.png'}
+        <img
+          src={"/paperclip_logo_red.png"}
           alt="Paperclip Logo"
           width={200}
           height={67}
           className="filter-none"
         />
       </div>
-      <form className="max-w-[600px] w-full p-6 rounded-xl border bg-card shadow">
+      <form
+        className="max-w-[600px] w-full p-6 rounded-xl border bg-card shadow" onSubmit={handleSubmit}
+      >
         <div className="flex mb-6 flex items-center border border-[#ffffff] p-[5px]">
-          <Link
+        <Link
             href="?tab=login"
             className={`py-[5px] px-[10px] text-lg font-medium transition-colors w-full text-center ${
               isLogin
@@ -82,10 +97,11 @@ export default function LoginPage({
         )}
 
         <Button
-          formAction={isLogin ? login : signup}
+          type="submit"
           className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow h-9 flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg w-full mt-[20px]"
+          disabled={loading}
         >
-          {isLogin ? "Log in" : "Sign up"}
+          {loading ? "Processing..." : isLogin ? "Log in" : "Sign up"}
         </Button>
 
         <div className="mt-4 text-center">
