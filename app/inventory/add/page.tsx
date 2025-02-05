@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { User } from "next-auth";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -74,7 +75,7 @@ export default function AddItemPage() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
   //  const [user, setUser] = useState<any>(null);
-   const [storeId, setStoreId] = useState<any>(null);
+  const [storeId, setStoreId] = useState<any>(null);
   const [inputMethod, setInputMethod] = useState<"camera" | "fileSelect">(
     "camera"
   );
@@ -83,7 +84,7 @@ export default function AddItemPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const supabase= createClient()
+  const supabase = createClient();
   // Add these states for the form
   const [itemDetails, setItemDetails] = useState({
     name: "",
@@ -126,14 +127,12 @@ export default function AddItemPage() {
           .single();
         console.log("User data:", userData);
         if (userData) {
-         setUser(userData);
-        
+          setUser(userData);
         }
       }
     };
     getSessionAndStore();
   }, []);
-
 
   // Camera handlers
   const startCamera = async () => {
@@ -150,9 +149,19 @@ export default function AddItemPage() {
       }
     } catch (error) {
       console.error("Error accessing camera:", error);
-      alert("Unable to access camera. Please check permissions.");
+      toast.error("Unable to access camera. Please check permissions.");
     }
   };
+
+  useEffect(() => {
+    return () => {
+      images.forEach((image) => {
+        if (image.url.startsWith("blob:")) {
+          URL.revokeObjectURL(image.url);
+        }
+      });
+    };
+  }, [images]);
 
   const stopCamera = () => {
     if (videoRef.current?.srcObject) {
@@ -261,6 +270,10 @@ export default function AddItemPage() {
   // Review handlers
   const removeImage = (index: number) => {
     setImages((prev) => {
+      const removedImage = prev[index];
+      if (removedImage.url.startsWith("blob:")) {
+        URL.revokeObjectURL(removedImage.url);
+      }
       const newImages = prev.filter((_, i) => i !== index);
       if (currentImageIndex >= newImages.length) {
         setCurrentImageIndex(Math.max(0, newImages.length - 1));
@@ -288,7 +301,7 @@ export default function AddItemPage() {
 
   const handleAIAnalysis = async () => {
     if (!images.length) {
-      alert("Please add at least one image to analyze");
+      toast.error("Please add at least one image to analyze");
       return;
     }
 
@@ -334,48 +347,23 @@ export default function AddItemPage() {
     }
   };
 
-  // const handleSubmit = async () => {
-  //   setIsSaving(true);
-  //   // Determine the final category ID. You may choose the most specific level that is selected.
-  //   const category_id =
-  //     selectedCategories.level3 ||
-  //     selectedCategories.level2 ||
-  //     selectedCategories.level1;
-
-  //   const newItem = {
-  //     title: itemDetails.name,
-  //     description: itemDetails.description,
-  //     price: parseFloat(itemDetails.price),
-  //     category_id, // this references the categories table
-  //     condition,
-  //     size,
-  //     available_in_store: availableInStore,
-  //     list_on_paperclip:true,
-  //     store_id: user.store_id,
-  //     created_by: user.id,
-
-  //     // Optionally add created_by etc.
-  //   };
-
-  //   const { data, error } = await supabase.from("items").insert([newItem]);
-
-  //   if (error) {
-  //     console.error("Error saving item:", error);
-  //   } else {
-  //     console.log("Item saved:", data);
-  //     // Optionally reset the form
-  //   }
-  //   setIsSaving(false);
-  // };
   const handleSubmit = async () => {
     try {
       setIsSaving(true);
 
+      if (!user?.store_id) {
+        toast.error("No store associated with this account");
+        return;
+      }
+
       // 1. First create the item record
-      const category_id = selectedCategories.level3 || selectedCategories.level2 || selectedCategories.level1;
-      
+      const category_id =
+        selectedCategories.level3 ||
+        selectedCategories.level2 ||
+        selectedCategories.level1;
+
       const { data: item, error: itemError } = await supabase
-        .from('items')
+        .from("items")
         .insert({
           title: itemDetails.name,
           description: itemDetails.description,
@@ -387,7 +375,7 @@ export default function AddItemPage() {
           list_on_paperclip: true,
           store_id: user?.store_id,
           created_by: user?.id,
-          status: 'available'
+          status: "available",
         })
         .select()
         .single();
@@ -411,45 +399,45 @@ export default function AddItemPage() {
 
           // Upload to Supabase storage
           const { error: uploadError } = await supabase.storage
-            .from('item-images')
-            .upload(fileName, fileData,{
+            .from("item-images")
+            .upload(fileName, fileData, {
               cacheControl: "3600",
               upsert: false,
             });
 
-          if (uploadError) {  
-            console.log('error happens while uploading an image', uploadError)
-            throw uploadError}
-       
-  
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("item-images").getPublicUrl(fileName);
-        console.log('here is public url ', publicUrl)
+          if (uploadError) {
+            console.log("error happens while uploading an image", uploadError);
+            throw uploadError;
+          }
+
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("item-images").getPublicUrl(fileName);
+          console.log("here is public url ", publicUrl);
 
           // Create image record
           return {
             item_id: item.id,
             image_url: fileName, // Store path instead of full URL
-            display_order: index
+            display_order: index,
           };
         })
       );
 
       // 3. Insert image records
       const { error: imageError } = await supabase
-        .from('item_images')
+        .from("item_images")
         .insert(imageUploads);
 
       if (imageError) throw imageError;
 
       // 4. Cleanup temporary URLs
-      images.forEach(image => URL.revokeObjectURL(image.url));
-
-      router.push('/inventory');
+      images.forEach((image) => URL.revokeObjectURL(image.url));
+      toast.success("Item added successfully!");
+      router.push("/inventory");
     } catch (error) {
-      console.error('Error saving item:', error);
-      alert('Failed to save item. Please try again.');
+      console.error("Error saving item:", error);
+      alert("Failed to save item. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -457,10 +445,8 @@ export default function AddItemPage() {
 
   // Update getImageUrl function
   const getImageUrl = (path: string) => {
-    return supabase.storage
-      .from('items')
-      .getPublicUrl(path)
-      .data.publicUrl;
+    return supabase.storage.from("item-images").getPublicUrl(path).data
+      .publicUrl;
   };
 
   const handleCategoryChange = (category: string) => {
@@ -547,7 +533,7 @@ export default function AddItemPage() {
                                       hover:border-white/25 transition-all duration-200"
                           >
                             <img
-                              src={getImageUrl(image.url)}
+                              src={image.url}
                               alt={`Capture ${index + 1}`}
                               className="w-full h-full object-cover"
                             />
@@ -657,7 +643,7 @@ export default function AddItemPage() {
                           className="w-20 h-20 relative"
                         >
                           <img
-                             src={getImageUrl(image.url)}
+                            src={image.url}
                             alt={`Thumbnail ${index + 1}`}
                             className="w-full h-full object-cover rounded-lg"
                             draggable={false}
@@ -832,7 +818,7 @@ export default function AddItemPage() {
                         }
                         placeholder="0.00"
                         step="0.01"
-                        min="0"
+                        min="0.01"
                       />
                     </div>
                   </div>
@@ -1016,8 +1002,8 @@ export default function AddItemPage() {
                     disabled={
                       isSaving ||
                       !itemDetails.name ||
-                      !itemDetails.price
-                      // !images.length
+                      !itemDetails.price ||
+                      images.length === 0
                     }
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 text-lg py-6"
                   >
@@ -1058,3 +1044,6 @@ export default function AddItemPage() {
     </div>
   );
 }
+
+
+

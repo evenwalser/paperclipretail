@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getItems } from '@/lib/services/items'
 import { Item } from '@/types/supabase'
+import { toast } from "sonner";
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
@@ -233,7 +234,7 @@ export default function InventoryPage() {
             >
               <CardContent className="p-4">
                 <div className="relative mb-4 aspect-[4/3]">
-                  <Image
+                  {/* <Image
                     src={item.item_images[0]?.image_url || '/placeholder.svg'}
                     alt={item.title}
                     fill
@@ -242,7 +243,7 @@ export default function InventoryPage() {
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     placeholder="blur"
                    
-                  />
+                  /> */}
                   {selectedItems.includes(item.id) && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
                       <span className="text-white text-lg sm:text-xl font-bold">Selected</span>

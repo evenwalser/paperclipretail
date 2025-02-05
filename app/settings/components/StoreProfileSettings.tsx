@@ -124,7 +124,7 @@ export function StoreProfileSettings() {
           cacheControl: "3600",
           upsert: false,
         });
-
+        console.log('here is upload error', uploadError)
       if (uploadError) throw uploadError;
 
       const {
@@ -199,17 +199,17 @@ export function StoreProfileSettings() {
         throw fetchError;
       }
 
-      const Pass = storeData?.id;
-      console.log("here is store data", storeData);
+     
+      console.log("here is store data", storeData.id);
       // Update the user's role to 'store_owner' and associate the store_id
       const { error: profileError } = await supabase
         .from("users")
         .update({
           role: "store_owner",
-          store_id: Pass,
+          store_id: storeData?.id,
         })
         .eq("id", user.id);
-        console.log('store id', storeId)
+   
 
       if (profileError) throw profileError;
 
