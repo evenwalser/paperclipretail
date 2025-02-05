@@ -10,15 +10,20 @@ type TogetherAIResponse = {
 export async function analyzeImage(imageData: string | File): Promise<TogetherAIResponse> {
   try {
     console.log('Starting image analysis...');
-
-    // Convert data to FormData
     const formData = new FormData();
-    
-    if (typeof imageData === 'string' && imageData.startsWith('data:image')) {
-      // Convert base64 to blob
-      const response = await fetch(imageData);
-      const blob = await response.blob();
-      formData.append('image', blob, 'image.jpg');
+
+    if (typeof imageData === 'string') {
+      if (imageData.startsWith('data:image')) {
+        // Convert base64 data URL to Blob
+        const response = await fetch(imageData);
+        const blob = await response.blob();
+        formData.append('image', blob, 'image.jpg');
+      } else if (imageData.startsWith('https')) {
+        // If imageData is already a public URL, append it with the key "image_url"
+           formData.append('image', imageData); 
+      } else {
+        throw new Error('Invalid image format');
+      }
     } else if (imageData instanceof File) {
       formData.append('image', imageData);
     } else {
@@ -26,7 +31,7 @@ export async function analyzeImage(imageData: string | File): Promise<TogetherAI
     }
 
     // Send to our API route
-    const response = await fetch('/api/analyze', {
+    const response = await fetch('/api/chat', {
       method: 'POST',
       body: formData,
     });
@@ -39,9 +44,8 @@ export async function analyzeImage(imageData: string | File): Promise<TogetherAI
 
     const result = await response.json();
     return result;
-
   } catch (error) {
     console.error('Analysis failed:', error);
     throw error;
   }
-} 
+}

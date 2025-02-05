@@ -90,6 +90,7 @@ export default function AddItemPage() {
     name: "",
     description: "",
     price: "",
+    condition: "",
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -298,7 +299,33 @@ export default function AddItemPage() {
     const newIndex = newOrder.findIndex((img) => img.url === selectedImage.url);
     setCurrentImageIndex(newIndex);
   };
+  function extractJson(response) {
+    try {
+      // Check if response contains valid JSON structure
+      const jsonStart = response.indexOf("{");
+      const jsonEnd = response.lastIndexOf("}") + 1;
 
+      if (jsonStart === -1 || jsonEnd === -1) {
+        throw new Error("No valid JSON found in the response.");
+      }
+
+      // Extract the JSON part from the response string
+      const jsonString = response.substring(jsonStart, jsonEnd).trim();
+
+      // Attempt to parse the JSON string
+      const jsonObject = JSON.parse(jsonString);
+
+      // Ensure the parsed result is an object
+      if (typeof jsonObject !== "object" || jsonObject === null) {
+        throw new Error("Parsed result is not a valid JSON object.");
+      }
+
+      return jsonObject;
+    } catch (error: any) {
+      console.error("Error extracting or parsing JSON:", error.message);
+      return null;
+    }
+  }
   const handleAIAnalysis = async () => {
     if (!images.length) {
       toast.error("Please add at least one image to analyze");
@@ -308,37 +335,80 @@ export default function AddItemPage() {
     setIsAnalyzing(true);
     try {
       const currentImage = images[currentImageIndex];
-      console.log("Starting AI analysis for image:", {
-        index: currentImageIndex,
-        type: typeof currentImage,
-        isBase64: currentImage.url.startsWith("data:"),
-      });
+      // console.log(currentImage.file)
+      const file = currentImage?.file;
 
-      const result = await analyzeImage(currentImage.url);
+      // Define the file path in the storage bucket
+      const filePath = `uploads/${file?.name}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("item-images")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      console.log("here is upload error", uploadError);
+      if (uploadError) throw uploadError;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("item-images").getPublicUrl(filePath);
+
+      console.log("Starting AI analysis for image:", { url: publicUrl });
+
+      // Call the AI analysis function using the public URL
+      const result = await analyzeImage(publicUrl);
+      console.log(
+        "here is result form api ",
+        result?.data?.choices?.[0]?.message?.content
+      );
+      const dataObject =
+        extractJson(result?.data?.choices?.[0]?.message?.content) || "{}";
 
       // Update form with AI results
       setItemDetails((prev) => ({
         ...prev,
-        name: result.title || prev.name,
-        description: result.description || prev.description,
-        price: result.price_avg?.toString() || prev.price,
-        category: result.category_id || prev.category,
+        name: dataObject?.title || prev.name,
+        description: dataObject?.description || prev.description,
+        price: dataObject?.price_avg?.toString() || prev.price,
+        // category: dataObject?.category_id.split(">") || prev.category,
       }));
 
-      // Update categories if provided
-      if (result.category_id) {
-        setSelectedCategories((prev) => ({
-          ...prev,
-          level1: result.category_id,
-        }));
+      setCondition((prev) => dataObject.condition);
+
+      if (dataObject.category_id) {
+        const categoryNames = dataObject.category_id.split(" > ");
+
+        // Find category IDs based on names
+        const level1 = categories.find((cat) => cat.name === categoryNames[0]);
+        const level2 = categories.find(
+          (cat) => cat.name === categoryNames[1] && cat.parent_id === level1?.id
+        );
+        const level3 = categories.find(
+          (cat) => cat.name === categoryNames[2] && cat.parent_id === level2?.id
+        );
+
+        // Update selected categories with found IDs
+        setSelectedCategories({
+          level1: level1?.id || "",
+          level2: level2?.id || "",
+          level3: level3?.id || "",
+        });
       }
 
-      // Update condition if provided
-      if (result.condition) {
-        setCondition(
-          result.condition as "New" | "Like New" | "Very Good" | "Good" | "Fair"
-        );
-      }
+      // Update categories if provided
+      // if (result.category_id) {
+      //   setSelectedCategories((prev) => ({
+      //     ...prev,
+      //     level1: result.category_id,
+      //   }));
+      // }
+
+      // // Update condition if provided
+      // if (result.condition) {
+      //   setCondition(result.condition);
+      // }
     } catch (error) {
       console.error("AI analysis failed:", error);
       alert("Failed to analyze image. Please try again.");
@@ -346,7 +416,6 @@ export default function AddItemPage() {
       setIsAnalyzing(false);
     }
   };
-
   const handleSubmit = async () => {
     try {
       setIsSaving(true);
@@ -910,7 +979,7 @@ export default function AddItemPage() {
                       <Label>Condition</Label>
                       <div className="grid grid-cols-5 gap-3 mt-3">
                         {[
-                          { value: "New", icon: Sparkles },
+                          { value: "new", icon: Sparkles },
                           { value: "Like New", icon: Star },
                           { value: "Very Good", icon: ThumbsUp },
                           { value: "Good", icon: Check },
@@ -1044,6 +1113,3 @@ export default function AddItemPage() {
     </div>
   );
 }
-
-
-
