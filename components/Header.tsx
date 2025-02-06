@@ -80,7 +80,9 @@ export function Header() {
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
   const handleProfileClick = (path: string) => {
-    router.push(`/settings?tab=${path}`);
+    // router.push(`/settings?tab=${path}`);
+    router.push(`/settings`);
+
   };
 
   const handleNotificationClick = () => {

@@ -24,8 +24,8 @@ export default function UpdatePasswordPage() {
     }
 
     // Check if password is strong enough (example: minimum length)
-    if (password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters long.");
+    if (password.length < 6) {
+      setErrorMessage("Password must be at least 6 characters long.");
       return;
     }
 

@@ -9,10 +9,10 @@ import { createClient } from '@/utils/supabase/server'
 export async function login(formData: FormData) {
     const supabase = await createClient()
   
-    const data = {
-      email: formData.get('email') as string,
-      password: formData.get('password') as string,
-    }
+    const email = (formData.get('email') as string).trim();
+    const password = (formData.get('password') as string).trim();
+  
+    const data = { email, password };
   
     const { error } = await supabase.auth.signInWithPassword(data)
   
@@ -28,10 +28,10 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
     const supabase = await createClient()
   
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const confirmPassword = formData.get("password") as string;
+  const name = (formData.get("name") as string).trim();
+  const email = (formData.get("email") as string).trim();
+  const password = (formData.get("password") as string).trim();
+  const confirmPassword = (formData.get("confirmPassword") as string).trim();
 
     const role = "user";
   
@@ -59,14 +59,21 @@ export async function signup(formData: FormData) {
     });
 
   if (userError) {
-    console.log(userError,"here is usererror");
+    console.log(userError, "here is usererror");
+    // Delete the user from auth since the record could not be created
     await supabase.auth.admin.deleteUser(data.user?.id!);
-    return redirect("/login?tab=signup&error=Could not create user record");
+    
+    // Check for a duplicate key (or similar) error to return a friendlier message.
+    let errMsg = "Could not create user record";
+    const lowerMsg = userError.message.toLowerCase();
+    if (lowerMsg.includes("duplicate") || lowerMsg.includes("already exists")) {
+      errMsg = "Email already exists";
+    }
+    return redirect("/login?tab=signup&error=" + encodeURIComponent(errMsg));
   }
-  // return {success : true}
   
-    revalidatePath('/login', 'page')
-    redirect('/login')
+  revalidatePath('/login', 'page');
+  redirect('/login');
   }
 
 export async function logout() {

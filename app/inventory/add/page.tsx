@@ -100,6 +100,8 @@ export default function AddItemPage() {
     level3: "",
   });
 
+  const [isPrePopulated, setIsPrePopulated] = useState(false);
+
   const [condition, setCondition] = useState<
     "New" | "Like New" | "Very Good" | "Good" | "Fair"
   >("New");
@@ -111,6 +113,11 @@ export default function AddItemPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
+
+  const currentMediaUrl = images[currentImageIndex]?.url;
+
+  // Use a regex to check if the URL is an image
+  const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(currentMediaUrl);
 
   useEffect(() => {
     const getSessionAndStore = async () => {
@@ -229,12 +236,14 @@ export default function AddItemPage() {
 
   // If a higher-level category is changed, reset the lower levels.
   useEffect(() => {
-    // When level1 changes, clear level2 and level3.
+    if (isPrePopulated) return;
+    // When level1 changes, clear level2 and level3
     setSelectedCategories((prev) => ({ ...prev, level2: "", level3: "" }));
   }, [selectedCategories.level1]);
 
   useEffect(() => {
     // When level2 changes, clear level3.
+    if (isPrePopulated) return;
     setSelectedCategories((prev) => ({ ...prev, level3: "" }));
   }, [selectedCategories.level2]);
 
@@ -247,14 +256,34 @@ export default function AddItemPage() {
 
     setIsProcessing(true);
     try {
+      // Process all selected files and upload each to Supabase
       const newImages = await Promise.all(
         Array.from(files).map(async (file) => {
-          const url = URL.createObjectURL(file);
-          return { url, file };
+          // Define a file path for storage (you may want to generate unique names)
+          const filePath = `uploads/${Date.now()}/${file.name}`;
+
+          // Upload the file to Supabase storage
+          const { error: uploadError } = await supabase.storage
+            .from("item-images")
+            .upload(filePath, file, { cacheControl: "3600", upsert: true });
+
+          console.log("Upload error (if any):", uploadError);
+          if (uploadError) throw uploadError;
+
+          // Get the public URL for the uploaded file
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("item-images").getPublicUrl(filePath);
+
+          // Optionally, you can log or process the publicUrl further
+          return { url: publicUrl, file };
         })
       );
 
+      // Update your state with the new images (each now containing the Supabase public URL)
       setImages((prev) => [...prev, ...newImages]);
+      // Note: logging "images" immediately after setImages may still log the old state
+      console.log("newImages:", newImages);
       setCurrentImageIndex(0);
       setCurrentView("review");
     } catch (error) {
@@ -269,12 +298,32 @@ export default function AddItemPage() {
   };
 
   // Review handlers
-  const removeImage = (index: number) => {
-    setImages((prev) => {
-      const removedImage = prev[index];
-      if (removedImage.url.startsWith("blob:")) {
-        URL.revokeObjectURL(removedImage.url);
+  const removeImage = async (index: number) => {
+    // Get the image to remove from the current state.
+    const imageToRemove = images[index];
+    if (!imageToRemove) return;
+
+    // If the URL starts with "blob:" then it's a locally generated URL that we can revoke.
+    if (imageToRemove.url.startsWith("blob:")) {
+      URL.revokeObjectURL(imageToRemove.url);
+    } else {
+      // Otherwise, compute the file path (or use a stored filePath property if available)
+      const filePath = `uploads/${
+        imageToRemove?.file && imageToRemove?.file.name
+      }`;
+
+      // Remove the file from Supabase storage
+      const { error: deleteError } = await supabase.storage
+        .from("item-images")
+        .remove([filePath]);
+      if (deleteError) {
+        console.error("Error deleting file from Supabase:", deleteError);
+        // Optionally, you may decide whether to continue or abort removal.
       }
+    }
+
+    // Update state to remove the image from your local list
+    setImages((prev) => {
       const newImages = prev.filter((_, i) => i !== index);
       if (currentImageIndex >= newImages.length) {
         setCurrentImageIndex(Math.max(0, newImages.length - 1));
@@ -334,31 +383,39 @@ export default function AddItemPage() {
 
     setIsAnalyzing(true);
     try {
-      const currentImage = images[currentImageIndex];
-      // console.log(currentImage.file)
-      const file = currentImage?.file;
+      console.log("here is my images ", images);
+      const formData = new FormData();
 
-      // Define the file path in the storage bucket
-      const filePath = `uploads/${file?.name}`;
+      // Loop through all the images and append them to formData
+      for (const image of images) {
+       
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(image?.url);
+        if(!isImage) continue;
+        const file = image?.file;
+   
+        const filePath = `uploads/${file?.name}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("item-images")
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: true,
-        });
+        // Upload each image to Supabase storage
+        // const { error: uploadError } = await supabase.storage
+        //   .from("item-images")
+        //   .upload(filePath, file, { cacheControl: "3600", upsert: true });
 
-      console.log("here is upload error", uploadError);
-      if (uploadError) throw uploadError;
+        // console.log("here is upload error", uploadError);
+        // if (uploadError) throw uploadError;
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("item-images").getPublicUrl(filePath);
+        const {
+          data: { publicUrl },
+        } = await supabase.storage.from("item-images").getPublicUrl(filePath);
+        console.log("here is publicUrl", publicUrl);
+        console.log("Uploading image to AI:", { url: publicUrl });
 
-      console.log("Starting AI analysis for image:", { url: publicUrl });
+        // Append the public URL for each image
+        formData.append("image", publicUrl);
+      }
 
-      // Call the AI analysis function using the public URL
-      const result = await analyzeImage(publicUrl);
+      // Call AI analysis function with multiple images
+      const result = await analyzeImage(formData);
+      console.log("AI Analysis Result:", result);
       console.log(
         "here is result form api ",
         result?.data?.choices?.[0]?.message?.content
@@ -389,12 +446,28 @@ export default function AddItemPage() {
           (cat) => cat.name === categoryNames[2] && cat.parent_id === level2?.id
         );
 
-        // Update selected categories with found IDs
+        // const level1 = '2d98fcb8-e081-4c3a-89cd-7a364b4aada4'
+        // const level2 = 'b36478d7-9e10-4c5d-8839-c70dfa8f9aa0'
+        // const level3 =  '46445967-02d5-41ec-abc5-9dcb080d7e20'
+
+        console.log("here is categories names", categoryNames);
+        console.log("here is level1 ", level1);
+        console.log("here is level2 ", level2);
+        console.log("here is level3 ", level3);
+        setIsPrePopulated(true);
         setSelectedCategories({
           level1: level1?.id || "",
           level2: level2?.id || "",
           level3: level3?.id || "",
         });
+        // setIsPrePopulated(false);
+        console.log("here is selected categories ", selectedCategories);
+        // setSelectedCategories({
+        //   level1: level1?.id || "",
+        //   level2: level2?.id || "",
+        //   level3: level3?.id || "",
+        // });
+        // setIsPrePopulated(true);
       }
 
       // Update categories if provided
@@ -554,7 +627,7 @@ export default function AddItemPage() {
                   }}
                 >
                   <Upload className="mr-2 h-6 w-6" />
-                  Choose Photo
+                  Choose File
                 </Button>
               </div>
             )}
@@ -639,12 +712,21 @@ export default function AddItemPage() {
                 {/* Main Carousel */}
                 <div className="bg-black rounded-2xl overflow-hidden">
                   <div className="aspect-[4/3] relative">
-                    <img
-                      src={images[currentImageIndex]?.url}
-                      alt={`Photo ${currentImageIndex + 1}`}
-                      className="w-full h-full object-contain"
-                    />
-
+                    {isImage ? (
+                      <img
+                        src={currentMediaUrl}
+                        alt={`Photo ${currentImageIndex + 1}`}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <video
+                        src={currentMediaUrl}
+                        controls
+                        className="w-full h-full object-contain absolute z-10"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    )}
                     {/* Navigation Arrows */}
                     {images.length > 1 && (
                       <div className="absolute inset-0 flex items-center justify-between p-4">
@@ -690,48 +772,67 @@ export default function AddItemPage() {
                     onReorder={handleReorder}
                     className="flex gap-3 overflow-x-auto py-2 px-1"
                   >
-                    {images.map((image, index) => (
-                      <Reorder.Item
-                        key={image.url}
-                        value={image}
-                        className={cn(
-                          "relative flex-shrink-0 cursor-move group",
-                          "rounded-lg overflow-hidden",
-                          index === currentImageIndex
-                            ? "ring-2 ring-red-500"
-                            : ""
-                        )}
-                        dragListener={true}
-                        whileDrag={{
-                          scale: 1.05,
-                          cursor: "grabbing",
-                        }}
-                      >
-                        <div
-                          onClick={() => setCurrentImageIndex(index)}
-                          className="w-20 h-20 relative"
+                    {images.map((image, index) => {
+                      // Determine if the media URL is for an image
+                      const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(
+                        image.url
+                      );
+
+                      return (
+                        <Reorder.Item
+                          key={image.url}
+                          value={image}
+                          className={cn(
+                            "relative flex-shrink-0 cursor-move group",
+                            "rounded-lg overflow-hidden",
+                            index === currentImageIndex
+                              ? "ring-2 ring-red-500"
+                              : ""
+                          )}
+                          dragListener={true}
+                          whileDrag={{
+                            scale: 1.05,
+                            cursor: "grabbing",
+                          }}
                         >
-                          <img
-                            src={image.url}
-                            alt={`Thumbnail ${index + 1}`}
-                            className="w-full h-full object-cover rounded-lg"
-                            draggable={false}
-                          />
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-1 right-1 h-5 w-5 rounded-full opacity-0 
-                                     group-hover:opacity-100 transition-opacity duration-200"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeImage(index);
-                            }}
+                          <div
+                            onClick={() => setCurrentImageIndex(index)}
+                            className="w-20 h-20 relative z-10"
                           >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </Reorder.Item>
-                    ))}
+                            {isImage ? (
+                              <img
+                                src={image.url}
+                                alt={`Thumbnail ${index + 1}`}
+                                className="w-full h-full object-cover rounded-lg"
+                                draggable={false}
+                              />
+                            ) : (
+                              <video
+                                src={image.url}
+                                controls
+                                className="w-full h-full object-contain rounded-lg pointer-events-none"
+                                draggable={false}
+                              >
+                                Your browser does not support the video tag.
+                              </video>
+                             
+                            )}
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-1 right-1 h-5 w-5 rounded-full opacity-0 
+                     group-hover:opacity-100 transition-opacity duration-200"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeImage(index);
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </Reorder.Item>
+                      );
+                    })}
                   </Reorder.Group>
                 </div>
 
@@ -744,7 +845,7 @@ export default function AddItemPage() {
                         setCurrentView("camera");
                         startCamera();
                       } else {
-                        setCurrentView("fileSelect");
+                        // setCurrentView("fileSelect");
                         fileInputRef.current?.click();
                       }
                     }}
@@ -758,7 +859,7 @@ export default function AddItemPage() {
                     ) : (
                       <>
                         <Upload className="mr-2 h-4 w-4" />
-                        Choose More Photos
+                        Choose More Files
                       </>
                     )}
                   </Button>
@@ -779,11 +880,22 @@ export default function AddItemPage() {
                 {/* Smaller Image Carousel */}
                 <div className="h-[300px] bg-black rounded-2xl overflow-hidden">
                   <div className="relative h-full">
-                    <img
-                      src={images[currentImageIndex]?.url}
-                      alt={`Photo ${currentImageIndex + 1}`}
-                      className="w-full h-full object-contain"
-                    />
+                  {isImage ? (
+                      <img
+                        src={currentMediaUrl}
+                        alt={`Photo ${currentImageIndex + 1}`}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <video
+                        src={currentMediaUrl}
+                        controls
+                        autoPlay={true}
+                        className="w-full h-full object-contain"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    )}
                     {/* Navigation Arrows */}
                     {images.length > 1 && (
                       <div className="absolute inset-0 flex items-center justify-between p-4">
@@ -898,12 +1010,13 @@ export default function AddItemPage() {
                       <Label htmlFor="category">Category</Label>
                       <Select
                         value={selectedCategories.level1}
-                        onValueChange={(value) =>
+                        onValueChange={(value) => {
+                          if (isPrePopulated) setIsPrePopulated(false);
                           setSelectedCategories((prev) => ({
                             ...prev,
                             level1: value,
-                          }))
-                        }
+                          }));
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
@@ -923,12 +1036,13 @@ export default function AddItemPage() {
                           <Label htmlFor="subcategory">Subcategory</Label>
                           <Select
                             value={selectedCategories.level2}
-                            onValueChange={(value) =>
+                            onValueChange={(value) => {
+                              if (isPrePopulated) setIsPrePopulated(false);
                               setSelectedCategories((prev) => ({
                                 ...prev,
                                 level2: value,
-                              }))
-                            }
+                              }));
+                            }}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select subcategory" />
@@ -951,12 +1065,13 @@ export default function AddItemPage() {
                           </Label>
                           <Select
                             value={selectedCategories.level3}
-                            onValueChange={(value) =>
+                            onValueChange={(value) => {
+                              if (isPrePopulated) setIsPrePopulated(false);
                               setSelectedCategories((prev) => ({
                                 ...prev,
                                 level3: value,
-                              }))
-                            }
+                              }));
+                            }}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select sub-subcategory" />
@@ -979,7 +1094,7 @@ export default function AddItemPage() {
                       <Label>Condition</Label>
                       <div className="grid grid-cols-5 gap-3 mt-3">
                         {[
-                          { value: "new", icon: Sparkles },
+                          { value: "New", icon: Sparkles },
                           { value: "Like New", icon: Star },
                           { value: "Very Good", icon: ThumbsUp },
                           { value: "Good", icon: Check },
@@ -1099,14 +1214,14 @@ export default function AddItemPage() {
               onChange={handleFileSelect}
             />
 
-            {currentView === "fileSelect" && isProcessing && (
+            {/* {currentView === "fileSelect" && isProcessing && (
               <div className="flex items-center justify-center h-32">
                 <div className="flex items-center space-x-2">
                   <div className="animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full" />
                   <span>Processing images...</span>
                 </div>
               </div>
-            )}
+            )} */}
           </div>
         </CardContent>
       </Card>

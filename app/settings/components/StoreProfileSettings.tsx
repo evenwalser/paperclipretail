@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import validator from 'validator';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -158,7 +159,29 @@ export function StoreProfileSettings() {
     }
 
     if (!storeDetails.name || !selectedAddress) {
-      setError("Store name and address are required fields");
+      toast.error("Submission failed", {
+        description:
+          "Store name and address are required fields",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!validator.isEmail(storeDetails.email)) {
+      toast.error("Submission failed", {
+        description:
+          "Please enter a valid email address",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+  
+    // Validate phone number
+    if (!validator.isMobilePhone(storeDetails.phone, 'any', { strictMode: false })) {
+      toast.error("Submission failed", {
+        description:
+          "Please enter a valid phone number",
+      });
       setIsSubmitting(false);
       return;
     }
@@ -200,7 +223,6 @@ export function StoreProfileSettings() {
       }
 
      
-      console.log("here is store data", storeData.id);
       // Update the user's role to 'store_owner' and associate the store_id
       const { error: profileError } = await supabase
         .from("users")
@@ -345,7 +367,7 @@ export function StoreProfileSettings() {
       <CardContent className="space-y-6">
         {/* Store Images Section */}
         {/* <InviteForm storeId={14} storeName={storeOwener} /> */}
-        <SendInviteForm />
+        {/* <SendInviteForm /> */}
         <div className="space-y-4">
           <div className="space-y-4">
             <Label>Store Images</Label>
@@ -447,7 +469,7 @@ export function StoreProfileSettings() {
             <Button
               onClick={handlePostcodeLookup}
               disabled={isLoading || !postcode}
-              className="min-w-[100px] bg-[#dc2626] text-[#fff] rounded-[8px]"
+              className="min-w-[100px] bg-[#dc2626] text-[#fff] rounded-[8px] border-[1px] border-[solid] border-[#dc2626] hover:text-[#dc2626]"
             >
               {isLoading ? (
                 <div className="flex items-center">
@@ -490,7 +512,7 @@ export function StoreProfileSettings() {
                 <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <SelectValue placeholder="Choose an address" />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <SelectContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 h-[300px]">
                   {addresses.map((address, index) => (
                     <SelectItem
                       key={index}
@@ -511,6 +533,7 @@ export function StoreProfileSettings() {
             <div className="space-y-2">
               <Input
                 placeholder="Address Line 1"
+                className="store-adress-input"
                 value={selectedAddress.line_1}
                 readOnly={!isManualEdit}
                 onChange={(e) =>
@@ -522,6 +545,7 @@ export function StoreProfileSettings() {
               />
               <Input
                 placeholder="Address Line 2"
+                className="store-adress-input"
                 value={selectedAddress.line_2}
                 readOnly={!isManualEdit}
                 onChange={(e) =>
@@ -533,6 +557,7 @@ export function StoreProfileSettings() {
               />
               <Input
                 placeholder="Town/City"
+                className="store-adress-input"
                 value={selectedAddress.post_town}
                 readOnly={!isManualEdit}
                 onChange={(e) =>
@@ -544,6 +569,7 @@ export function StoreProfileSettings() {
               />
               <Input
                 placeholder="County"
+                className="store-adress-input"
                 value={selectedAddress.county}
                 readOnly={!isManualEdit}
                 onChange={(e) =>
@@ -555,6 +581,7 @@ export function StoreProfileSettings() {
               />
               <Input
                 placeholder="Postcode"
+                className="store-adress-input"
                 value={selectedAddress.postcode}
                 readOnly={!isManualEdit}
                 onChange={(e) =>
