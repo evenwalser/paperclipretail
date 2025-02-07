@@ -260,8 +260,8 @@ export default function AddItemPage() {
       const newImages = await Promise.all(
         Array.from(files).map(async (file) => {
           // Define a file path for storage (you may want to generate unique names)
-          const filePath = `uploads/${Date.now()}/${file.name}`;
-
+          const filePath = `review/${Date.now()}-${file.name}`;
+          console.log("File path:", filePath);
           // Upload the file to Supabase storage
           const { error: uploadError } = await supabase.storage
             .from("item-images")
@@ -274,9 +274,9 @@ export default function AddItemPage() {
           const {
             data: { publicUrl },
           } = supabase.storage.from("item-images").getPublicUrl(filePath);
-
+          console.log("Public URL:", publicUrl);
           // Optionally, you can log or process the publicUrl further
-          return { url: publicUrl, file };
+          return { url: publicUrl, file, filepath: filePath };
         })
       );
 
@@ -308,10 +308,9 @@ export default function AddItemPage() {
       URL.revokeObjectURL(imageToRemove.url);
     } else {
       // Otherwise, compute the file path (or use a stored filePath property if available)
-      const filePath = `uploads/${
-        imageToRemove?.file && imageToRemove?.file.name
-      }`;
-
+      const filePath = imageToRemove?.filepath;
+      console.log("images to remove", imageToRemove);
+      console.log("File path to delete:", filePath);
       // Remove the file from Supabase storage
       const { error: deleteError } = await supabase.storage
         .from("item-images")
@@ -392,8 +391,8 @@ export default function AddItemPage() {
         const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(image?.url);
         if(!isImage) continue;
         const file = image?.file;
-   
-        const filePath = `uploads/${file?.name}`;
+        console.log("here is file", image);
+        const filePath = `${image?.filepath}`;
 
         // Upload each image to Supabase storage
         // const { error: uploadError } = await supabase.storage
@@ -462,26 +461,7 @@ export default function AddItemPage() {
         });
         // setIsPrePopulated(false);
         console.log("here is selected categories ", selectedCategories);
-        // setSelectedCategories({
-        //   level1: level1?.id || "",
-        //   level2: level2?.id || "",
-        //   level3: level3?.id || "",
-        // });
-        // setIsPrePopulated(true);
       }
-
-      // Update categories if provided
-      // if (result.category_id) {
-      //   setSelectedCategories((prev) => ({
-      //     ...prev,
-      //     level1: result.category_id,
-      //   }));
-      // }
-
-      // // Update condition if provided
-      // if (result.condition) {
-      //   setCondition(result.condition);
-      // }
     } catch (error) {
       console.error("AI analysis failed:", error);
       alert("Failed to analyze image. Please try again.");
@@ -528,7 +508,8 @@ export default function AddItemPage() {
       const imageUploads = await Promise.all(
         images.map(async (image, index) => {
           // Generate unique filename
-          const fileName = `${item.id}/${crypto.randomUUID()}`;
+          const fileExt = image.url.split(".").pop();
+          const fileName = `${user.id}/${item.id}/${crypto.randomUUID()}.${fileExt}`;
           let fileData: Blob;
 
           if (image.file) {
@@ -538,7 +519,7 @@ export default function AddItemPage() {
             const response = await fetch(image.url);
             fileData = await response.blob();
           }
-
+          console.log('all images removed',removeImage(index));
           // Upload to Supabase storage
           const { error: uploadError } = await supabase.storage
             .from("item-images")
@@ -560,19 +541,23 @@ export default function AddItemPage() {
           // Create image record
           return {
             item_id: item.id,
-            image_url: fileName, // Store path instead of full URL
+            image_url: publicUrl, // Store path instead of full URL
             display_order: index,
           };
         })
       );
-
+      console.log("imageUploads", imageUploads);
       // 3. Insert image records
-      const { error: imageError } = await supabase
-        .from("item_images")
-        .insert(imageUploads);
-
-      if (imageError) throw imageError;
-
+      if (imageUploads.length > 0) {
+        const { error: imageError } = await supabase
+          .from("item_images")
+          .insert(imageUploads);
+      
+        if (imageError) {
+          console.log("Error inserting image records:", imageError);
+          throw imageError;
+        }
+      }
       // 4. Cleanup temporary URLs
       images.forEach((image) => URL.revokeObjectURL(image.url));
       toast.success("Item added successfully!");

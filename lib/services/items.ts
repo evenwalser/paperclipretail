@@ -1,9 +1,11 @@
-import { supabase } from '../supabase';
-import { Item, ItemImage } from '@/types/supabase';
+import { createClient } from "@/utils/supabase/client";
+import { Item, ItemImage } from "@/types/supabase";
 
-export async function createItem(item: Omit<Item, 'id' | 'created_at'>) {
+const supabase = createClient();
+
+export async function createItem(item: Omit<Item, "id" | "created_at">) {
   const { data, error } = await supabase
-    .from('items')
+    .from("items")
     .insert([item])
     .select()
     .single();
@@ -12,101 +14,170 @@ export async function createItem(item: Omit<Item, 'id' | 'created_at'>) {
   return data;
 }
 
-export async function uploadItemImage(file: File, itemId: string, displayOrder: number) {
+export async function uploadItemImage(
+  file: File,
+  itemId: string,
+  displayOrder: number
+) {
   try {
     // Upload to Supabase Storage
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${itemId}_${Date.now()}.${fileExt}`
-    const filePath = `${itemId}/${fileName}`
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${itemId}_${Date.now()}.${fileExt}`;
+    const filePath = `${itemId}/${fileName}`;
 
     const { error: uploadError, data } = await supabase.storage
-      .from('items')
-      .upload(filePath, file)
+      .from("items")
+      .upload(filePath, file);
 
-    if (uploadError) throw uploadError
+    if (uploadError) throw uploadError;
 
     // Get the public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('items')
-      .getPublicUrl(filePath)
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("items").getPublicUrl(filePath);
 
     // Create record in item_images table
-    const { error: dbError } = await supabase
-      .from('item_images')
-      .insert({
-        item_id: itemId,
-        image_url: filePath,
-        display_order: displayOrder
-      })
+    const { error: dbError } = await supabase.from("item_images").insert({
+      item_id: itemId,
+      image_url: filePath,
+      display_order: displayOrder,
+    });
 
-    if (dbError) throw dbError
+    if (dbError) throw dbError;
 
-    return publicUrl
+    return publicUrl;
   } catch (error) {
-    console.error('Error in uploadItemImage:', error)
-    throw error
+    console.error("Error in uploadItemImage:", error);
+    throw error;
   }
 }
 
-export async function getItems(page: number = 1, itemsPerPage: number = 9) {
+export const fetchLevel1Categories = async () => {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, name")
+    .eq("level", 1) // Fetch only level 1 categories
+    .order("display_order", { ascending: true }); // Optional: Sort by display order
+
+  if (error) {
+    console.error("Error fetching categories:", error);
+    return [];
+  }
+
+  return data;
+};
+
+export const getUser = async () => {
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+
+    const user = data?.user;
+    if (!user) return null;
+
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (userError) throw userError;
+
+    return userData || null;
+  } catch (err) {
+    console.error("Error fetching user:", err.message);
+    return null;
+  }
+};
+
+export async function getItems(
+  page: number = 1,
+  itemsPerPage: number = 9,
+  user: any
+) {
+  if (!user || !user.store_id) {
+    throw new Error("User is not authenticated or missing store ID.");
+  }
+
   const startIndex = (page - 1) * itemsPerPage;
-  
+
   // Fetch count and items in parallel
   const [countResponse, itemsResponse] = await Promise.all([
     supabase
-      .from('items')
-      .select('*', { count: 'exact', head: true }),
-    
+      .from("items")
+      .select("*", { count: "exact", head: true })
+      .eq("store_id", user.store_id), // Count query filtered by store ID
+
     supabase
-      .from('items')
-      .select(`
+      .from("items")
+      .select(
+        `
         *,
         item_images!inner (
           image_url,
           display_order
         )
-      `)
-      .order('created_at', { ascending: false })
-      .range(startIndex, startIndex + itemsPerPage - 1)
+      `
+      )
+      .eq("store_id", user.store_id)
+      .order("created_at", { ascending: false })
+      .range(startIndex, startIndex + itemsPerPage - 1),
   ]);
 
   if (countResponse.error) throw countResponse.error;
   if (itemsResponse.error) throw itemsResponse.error;
 
+  // Fetch categories for each item
+  const itemsWithCategories = await Promise.all(
+    itemsResponse.data.map(async (item) => {
+      const { data: categoryHierarchy, error: categoryError } =
+        await supabase.rpc("get_category_hierarchy", {
+          category_id: item.category_id,
+        });
+
+      if (categoryError) {
+        console.error("Error fetching category hierarchy:", categoryError);
+        return { ...item, categories: [] };
+      }
+
+      return { ...item, categories: categoryHierarchy };
+    })
+  );
+
   return {
-    items: itemsResponse.data || [],
+    items: itemsWithCategories,
     totalItems: countResponse.count || 0,
-    totalPages: Math.ceil((countResponse.count || 0) / itemsPerPage)
+    totalPages: Math.ceil((countResponse.count || 0) / itemsPerPage),
   };
 }
 
 export async function getItem(id: number) {
   const { data: item, error: itemError } = await supabase
-    .from('items')
-    .select('*')
-    .eq('id', id)
+    .from("items")
+    .select("*")
+    .eq("id", id)
     .single();
 
   if (itemError) throw itemError;
 
   const { data: images, error: imagesError } = await supabase
-    .from('item_images')
-    .select('image_url')
-    .eq('item_id', id);
+    .from("item_images")
+    .select("image_url")
+    .eq("item_id", id);
 
   if (imagesError) throw imagesError;
 
   return {
     ...item,
-    images: images.map(img => img.image_url)
+    images: images.map((img) => img.image_url),
   };
 }
 
 export async function updateItem(id: number, updates: Partial<Item>) {
   const { data, error } = await supabase
-    .from('items')
+    .from("items")
     .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', id)
+    .eq("id", id)
     .select()
     .single();
 
@@ -117,23 +188,18 @@ export async function updateItem(id: number, updates: Partial<Item>) {
 export async function deleteItem(id: number) {
   // Delete associated images from storage first
   const { data: images } = await supabase
-    .from('item_images')
-    .select('image_url')
-    .eq('item_id', id);
+    .from("item_images")
+    .select("image_url")
+    .eq("item_id", id);
 
   if (images) {
     for (const image of images) {
-      const path = image.image_url.split('/').pop();
-      await supabase.storage
-        .from('items')
-        .remove([`item-images/${path}`]);
+      const path = image.image_url.split("/").pop();
+      await supabase.storage.from("items").remove([`item-images/${path}`]);
     }
   }
 
-  const { error } = await supabase
-    .from('items')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.from("items").delete().eq("id", id);
 
   if (error) throw error;
 }

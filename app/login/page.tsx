@@ -27,6 +27,13 @@ export default function LoginPage({
     setLoading(false);
   }
 
+  const handleNoSpace = (e: React.FormEvent<HTMLInputElement>) => {
+    const inputElement = e.target as HTMLInputElement;
+    if (inputElement.value.includes(" ")) {
+      inputElement.value = inputElement.value.replace(/\s+/g, "");
+    }
+  };
+
   return (
     <div className="flex justify-center items-center h-[-webkit-fill-available] absolute w-full flex-col">
       <div className="p-6">
@@ -39,11 +46,11 @@ export default function LoginPage({
         />
       </div>
       <form
-       key={isLogin ? 'login' : 'signup'}
+        key={isLogin ? 'login' : 'signup'}
         className="max-w-[600px] w-full p-6 rounded-xl border bg-card shadow" onSubmit={handleSubmit}
       >
         <div className="flex mb-6 flex items-center border border-[#ffffff] p-[5px]">
-        <Link
+          <Link
             href="?tab=login"
             className={`py-[5px] px-[10px] text-lg font-medium transition-colors w-full text-center ${
               isLogin
@@ -71,9 +78,7 @@ export default function LoginPage({
 
         {!isLogin && (
           <>
-            <label className="mt-2 block" htmlFor="name">
-              Name:
-            </label>
+            <label className="mt-2 block" htmlFor="name">Name:</label>
             <Input id="name" name="name" type="text" required />
           </>
         )}
@@ -81,19 +86,19 @@ export default function LoginPage({
         <label className="mt-2 block" htmlFor="email">
           Email:
         </label>
-        <Input id="email" name="email" type="email" required />
+        <Input id="email" name="email" type="email" required onInput={handleNoSpace}/>
 
         <label className="mt-2 block" htmlFor="password">
           Password:
         </label>
-        <Input id="password" name="password" type="password" required />
+        <Input id="password" name="password" type="password" required onInput={handleNoSpace}/>
 
         {!isLogin && (
           <>
             <label className="mt-2 block" htmlFor="confirmPassword">
               Confirm Password:
             </label>
-            <Input id="confirmPassword" name="confirmPassword" type="password" required />
+            <Input id="confirmPassword" name="confirmPassword" type="password" required onInput={handleNoSpace}/>            
           </>
         )}
 

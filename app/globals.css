@@ -155,3 +155,9 @@ h1, h2, h3, h4, h5, h6 {
   -ms-text-overflow: ellipsis !important;
   text-overflow: ellipsis;
 }
+
+.swiper-inventory .swiper-button-next:after,
+.swiper-inventory .swiper-button-prev:after{
+  font-size: 13px;
+  color: #fff;
+}

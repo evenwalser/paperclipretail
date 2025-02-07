@@ -361,7 +361,7 @@ export function StoreProfileSettings() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader style={{ paddingTop: 0 }}>
         <CardTitle>Store Profile</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
