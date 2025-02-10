@@ -10,7 +10,7 @@ export default function SignupSuccess() {
   return (
     <div className="text-center">
       <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-      <h2 className="mt-6 text-3xl font-extrabold text-gray-900">You're all set!</h2>
+      <h2 className="mt-6 text-3xl font-extrabold text-gray-900">{`You're`} all set!</h2>
       <p className="mt-2 text-sm text-gray-600">
         Your account has been created and your profile is ready.
       </p>

@@ -1,16 +1,10 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { User } from "next-auth";
 import { toast } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Camera, Upload, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Reorder } from "framer-motion";
@@ -30,7 +24,6 @@ import { createClient } from "@/utils/supabase/client";
 import { Sparkles, Star, ThumbsUp, Check, AlertCircle } from "lucide-react";
 // import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { CategorySelectorV2 } from "@/components/CategorySelectorV2";
 
 // Define our view states
 type ViewState = "initial" | "camera" | "fileSelect" | "review" | "details";
@@ -38,7 +31,8 @@ type ViewState = "initial" | "camera" | "fileSelect" | "review" | "details";
 // Define interfaces
 interface ImageFile {
   url: string;
-  file?: File;
+  file: File;
+  filepath: string;
 }
 
 interface Category {
@@ -51,31 +45,40 @@ interface Category {
   updated_at: string;
 }
 
-interface NewItem {
-  title: string;
-  description: string;
-  price: number;
-  category: string;
-  subcategory1?: string;
-  subcategory2?: string;
-  condition: string;
-  size?: string;
-  status: "available" | "low_stock" | "out_of_stock";
-  available_in_store: boolean;
-  list_on_paperclip: boolean;
-}
+const conditionOptions = [
+  { value: "New", icon: Sparkles },
+  { value: "Like New", icon: Star },
+  { value: "Very Good", icon: ThumbsUp },
+  { value: "Good", icon: Check },
+  { value: "Fair", icon: AlertCircle },
+] as const;
+
+// interface NewItem {
+//   title: string;
+//   description: string;
+//   price: number;
+//   category: string;
+//   subcategory1?: string;
+//   subcategory2?: string;
+//   condition: string;
+//   size?: string;
+//   status: "available" | "low_stock" | "out_of_stock";
+//   available_in_store: boolean;
+//   list_on_paperclip: boolean;
+// }
 
 export default function AddItemPage() {
   const router = useRouter();
   // State management
   const [currentView, setCurrentView] = useState<ViewState>("initial");
   const [images, setImages] = useState<ImageFile[]>([]);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  // const [isProcessing, setIsProcessing] = useState(false);
+  // const [isCameraActive, setIsCameraActive] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
   //  const [user, setUser] = useState<any>(null);
-  const [storeId, setStoreId] = useState<any>(null);
+  // const [storeId, setStoreId] = useState<any>(null);
   const [inputMethod, setInputMethod] = useState<"camera" | "fileSelect">(
     "camera"
   );
@@ -110,6 +113,7 @@ export default function AddItemPage() {
   const [listOnPaperclip, setListOnPaperclip] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -198,7 +202,7 @@ export default function AddItemPage() {
       context.drawImage(video, 0, 0);
 
       const imageDataUrl = canvas.toDataURL("image/jpeg", 0.8);
-      setImages((prev) => [...prev, { url: imageDataUrl }]);
+      // setImages((prev) => [...prev, { url: imageDataUrl }]);
     } catch (error) {
       console.error("Error capturing photo:", error);
       alert("Failed to capture photo. Please try again.");
@@ -347,7 +351,7 @@ export default function AddItemPage() {
     const newIndex = newOrder.findIndex((img) => img.url === selectedImage.url);
     setCurrentImageIndex(newIndex);
   };
-  function extractJson(response) {
+  function extractJson(response: any) {
     try {
       // Check if response contains valid JSON structure
       const jsonStart = response.indexOf("{");
@@ -387,9 +391,8 @@ export default function AddItemPage() {
 
       // Loop through all the images and append them to formData
       for (const image of images) {
-       
         const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(image?.url);
-        if(!isImage) continue;
+        if (!isImage) continue;
         const file = image?.file;
         console.log("here is file", image);
         const filePath = `${image?.filepath}`;
@@ -509,7 +512,9 @@ export default function AddItemPage() {
         images.map(async (image, index) => {
           // Generate unique filename
           const fileExt = image.url.split(".").pop();
-          const fileName = `${user.id}/${item.id}/${crypto.randomUUID()}.${fileExt}`;
+          const fileName = `${user.id}/${
+            item.id
+          }/${crypto.randomUUID()}.${fileExt}`;
           let fileData: Blob;
 
           if (image.file) {
@@ -519,7 +524,7 @@ export default function AddItemPage() {
             const response = await fetch(image.url);
             fileData = await response.blob();
           }
-          console.log('all images removed',removeImage(index));
+          console.log("all images removed", removeImage(index));
           // Upload to Supabase storage
           const { error: uploadError } = await supabase.storage
             .from("item-images")
@@ -552,7 +557,7 @@ export default function AddItemPage() {
         const { error: imageError } = await supabase
           .from("item_images")
           .insert(imageUploads);
-      
+
         if (imageError) {
           console.log("Error inserting image records:", imageError);
           throw imageError;
@@ -800,7 +805,6 @@ export default function AddItemPage() {
                               >
                                 Your browser does not support the video tag.
                               </video>
-                             
                             )}
                             <Button
                               variant="destructive"
@@ -865,7 +869,7 @@ export default function AddItemPage() {
                 {/* Smaller Image Carousel */}
                 <div className="h-[300px] bg-black rounded-2xl overflow-hidden">
                   <div className="relative h-full">
-                  {isImage ? (
+                    {isImage ? (
                       <img
                         src={currentMediaUrl}
                         alt={`Photo ${currentImageIndex + 1}`}
@@ -1078,13 +1082,7 @@ export default function AddItemPage() {
                     <div>
                       <Label>Condition</Label>
                       <div className="grid grid-cols-5 gap-3 mt-3">
-                        {[
-                          { value: "New", icon: Sparkles },
-                          { value: "Like New", icon: Star },
-                          { value: "Very Good", icon: ThumbsUp },
-                          { value: "Good", icon: Check },
-                          { value: "Fair", icon: AlertCircle },
-                        ].map(({ value, icon: Icon }) => (
+                        {conditionOptions.map(({ value, icon: Icon }) => (
                           <Button
                             key={value}
                             variant="outline"

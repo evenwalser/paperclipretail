@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 "use client";
 
 import { useEffect, useState } from "react";
@@ -36,15 +37,20 @@ interface InventoryItem {
   item_images?: { image_url: string }[];
 }
 
+interface Category {
+  id: string;
+  name: string;
+}
+
 export default function InventoryPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedItems, setSelectedItems] = useState<number[]>([]);
+  const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const { addItems } = useCart();
   const router = useRouter();
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
@@ -60,9 +66,11 @@ export default function InventoryPage() {
         if (user) {
           const { items, totalPages } = await getItems(currentPage, 9, user);
           const categoryData = await fetchLevel1Categories();
+          console.log('here is my categories data ', categoryData)
           console.log("here is items", items);
           setCategories(categoryData);
           setItems(items);
+          console.log('here is my items ', items);
           setTotalPages(totalPages);
         }
       } catch (error) {
@@ -87,22 +95,30 @@ export default function InventoryPage() {
     return matchesCategory && matchesSearch;
   });
 
-  const handleCategoryChange = (newValue) => {
+  const handleCategoryChange = (newValue : string) => {
     setSelectedCategory(newValue);
     console.log("Selected category:", newValue);
   };
 
-  const toggleItemSelection = (id: number) => {
+  const toggleItemSelection = (id: string) => {
     setSelectedItems((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
   const sendSelectedToPOS = () => {
-    const selectedItemsData = items.filter((item) =>
-      selectedItems.includes(item.id)
-    );
-    addItems(selectedItemsData);
+    const selectedItemsData = items
+    .filter((item) => selectedItems.includes(item.id))
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      price: item.price,
+      image_url: item.item_images?.[0]?.image_url, // or adjust based on your logic
+      category: item.categories?.[0]?.name || item.category_id, // use first category name or fallback
+      size: item.size,
+    }));
+  
+  addItems(selectedItemsData);
     router.push("/pos");
   };
 

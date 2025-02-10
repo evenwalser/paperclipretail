@@ -1,3 +1,4 @@
+import { DateRange } from 'react-day-picker';
 import { supabase } from '../supabase'
 
 export interface CategoryStats {
@@ -19,7 +20,7 @@ export interface CategoryStats {
   };
 }
 
-export async function getCategoryStats(categoryId?: string, dateRange?: { from: Date; to: Date }): Promise<CategoryStats> {
+export async function getCategoryStats(categoryId?: string, dateRange?: DateRange): Promise<CategoryStats> {
   if (!categoryId) {
     // Return overall stats if no category selected
     const { data: stats, error } = await supabase

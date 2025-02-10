@@ -1,7 +1,6 @@
 'use client';
 
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 interface SizeSelectorProps {
   value: string;
@@ -18,7 +17,7 @@ export function SizeSelector({ value, onChange }: SizeSelectorProps) {
         className="max-w-xs"
       />
       <p className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-        Enter the size as shown on the item's label
+        Enter the size as shown on the {`item's`} label
       </p>
     </div>
   );

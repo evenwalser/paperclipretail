@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSignupContext } from './SignupContext'
+// import { useSignupContext } from '../SignupContext'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { EyeIcon, EyeOffIcon } from 'lucide-react'
 import Link from 'next/link'
+import { useSignupContext } from '@/components/SignupContext'
 
 export default function SignupPage() {
   const router = useRouter()

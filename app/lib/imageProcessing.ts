@@ -1,5 +1,3 @@
-import { encode } from 'blurhash';
-
 export async function preprocessImage(file: File) {
   if (!file.type.startsWith('image/')) {
     throw new Error('File must be an image');

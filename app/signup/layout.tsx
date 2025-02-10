@@ -1,4 +1,6 @@
-import { SignupProvider } from './SignupContext'
+// import { SignupProvider } from './SignupContext'
+
+import { SignupProvider } from "@/components/SignupContext"
 
 export default function SignupLayout({
   children,

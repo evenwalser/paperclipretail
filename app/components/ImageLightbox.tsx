@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { X, ZoomIn, ZoomOut, RotateCw } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 interface ImageLightboxProps {
   src: string

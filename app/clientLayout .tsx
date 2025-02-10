@@ -3,7 +3,6 @@
 import { usePathname } from 'next/navigation'
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
-import { useRouter } from 'next/navigation';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()

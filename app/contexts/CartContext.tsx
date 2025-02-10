@@ -1,5 +1,6 @@
 'use client'
 
+import { Item } from '@/types/supabase';
 import { createContext, useContext, useState, ReactNode } from 'react'
 
 interface CartItem {
@@ -14,6 +15,7 @@ interface CartItem {
 
 const CartContext = createContext<{
   items: CartItem[];
+  addItem: (newItem: Omit<CartItem, 'quantity'>) => void;
   addItems: (items: Omit<CartItem, 'quantity'>[]) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
@@ -79,10 +81,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-
+  console.log('here is my items total ', items);
   return (
     <CartContext.Provider value={{ 
-      items, 
+       items, 
       addItem, 
       addItems,
       removeItem, 

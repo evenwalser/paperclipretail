@@ -24,7 +24,7 @@ export default async function handler(
 
   try {
     // Create user with Admin API (note: confirm email on user creation)
-    const { user, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+    const { error: createUserError } = await supabaseAdmin.auth.admin.createUser({
       email,
       email_confirm: true, // Automatically confirm the email on creation
     });

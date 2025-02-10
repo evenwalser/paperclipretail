@@ -13,9 +13,9 @@ interface AIAnalysisResult {
   category_id: string;
 }
 
-const together = new Together({ 
-  apiKey: process.env.NEXT_PUBLIC_TOGETHER_API_KEY 
-});
+// const together = new Together({ 
+//   apiKey: process.env.NEXT_PUBLIC_TOGETHER_API_KEY 
+// });
 
 if (!process.env.NEXT_PUBLIC_TOGETHER_API_KEY) {
   console.error('Together API key is missing');

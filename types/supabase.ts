@@ -7,21 +7,34 @@ export interface User {
   role: 'admin' | 'staff';
 }
 
-export interface Item {
+ interface CategoryItem {
   id: string;
-  title: string;
-  description: string | null;
-  price: number;
-  category: string;
-  subcategory1: string | null;
-  subcategory2: string | null;
-  condition: string;
-  size: string | null;
-  status: 'available' | 'low_stock' | 'out_of_stock';
+  name: string;
+  level: number;
+  parent_id: string
+}
+
+interface ImageFile {
+  display_order: number;
+  image_url: string;
+}
+export interface Item {
   available_in_store: boolean;
+  categories: CategoryItem[];
+  category_id: string;
+  condition: string;
+  created_at: string;
+  created_by: string;
+  description: string;
+  id: string;
+  item_images: ImageFile[]; // or another interface if you have a more specific type
   list_on_paperclip: boolean;
-  created_at?: string;
-  updated_at?: string;
+  price: number;
+  size: string;
+  status: string;
+  store_id: number;
+  title: string;
+  updated_at: string;
 }
 
 export interface ItemImage {

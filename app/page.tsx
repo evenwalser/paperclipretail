@@ -9,12 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Overview } from "@/components/Overview";
 import { CalendarDateRangePicker } from "@/components/date-range-picker";
 import { Package, PoundSterling, Users, Activity } from "lucide-react";
-import { addDays } from "date-fns";
+import { addDays, set } from "date-fns";
 import { TopSellingItems } from "@/components/TopSellingItems";
 import { CategoryInsights } from "@/components/CategoryInsights";
 import { CategoryStats, getCategoryStats } from "@/lib/services/categoryStats";
 import { QuickActions } from "@/components/QuickActions";
-
 
 interface OverviewProps {
   currency: string;
@@ -33,19 +32,16 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const [error, setError] = useState<string | null>(null);
 
-
   const handleSignIn = () => {
     signIn("google", { prompt: "select_account" });
   };
-
-
 
   useEffect(() => {
     async function fetchStats() {
       try {
         setLoading(true);
         const stats = await getCategoryStats(selectedCategory, date);
-        console.log(stats)
+        console.log(stats);
         setStats(stats);
       } catch (error) {
         console.error("Failed to fetch stats:", error);
@@ -57,6 +53,9 @@ export default function DashboardPage() {
     fetchStats();
   }, [selectedCategory, date]);
 
+  const setDateHandler = (data: DateRange) => {
+    setDate(date);
+  };
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
   };
@@ -112,8 +111,11 @@ export default function DashboardPage() {
               £{stats?.revenue.total.toLocaleString() ?? "0"}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats?.revenue.percentageChange > 0 ? "+" : ""}
-              {stats?.revenue.percentageChange.toFixed(1)}% from last month
+              <p className="text-xs text-muted-foreground">
+                {(stats?.revenue.percentageChange ?? 0) > 0 ? "+" : ""}
+                {(stats?.revenue.percentageChange ?? 0).toFixed(1)}% from last
+                month
+              </p>
             </p>
           </CardContent>
         </Card>
@@ -200,7 +202,6 @@ export default function DashboardPage() {
     </div>
   );
 }
-
 
 // export function DashboardRouter() {
 //   const { role, storeId } = useProfile();

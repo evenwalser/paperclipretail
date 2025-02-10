@@ -1,24 +1,23 @@
-// pages/accept-invite.tsx
 'use client';
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation'
-import { createClient } from "@/utils/supabase/client";
-import SignupForm from '../SignupForm/page';
-
+import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client';
+import SignupForm from '@/components/SignupForm';
 
 export default function AcceptInvitePage() {
-//   const router = useRouter();
   const [invitation, setInvitation] = useState(null);
   const [valid, setValid] = useState(false);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
-  const searchParams = useSearchParams()
+
+  // Ensure supabase instance is stable
+  const supabase = useMemo(() => createClient(), []);
+  const searchParams = useSearchParams();
+
   useEffect(() => {
     const validateInvitation = async () => {
-        
-        const token = searchParams.get('token');
-        const email = searchParams.get('email');
-        console.log('here is token', token, 'and here is email', email)
+      const token = searchParams.get('token');
+      const email = searchParams.get('email');
+      console.log('here is token', token, 'and here is email', email);
       if (!token || !email) {
         setLoading(false);
         return;
@@ -46,7 +45,7 @@ export default function AcceptInvitePage() {
     };
 
     validateInvitation();
-  }, []);
+  }, [searchParams, supabase]);
 
   if (loading) return <div>Loading...</div>;
 
@@ -59,5 +58,5 @@ export default function AcceptInvitePage() {
     );
   }
 
-  return <SignupForm invitation={invitation} />;
+  return <SignupForm invitation={invitation!} />;
 }

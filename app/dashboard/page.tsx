@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { DateRange } from "react-day-picker"
 import { CalendarDateRangePicker } from "@/components/date-range-picker"
+import { addDays } from "date-fns"
 
 export default function DashboardPage() {
   const [date, setDate] = useState<DateRange | undefined>({

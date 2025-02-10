@@ -1,13 +1,13 @@
 // Define expected response type
-type TogetherAIResponse = {
-  title: string;
-  description: string;
-  price_avg: number;
-  category_id: string;
-  condition?: string;
-};
+// type TogetherAIResponse = {
+//   title: string;
+//   description: string;
+//   price_avg: number;
+//   category_id: string;
+//   condition?: string;
+// };
 
-export async function analyzeImage(imageData: string | FormData | File): Promise<TogetherAIResponse> {
+export async function analyzeImage(imageData: string | FormData | File): Promise<any> {
   try {
     console.log('Starting image analysis...');
     const formData = new FormData();

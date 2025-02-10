@@ -61,7 +61,11 @@ export async function signup(formData: FormData) {
   if (userError) {
     console.log(userError, "here is usererror");
     // Delete the user from auth since the record could not be created
-    await supabase.auth.admin.deleteUser(data.user?.id!);
+    if (!data.user?.id) {
+      throw new Error("User ID is missing; cannot delete user.");
+    } else {
+      await supabase.auth.admin.deleteUser(data.user.id);
+    }
     
     // Check for a duplicate key (or similar) error to return a friendlier message.
     let errMsg = "Could not create user record";

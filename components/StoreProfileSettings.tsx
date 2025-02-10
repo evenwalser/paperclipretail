@@ -37,7 +37,7 @@ export function StoreProfileSettings({
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-4">Store Profile</h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">Manage your store's basic information</p>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">Manage your {`store's`} basic information</p>
       </div>
 
       <div className="space-y-4">

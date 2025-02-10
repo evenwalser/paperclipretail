@@ -86,9 +86,12 @@ const handler = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      session.user.id = token.id;
+      if (session.user) {
+       // @ts-expect-error: Suppress error regarding session.user.id missing on session.user type
+        session.user.id = token.id;
+      }
       return session;
-    },
+    }
   },
   secret: process.env.NEXTAUTH_SECRET,
   pages: {
