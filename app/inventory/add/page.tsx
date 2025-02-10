@@ -612,7 +612,6 @@ export default function AddItemPage() {
                   className="h-32 text-lg"
                   onClick={() => {
                     setInputMethod("fileSelect");
-                    setCurrentView("fileSelect");
                     fileInputRef.current?.click();
                   }}
                 >

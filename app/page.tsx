@@ -111,11 +111,11 @@ export default function DashboardPage() {
               £{stats?.revenue.total.toLocaleString() ?? "0"}
             </div>
             <p className="text-xs text-muted-foreground">
-              <p className="text-xs text-muted-foreground">
+              {/* <p className="text-xs text-muted-foreground"> */}
                 {(stats?.revenue.percentageChange ?? 0) > 0 ? "+" : ""}
                 {(stats?.revenue.percentageChange ?? 0).toFixed(1)}% from last
                 month
-              </p>
+              {/* </p> */}
             </p>
           </CardContent>
         </Card>
