@@ -112,8 +112,8 @@ export default function EditItemPage() {
         const categoryId = itemData.category_id
         const category = categoriesData?.find(c => c.id === categoryId)
         if (category) {
-          const parent = categoriesData.find(c => c.id === category.parent_id)
-          const grandParent = parent ? categoriesData.find(c => c.id === parent.parent_id) : null
+          const parent = categoriesData?.find(c => c.id === category.parent_id)
+          const grandParent = parent ? categoriesData?.find(c => c.id === parent.parent_id) : null
           
           setSelectedCategories({
             level1: grandParent?.id || parent?.id || categoryId,
