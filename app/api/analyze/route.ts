@@ -5,17 +5,9 @@ import OpenAI from "openai";
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-
-interface ImageUrlPart {
-  type: "image_url";
-  image_url: { url: FormDataEntryValue };
-}
-
-
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
+    const formData = await request.formData() as any;
     const imageUrls = formData.getAll("image");
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // Ensure this is the correct model identifier
@@ -559,10 +551,10 @@ export async function POST(request: Request) {
 i want response in json string which i can parse`,
             },
             // Map through each image URL and create the necessary structure
-            ...imageUrls.map((url) => ({
-              type: "text" as const,
-              text: `Image URL: ${url}`,
-            }))
+            ...imageUrls.map((url: any) => ({
+              type: "image_url",
+              image_url: { url },
+            })),
           ],
         },
       ],
@@ -571,12 +563,11 @@ i want response in json string which i can parse`,
       top_p: 1,
     });
     return NextResponse.json({ data: response });
-  }catch (error: unknown) {
-    if (error instanceof Error) {
-      console.error('Error occurred:', error.message);
-    } else {
-      console.error('Unexpected error', error);
-    }
-    return NextResponse.json({ error: 'An error occurred' }, { status: 500 });
+  } catch (error: any) {
+    console.error(error);
+    return NextResponse.json(
+      { error: error.message || "Something went wrong" },
+      { status: 500 }
+    );
   }
 }
