@@ -25,7 +25,7 @@ interface Address {
   postcode: string;
 }
 
-const SettingsPage = () => {
+const SettingsPage = (): any => {
   // Store Profile states
   const [logo, setLogo] = useState<string | null>(null);
   const [storefrontImage, setStorefrontImage] = useState<string | null>(null);
@@ -122,22 +122,22 @@ const SettingsPage = () => {
           <CardContent className="p-6">
             <TabsContent value="store-profile">
               <StoreProfileSettings
-                logo={logo}
-                storefrontImage={storefrontImage}
-                setLogo={setLogo}
-                setStorefrontImage={setStorefrontImage}
-                postcode={postcode}
-                setPostcode={setPostcode}
-                addresses={addresses}
-                setAddresses={setAddresses}
-                selectedAddress={selectedAddress}
-                setSelectedAddress={setSelectedAddress}
-                isManualEdit={isManualEdit}
-                setIsManualEdit={setIsManualEdit}
-                storeDetails={storeDetails}
-                setStoreDetails={setStoreDetails}
-                handlePostcodeLookup={handlePostcodeLookup}
-                handleAddressSelect={handleAddressSelect}
+                // logo={logo}
+                // storefrontImage={storefrontImage}
+                // setLogo={setLogo}
+                // setStorefrontImage={setStorefrontImage}
+                // postcode={postcode}
+                // setPostcode={setPostcode}
+                  // addresses={addresses}
+                  // setAddresses={setAddresses}
+                  // selectedAddress={selectedAddress}
+                  // setSelectedAddress={setSelectedAddress}
+                  // isManualEdit={isManualEdit}
+                  // setIsManualEdit={setIsManualEdit}
+                  // storeDetails={storeDetails}
+                  // setStoreDetails={setStoreDetails}
+                  // handlePostcodeLookup={handlePostcodeLookup}
+                  // handleAddressSelect={handleAddressSelect}
               />
             </TabsContent>
             <TabsContent value="inventory">
@@ -152,36 +152,36 @@ const SettingsPage = () => {
             </TabsContent>
             <TabsContent value="pos">
               <POSSettings
-                acceptCash={acceptCash}
-                setAcceptCash={setAcceptCash}
-                acceptCard={acceptCard}
-                setAcceptCard={setAcceptCard}
-                receiptLogo={receiptLogo}
-                setReceiptLogo={setReceiptLogo}
-                receiptMessage={receiptMessage}
-                setReceiptMessage={setReceiptMessage}
+                // acceptCash={acceptCash}
+                // setAcceptCash={setAcceptCash}
+                // acceptCard={acceptCard}
+                // setAcceptCard={setAcceptCard}
+                // receiptLogo={receiptLogo}
+                // setReceiptLogo={setReceiptLogo}
+                // receiptMessage={receiptMessage}
+                // setReceiptMessage={setReceiptMessage}
               />
             </TabsContent>
             <TabsContent value="notifications">
               <NotificationSettings
-                notificationChannels={notificationChannels}
-                toggleNotificationChannel={toggleNotificationChannel}
-                lowStockAlert={lowStockAlert}
-                setLowStockAlert={setLowStockAlert}
-                newSaleAlert={newSaleAlert}
-                setNewSaleAlert={setNewSaleAlert}
-                notificationEmail={notificationEmail}
-                setNotificationEmail={setNotificationEmail}
-                notificationPhone={notificationPhone}
-                setNotificationPhone={setNotificationPhone}
+                // notificationChannels={notificationChannels}
+                // toggleNotificationChannel={toggleNotificationChannel}
+                // lowStockAlert={lowStockAlert}
+                // setLowStockAlert={setLowStockAlert}
+                // newSaleAlert={newSaleAlert}
+                // setNewSaleAlert={setNewSaleAlert}
+                // notificationEmail={notificationEmail}
+                // setNotificationEmail={setNotificationEmail}
+                // notificationPhone={notificationPhone}
+                // setNotificationPhone={setNotificationPhone}
               />
             </TabsContent>
             <TabsContent value="integrations">
               <IntegrationSettings
-                syncStatus={syncStatus}
-                lastSyncTime={lastSyncTime}
-                isReconnecting={isReconnecting}
-                handleReconnect={handleReconnect}
+                // syncStatus={syncStatus}
+                // lastSyncTime={lastSyncTime}
+                // isReconnecting={isReconnecting}
+                // handleReconnect={handleReconnect}
               />
             </TabsContent>
           </CardContent>

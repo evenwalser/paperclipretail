@@ -14,11 +14,11 @@ interface SignupContextType {
   profilePicture: string | null
   setProfilePicture: (profilePicture: string | null) => void
   preferredCategories: string[]
-  setPreferredCategories: (categories: string[]) => void
+  setPreferredCategories: React.Dispatch<React.SetStateAction<string[]>>
   location: string
-  setLocation: (location: string) => void
+  setLocation: React.Dispatch<React.SetStateAction<string>>
   currency: string
-  setCurrency: (currency: string) => void
+  setCurrency: React.Dispatch<React.SetStateAction<string>>
 }
 
 const SignupContext = createContext<SignupContextType | undefined>(undefined)

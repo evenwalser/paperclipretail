@@ -52,7 +52,7 @@ const ProfilePage = () => {
 
       <div className="text-center mb-8">
         <div className="relative inline-block">
-          <Avatar size="lg">
+          <Avatar className="h-24 w-24">
             <AvatarImage src="/placeholder.svg?height=150&width=150" alt="John Doe" />
             <AvatarFallback>JD</AvatarFallback>
           </Avatar>
@@ -131,8 +131,8 @@ const ProfilePage = () => {
         <div>
           <Label htmlFor="categories">Preferred Categories</Label>
           <Select
-            value={formData.categories}
-            onValueChange={(value) => handleSelectChange('categories', value)}
+            value={formData.categories.join(',')}
+            onValueChange={(value) => handleSelectChange('categories', value.split(','))}
             disabled={!isEditing}
           >
             <SelectTrigger>

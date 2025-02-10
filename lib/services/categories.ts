@@ -12,6 +12,7 @@ export interface Category {
     icon?: string;
     displayOrder?: number;
   };
+  children: Category[];
 }
 
 export async function createCategory({

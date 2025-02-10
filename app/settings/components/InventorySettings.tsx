@@ -8,10 +8,19 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 
-export function InventorySettings() {
-  const [lowStockThreshold, setLowStockThreshold] = useState(5)
-  const [hideLowStock, setHideLowStock] = useState(false)
-  const [defaultSorting, setDefaultSorting] = useState('newest')
+interface InventorySettingsProps {
+  lowStockThreshold: number;
+  setLowStockThreshold: React.Dispatch<React.SetStateAction<number>>;
+  hideLowStock: boolean;
+  setHideLowStock: React.Dispatch<React.SetStateAction<boolean>>;
+  defaultSorting: string;
+  setDefaultSorting: React.Dispatch<React.SetStateAction<string>>;
+}
+
+export function InventorySettings(props: InventorySettingsProps) {
+  const [lowStockThreshold, setLowStockThreshold] = useState(props.lowStockThreshold)
+  const [hideLowStock, setHideLowStock] = useState(props.hideLowStock)
+  const [defaultSorting, setDefaultSorting] = useState(props.defaultSorting)
 
   return (
     <Card>

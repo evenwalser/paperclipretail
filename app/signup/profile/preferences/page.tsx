@@ -35,9 +35,8 @@ export default function ProfileStep2() {
       router.push('/signup/profile/payment')
     }, 1000)
   }
-
   const toggleCategory = (category: string) => {
-    setPreferredCategories(prev =>
+    setPreferredCategories(prev => 
       prev.includes(category)
         ? prev.filter(c => c !== category)
         : [...prev, category]

@@ -110,17 +110,19 @@ export function CategorySelector({ onCategorySelect, selectedCategories }: Categ
   }
 
   const handleLevel2Select = (category: Category) => {
+    if (!selectedCategories.level1) return
     onCategorySelect({ 
-      level1: selectedCategories.level1, 
+      level1: selectedCategories.level1,
       level2: category.name 
     })
     setLevel3Categories(category.subcategories || [])
   }
 
   const handleLevel3Select = (category: Category) => {
+    if (!selectedCategories.level1 || !selectedCategories.level2) return
     onCategorySelect({ 
-      level1: selectedCategories.level1, 
-      level2: selectedCategories.level2, 
+      level1: selectedCategories.level1,
+      level2: selectedCategories.level2,
       level3: category.name 
     })
   }
@@ -133,13 +135,13 @@ export function CategorySelector({ onCategorySelect, selectedCategories }: Categ
         setLevel3Categories([])
         break
       case 2:
-        onCategorySelect({ level1: selectedCategories.level1, level2: "" })
+        onCategorySelect({ level1: selectedCategories.level1!, level2: "" })
         setLevel3Categories([])
         break
       case 3:
         onCategorySelect({ 
-          level1: selectedCategories.level1, 
-          level2: selectedCategories.level2, 
+          level1: selectedCategories.level1!, 
+          level2: selectedCategories.level2!, 
           level3: "" 
         })
         break

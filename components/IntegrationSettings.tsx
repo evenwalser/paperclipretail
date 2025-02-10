@@ -8,7 +8,7 @@ export function IntegrationSettings({
   lastSyncTime,
   isReconnecting,
   handleReconnect,
-}) {
+}: any) {
   return (
     <div className="space-y-6">
       <div>

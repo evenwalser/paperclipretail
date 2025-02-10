@@ -9,7 +9,7 @@ import {
   Tooltip,
   Legend,
   CartesianGrid,
-  CompositeChart,
+  ComposedChart,
   ResponsiveContainer,
 } from "recharts"
 import { DateRange } from 'react-day-picker'
@@ -132,7 +132,7 @@ export function Overview({ currency, categoryId, dateRange }: OverviewProps) {
 
       <div className="h-[350px] w-full">
         <ResponsiveContainer>
-          <CompositeChart data={data}>
+          <ComposedChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />
             <YAxis />
@@ -154,7 +154,7 @@ export function Overview({ currency, categoryId, dateRange }: OverviewProps) {
                 dot={false}
               />
             )}
-          </CompositeChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>

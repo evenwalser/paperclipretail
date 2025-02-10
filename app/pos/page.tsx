@@ -166,7 +166,7 @@ export default function POSPage() {
           className="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg"
           onClick={() => {
             /* Handle charge */
-            clearCart()
+            // TODO: Implement charge handling
           }}
         >
           Complete Sale

@@ -67,7 +67,7 @@ function CategoryNode({ category, onDelete, onAdd, level }: CategoryNodeProps) {
           {category.children.map(child => (
             <CategoryNode
               key={child.id}
-              category={child}
+              category={child as Category & { children: Category[] }}
               onDelete={onDelete}
               onAdd={onAdd}
               level={level + 1}
@@ -88,10 +88,13 @@ export function CategoryManager() {
     if (!newCategoryName.trim()) return;
 
     try {
-      const newCategory = await createCategory({
-        name: newCategoryName,
-        parentId: selectedParentId || undefined
-      });
+      const newCategory = {
+        ...await createCategory({
+          name: newCategoryName,
+          parentId: selectedParentId || undefined
+        }),
+        children: []
+      };
 
       setCategories(prev => [...prev, newCategory]);
       setNewCategoryName('');

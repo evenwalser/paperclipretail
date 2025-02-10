@@ -27,9 +27,9 @@ export async function analyzeImage(imageData: string | FormData | File): Promise
     } else if (imageData instanceof FormData) {
       // Optionally, merge the passed FormData into the new FormData
       // For example, if you expect keys like 'image' or 'image_url':
-      for (const [key, value] of imageData.entries()) {
-        formData.append(key, value as any);
-      }
+      Array.from(imageData.entries()).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
     } else {
       throw new Error('Invalid image format');
     }

@@ -84,8 +84,12 @@ export const getUser = async () => {
     if (userError) throw userError;
 
     return userData || null;
-  } catch (err) {
-    console.error("Error fetching user:", err.message);
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      console.error("Error fetching user:", err.message);
+    } else {
+      console.error("Error fetching user:", err);
+    }
     return null;
   }
 };

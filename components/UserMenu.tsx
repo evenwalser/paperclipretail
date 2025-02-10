@@ -23,7 +23,7 @@ const UserMenu = () => {
         onClick={toggleMenu}
         className="flex items-center space-x-2 focus:outline-none"
       >
-        <Avatar size="sm">
+        <Avatar className="h-8 w-8">
           <AvatarFallback>U</AvatarFallback>
         </Avatar>
         <ChevronDown className="w-4 h-4 text-paperclip-grey" />

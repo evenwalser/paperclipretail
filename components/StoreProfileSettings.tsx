@@ -3,6 +3,39 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Upload } from 'lucide-react'
+import { ReactElement, JSXElementConstructor, ReactNode, ReactPortal, AwaitedReactNode, Key } from "react"
+
+interface Address {
+  street: string;
+  city: string;
+  county: string;
+  postcode: string;
+}
+
+interface StoreDetails {
+  name: string;
+  phone: string;
+  email: string;
+}
+
+interface StoreProfileSettingsProps {
+  logo: string | null;
+  storefrontImage: string | null;
+  setLogo: (value: string | null) => void;
+  setStorefrontImage: (value: string | null) => void;
+  postcode: string;
+  setPostcode: (value: string) => void;
+  addresses: Address[];
+  setAddresses: (addresses: Address[]) => void;
+  selectedAddress: Address | null;
+  setSelectedAddress: (address: Address | null) => void;
+  isManualEdit: boolean;
+  setIsManualEdit: (value: boolean) => void;
+  storeDetails: StoreDetails;
+  setStoreDetails: (details: StoreDetails) => void;
+  handlePostcodeLookup: () => void;
+  handleAddressSelect: (address: Address) => void;
+}
 
 export function StoreProfileSettings({
   logo,
@@ -21,7 +54,7 @@ export function StoreProfileSettings({
   setStoreDetails,
   handlePostcodeLookup,
   handleAddressSelect,
-}) {
+}: StoreProfileSettingsProps) {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, setter: (value: string | null) => void) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -93,7 +126,7 @@ export function StoreProfileSettings({
               <SelectValue placeholder="Select an address" />
             </SelectTrigger>
             <SelectContent>
-              {addresses.map((address, index) => (
+              {addresses.map((address: { street: string | number | bigint | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<AwaitedReactNode> | null | undefined; city: string | number | bigint | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<AwaitedReactNode> | null | undefined }, index: Key | null | undefined) => (
                 <SelectItem key={index} value={JSON.stringify(address)}>
                   {address.street}, {address.city}
                 </SelectItem>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 
 // components/InviteForm.tsx
-export function InviteForm({ storeId, storeName }) {
+export function InviteForm({ storeId, storeName }: any) {
     const [email, setEmail] = useState('');
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const supabase = createClient();

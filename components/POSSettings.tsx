@@ -14,7 +14,7 @@ export function POSSettings({
   setReceiptLogo,
   receiptMessage,
   setReceiptMessage,
-}) {
+}: any) {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {

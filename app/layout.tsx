@@ -7,7 +7,6 @@ import AuthProviders from './providers/authProviders';
 import ClientLayout from './clientLayout '; // Import the ClientLayout
 const inter = Inter({ subsets: ['latin'] });
 import { Toaster } from '@/components/ui/toast'
-import type { Session } from 'next-auth'; // Import the Session type
 
 export const metadata = {
   title: 'Paperclip Consign MVP',
@@ -19,7 +18,7 @@ export default function RootLayout({
   session,
 }: {
   children: React.ReactNode;
-  session: Session | null;
+  session: any;
 }) {
   return (
     <html lang="en">

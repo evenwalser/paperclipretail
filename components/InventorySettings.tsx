@@ -11,7 +11,7 @@ export function InventorySettings({
   setHideLowStock,
   defaultSorting,
   setDefaultSorting,
-}) {
+}: any) {
   return (
     <div className="space-y-6">
       <div>

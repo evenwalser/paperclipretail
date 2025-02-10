@@ -15,7 +15,7 @@ export function NotificationSettings({
   setNotificationEmail,
   notificationPhone,
   setNotificationPhone,
-}) {
+}: any) {
   return (
     <div className="space-y-6">
       <div>

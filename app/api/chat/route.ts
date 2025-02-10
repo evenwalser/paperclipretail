@@ -7,7 +7,7 @@ const openai = new OpenAI({
 });
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
+    const formData = await request.formData() as any;
     const imageUrls = formData.getAll("image");
     const response = await openai.chat.completions.create({
       model: "gpt-4o", // Ensure this is the correct model identifier
@@ -551,7 +551,7 @@ export async function POST(request: Request) {
 i want response in json string which i can parse`,
             },
             // Map through each image URL and create the necessary structure
-            ...imageUrls.map((url) => ({
+            ...imageUrls.map((url: any) => ({
               type: "image_url",
               image_url: { url },
             })),

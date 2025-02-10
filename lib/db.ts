@@ -1,5 +1,13 @@
 import { supabase } from '@/lib/supabase'
 
+export const db = {
+  query: async (text: string, params?: any[]) => {
+    const { data, error } = await supabase.rpc('query', { query_text: text, query_params: params })
+    if (error) throw error
+    return data
+  }
+}
+
 export async function getCategories() {
   const { data, error } = await supabase
     .from('categories')
@@ -34,14 +42,14 @@ export async function getCategoryStats(categoryPath: string) {
 
     // Calculate stats from completed sales only
     const completedSales = items?.flatMap(item => 
-      item.sales?.filter(sale => sale.status === 'completed') || []
+      item.sales?.filter((sale: any) => sale.status === 'completed') || []
     ) || []
 
     const totalRevenue = completedSales.reduce((sum, sale) => 
       sum + Number(sale.sale_price || 0), 0)
 
     const returnedSales = items?.flatMap(item => 
-      item.sales?.filter(sale => sale.status === 'refunded') || []
+      item.sales?.filter((sale: any) => sale.status === 'refunded') || []
     ) || []
 
     const returnRate = completedSales.length > 0

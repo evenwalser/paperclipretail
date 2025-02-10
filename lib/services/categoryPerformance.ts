@@ -19,7 +19,7 @@ export async function trackCategoryPerformance(categoryId: string) {
     .eq('category_id', categoryId);
 
   // Calculate performance metrics
-  const performance = calculatePerformanceMetrics(items);
+  const performance = calculatePerformanceMetrics(items || []);
 
   // Store performance data
   await supabase
@@ -33,6 +33,6 @@ export async function trackCategoryPerformance(categoryId: string) {
   return performance;
 }
 
-function calculatePerformanceMetrics(items: any[]): CategoryPerformance {
+function calculatePerformanceMetrics(items: any[]): any {
   // Implementation of performance calculations
 } 
