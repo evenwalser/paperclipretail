@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { fetchLevel1Categories, getItems, getUser } from "@/lib/services/items";
 import { Item } from "@/types/supabase";
 import { toast } from "sonner";
@@ -44,6 +44,7 @@ interface Category {
 
 export default function InventoryPage() {
   const [items, setItems] = useState<Item[]>([]);
+  const [user, setuser] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [categories, setCategories] = useState<Category[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -62,15 +63,15 @@ export default function InventoryPage() {
       try {
         setIsLoading(true);
         const user = await getUser();
-
+        setuser(user);
         if (user) {
           const { items, totalPages } = await getItems(currentPage, 9, user);
           const categoryData = await fetchLevel1Categories();
-          console.log('here is my categories data ', categoryData)
+          console.log("here is my categories data ", categoryData);
           console.log("here is items", items);
           setCategories(categoryData);
           setItems(items);
-          console.log('here is my items ', items);
+          console.log("here is my items ", items);
           setTotalPages(totalPages);
         }
       } catch (error) {
@@ -95,7 +96,7 @@ export default function InventoryPage() {
     return matchesCategory && matchesSearch;
   });
 
-  const handleCategoryChange = (newValue : string) => {
+  const handleCategoryChange = (newValue: string) => {
     setSelectedCategory(newValue);
     console.log("Selected category:", newValue);
   };
@@ -108,17 +109,17 @@ export default function InventoryPage() {
 
   const sendSelectedToPOS = () => {
     const selectedItemsData = items
-    .filter((item) => selectedItems.includes(item.id))
-    .map((item) => ({
-      id: item.id,
-      title: item.title,
-      price: item.price,
-      image_url: item.item_images?.[0]?.image_url, // or adjust based on your logic
-      category: item.categories?.[0]?.name || item.category_id, // use first category name or fallback
-      size: item.size,
-    }));
-  
-  addItems(selectedItemsData);
+      .filter((item) => selectedItems.includes(item.id))
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        price: item.price,
+        image_url: item.item_images?.[0]?.image_url, // or adjust based on your logic
+        category: item.categories?.[0]?.name || item.category_id, // use first category name or fallback
+        size: item.size,
+      }));
+
+    addItems(selectedItemsData);
     router.push("/pos");
   };
 
@@ -239,12 +240,20 @@ export default function InventoryPage() {
           >
             Send to POS
           </Button>
-          <Button
-            onClick={() => router.push("/inventory/add")}
-            className="bg-[#FF3B30] hover:bg-[#E6352B] text-white rounded-[8px]"
-          >
-            Add New Item
-          </Button>
+          {user && (
+            <Button
+              onClick={() => {
+                if (user?.store_id) {
+                  router.push("/inventory/add");
+                } else {
+                  toast.error("No store associated with this account");
+                }
+              }}
+              className="bg-[#FF3B30] hover:bg-[#E6352B] text-white rounded-[8px]"
+            >
+              Add New Item
+            </Button>
+          )}
         </div>
       </div>
 
@@ -258,162 +267,185 @@ export default function InventoryPage() {
 
         <Select onValueChange={handleCategoryChange}>
           <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="All Categories" />
+            <SelectValue
+              placeholder={
+                categories.length === 0
+                  ? "No categories available"
+                  : "All Categories"
+              }
+            />
           </SelectTrigger>
           <SelectContent className="h-[250px] overflow-y-auto">
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category.id} value={category.id}>
-                {category.name}
+            {categories.length === 0 ? (
+              <SelectItem disabled value="no-categories">
+                No categories available
               </SelectItem>
-            ))}
+            ) : (
+              <>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </>
+            )}
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {isLoading
-          ? Array.from({ length: 9 }).map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-4"></CardContent>
-              </Card>
-            ))
-          : filteredItems.map((item) => (
-              <Card
-                key={item.id}
-                className={`overflow-hidden transition-shadow duration-300 ${
-                  selectedItems.includes(item.id) ? "ring-2 ring-[#FF3B30]" : ""
-                }`}
-              >
-                <CardContent className="p-4">
-                  <div className="relative mb-4 aspect-[4/2]">
-                    <div className="relative mb-4">
-                      {item.item_images?.length > 0 ? (
-                        <Swiper
-                          modules={[Navigation, Pagination]}
-                          navigation
-                          pagination={{ clickable: true }}
-                          spaceBetween={10}
-                          slidesPerView={1}
-                          className="w-full rounded-lg swiper-inventory"
-                        >
-                          {item.item_images.map((media, index) => (
-                            <SwiperSlide key={index}>
-                              {isVideo(media.image_url) ? (
-                                <video
-                                  controls
-                                  className="w-full h-48 object-cover rounded-lg"
-                                >
-                                  <source
-                                    src={media.image_url}
-                                    type="video/mp4"
-                                  />
-                                  Your browser does not support the video tag.
-                                </video>
-                              ) : (
-                                <img
+        {isLoading ? (
+          Array.from({ length: 9 }).map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-4"></CardContent>
+            </Card>
+          ))
+        ) : filteredItems.length === 0 ? (
+          <div className="col-span-full flex flex-col items-center justify-center py-12">
+            <p className="text-xl text-gray-500 mb-4">No items found</p>
+            {/* <p className="text-sm text-gray-400">
+              Try adjusting your search or filter criteria
+            </p> */}
+          </div>
+        ) : (
+          filteredItems.map((item) => (
+            <Card
+              key={item.id}
+              className={`overflow-hidden transition-shadow duration-300 ${
+                selectedItems.includes(item.id) ? "ring-2 ring-[#FF3B30]" : ""
+              }`}
+            >
+              <CardContent className="p-4">
+                <div className="relative mb-4 aspect-[4/2]">
+                  <div className="relative mb-4">
+                    {item.item_images?.length > 0 ? (
+                      <Swiper
+                        modules={[Navigation, Pagination]}
+                        navigation
+                        pagination={{ clickable: true }}
+                        spaceBetween={10}
+                        slidesPerView={1}
+                        className="w-full rounded-lg swiper-inventory"
+                      >
+                        {item.item_images.map((media, index) => (
+                          <SwiperSlide key={index}>
+                            {isVideo(media.image_url) ? (
+                              <video
+                                controls
+                                className="w-full h-48 object-cover rounded-lg"
+                              >
+                                <source
                                   src={media.image_url}
-                                  alt={`${item.title} - ${index + 1}`}
-                                  className="w-full h-48 object-cover rounded-lg"
+                                  type="video/mp4"
                                 />
-                              )}
-                            </SwiperSlide>
-                          ))}
-                        </Swiper>
-                      ) : (
-                        <div className="w-full h-48 flex items-center justify-center bg-gray-200 rounded-lg">
-                          <span className="text-gray-500 text-sm">
-                            No Media Available
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    {/* Image component can be added here */}
-                    {selectedItems.includes(item.id) && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
-                        <span className="text-white text-lg sm:text-xl font-bold">
-                          Selected
+                                Your browser does not support the video tag.
+                              </video>
+                            ) : (
+                              <img
+                                src={media.image_url}
+                                alt={`${item.title} - ${index + 1}`}
+                                className="w-full h-48 object-cover rounded-lg"
+                              />
+                            )}
+                          </SwiperSlide>
+                        ))}
+                      </Swiper>
+                    ) : (
+                      <div className="w-full h-48 flex items-center justify-center bg-gray-200 rounded-lg">
+                        <span className="text-gray-500 text-sm">
+                          No Media Available
                         </span>
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 space-y-2 sm:space-y-0 gap-2">
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-semibold mb-1 sm:mb-2 overflow-hidden text-ellipsis overflow-clip display-webkit-box line-clamp-2 min-h-[56px]">
-                        {item.title}
-                      </h3>
-                      <p className="text-xl sm:text-2xl font-bold text-gray-700">
-                        £{item.price.toFixed(2)}
-                      </p>
+                  {/* Image component can be added here */}
+                  {selectedItems.includes(item.id) && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                      <span className="text-white text-lg sm:text-xl font-bold">
+                        Selected
+                      </span>
                     </div>
-                    <div className="flex items-center min-w-[68px]">
-                      {item.status === "available" && (
-                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          In Stock
-                        </span>
-                      )}
-                      {item.status === "low-stock" && (
-                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                          Low Stock
-                        </span>
-                      )}
-                      {item.status === "out-of-stock" && (
-                        <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          Out of Stock
-                        </span>
-                      )}
-                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 space-y-2 sm:space-y-0 gap-2">
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-semibold mb-1 sm:mb-2 overflow-hidden text-ellipsis overflow-clip display-webkit-box line-clamp-2 min-h-[56px]">
+                      {item.title}
+                    </h3>
+                    <p className="text-xl sm:text-2xl font-bold text-gray-700">
+                      £{item.price.toFixed(2)}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Category:{" "}
-                    {item.categories.find((category) => category.level === 1)
-                      ?.name || "N/A"}
-                  </p>
+                  <div className="flex items-center min-w-[68px]">
+                    {item.status === "available" && (
+                      <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        In Stock
+                      </span>
+                    )}
+                    {item.status === "low-stock" && (
+                      <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        Low Stock
+                      </span>
+                    )}
+                    {item.status === "out-of-stock" && (
+                      <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        Out of Stock
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Category:{" "}
+                  {item.categories.find((category) => category.level === 1)
+                    ?.name || "N/A"}
+                </p>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full leading-[normal]"
-                      onClick={() => router.push(`/inventory/edit/${item.id}`)}
-                    >
-                      <Pencil className="mr-1 h-3 w-3" /> Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 leading-[normal]"
-                      disabled={deletingItems.has(item.id)}
-                      onClick={() => handleDeleteClick(item.id)}
-                    >
-                      {deletingItems.has(item.id) ? (
-                        <>
-                          <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full mr-1" />
-                          <span>Deleting...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="mr-1 h-3 w-3" />
-                          Delete
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={`w-full leading-[normal] ${
-                        selectedItems.includes(item.id)
-                          ? "bg-[#FF3B30] text-white hover:bg-[#E6352B]"
-                          : "hover:bg-gray-100"
-                      }`}
-                      onClick={() => toggleItemSelection(item.id)}
-                    >
-                      {selectedItems.includes(item.id) ? "Deselect" : "Select"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full leading-[normal]"
+                    onClick={() => router.push(`/inventory/edit/${item.id}`)}
+                  >
+                    <Pencil className="mr-1 h-3 w-3" /> Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 leading-[normal]"
+                    disabled={deletingItems.has(item.id)}
+                    onClick={() => handleDeleteClick(item.id)}
+                  >
+                    {deletingItems.has(item.id) ? (
+                      <>
+                        <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full mr-1" />
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="mr-1 h-3 w-3" />
+                        Delete
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`w-full leading-[normal] ${
+                      selectedItems.includes(item.id)
+                        ? "bg-[#FF3B30] text-white hover:bg-[#E6352B]"
+                        : "hover:bg-gray-100"
+                    }`}
+                    onClick={() => toggleItemSelection(item.id)}
+                  >
+                    {selectedItems.includes(item.id) ? "Deselect" : "Select"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       {totalPages > 1 && <Pagination />}

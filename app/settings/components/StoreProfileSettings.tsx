@@ -49,7 +49,6 @@ export function StoreProfileSettings() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
-  const storeOwener = "abc"
 
   useEffect(() => {
     const getSessionAndStore = async () => {
@@ -236,11 +235,12 @@ export function StoreProfileSettings() {
       if (profileError) throw profileError;
 
       // Redirect to the dashboard after successful profile update
-      // router.push('/dashboard');
-
+      
+      router.push('/');
       toast.success("Store profile saved", {
         description: "Your store details have been successfully updated",
       });
+     
     } catch (err) {
       console.error("Submission error:", err);
       toast.error("Submission failed", {

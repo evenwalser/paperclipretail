@@ -3,12 +3,19 @@ import { Label } from "@/components/ui/label"
 import { RefreshCw } from 'lucide-react'
 import Image from 'next/image'
 
+export interface IntegrationSettingsProps {
+  syncStatus: string;
+  lastSyncTime: string;
+  isReconnecting: boolean;
+  handleReconnect: () => void;
+}
+
 export function IntegrationSettings({
   syncStatus,
   lastSyncTime,
   isReconnecting,
   handleReconnect,
-}: any) {
+}: IntegrationSettingsProps) {
   return (
     <div className="space-y-6">
       <div>

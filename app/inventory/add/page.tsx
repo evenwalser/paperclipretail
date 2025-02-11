@@ -123,6 +123,14 @@ export default function AddItemPage() {
   // Use a regex to check if the URL is an image
   const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(currentMediaUrl);
 
+  // Add new state for field errors
+  const [fieldErrors, setFieldErrors] = useState({
+    name: "",
+    price: "",
+    images: "",
+    category: "",
+  });
+
   useEffect(() => {
     const getSessionAndStore = async () => {
       const {
@@ -473,6 +481,62 @@ export default function AddItemPage() {
     }
   };
   const handleSubmit = async () => {
+    // Reset errors
+    setFieldErrors({
+      name: '',
+      price: '',
+      images: '',
+      category: ''
+    });
+
+    // Validate fields
+    let hasErrors = false;
+    const newErrors = {
+      name: '',
+      price: '',
+      images: '',
+      category: ''
+    };
+
+    if (!itemDetails.name.trim()) {
+      newErrors.name = 'Item name is required';
+      hasErrors = true;
+    }
+
+    if (!itemDetails.price || parseFloat(itemDetails.price) <= 0) {
+      newErrors.price = 'Valid price is required';
+      hasErrors = true;
+    }
+
+    // Define the regular expression to check for image file extensions
+    const isImage = (file: ImageFile) => /\.(jpg|jpeg|png|gif|webp)$/i.test(file.url);
+
+    // Filter out non-image files based on the file name
+    const filteredImages = images.filter(isImage);
+
+    // Check if the filtered images array is empty
+    if (filteredImages.length === 0) {
+      newErrors.images = 'At least one image is required';
+      hasErrors = true;
+    }
+
+    // Check if all category levels are selected
+    if (!selectedCategories.level1) {
+      newErrors.category = 'Please select a main category';
+      hasErrors = true;
+    } else if (!selectedCategories.level2) {
+      newErrors.category = 'Please select a subcategory';
+      hasErrors = true;
+    } else if (!selectedCategories.level3) {
+      newErrors.category = 'Please select a sub-subcategory';
+      hasErrors = true;
+    }
+
+    if (hasErrors) {
+      setFieldErrors(newErrors);
+      return;
+    }
+
     try {
       setIsSaving(true);
 
@@ -588,7 +652,7 @@ export default function AddItemPage() {
   return (
     <div className="container mx-auto px-4 py-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="display-flex justify-center items-center space-x-2 mb-4 text-4xl">
           <CardTitle>Add New Item</CardTitle>
         </CardHeader>
         <CardContent>
@@ -956,7 +1020,13 @@ export default function AddItemPage() {
                           }))
                         }
                         placeholder="Enter item name"
+                        className={cn(fieldErrors.name && "border-red-500")}
                       />
+                      {fieldErrors.name && (
+                        <p className="text-sm text-red-500 mt-1">
+                          {fieldErrors.name}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="description">Description</Label>
@@ -988,7 +1058,13 @@ export default function AddItemPage() {
                         placeholder="0.00"
                         step="0.01"
                         min="0.01"
+                        className={cn(fieldErrors.price && "border-red-500")}
                       />
+                      {fieldErrors.price && (
+                        <p className="text-sm text-red-500 mt-1">
+                          {fieldErrors.price}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -1006,7 +1082,11 @@ export default function AddItemPage() {
                           }));
                         }}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger
+                          className={cn(
+                            fieldErrors.category && "border-red-500"
+                          )}
+                        >
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1017,6 +1097,11 @@ export default function AddItemPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {fieldErrors.category && (
+                        <p className="text-sm text-red-500 mt-1">
+                          {fieldErrors.category}
+                        </p>
+                      )}
                     </div>
                     {selectedCategories.level1 &&
                       level2Categories.length > 0 && (
@@ -1160,6 +1245,13 @@ export default function AddItemPage() {
                       />
                     </div>
                   </div>
+
+                  {/* Images error message */}
+                  {fieldErrors.images && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {fieldErrors.images}
+                    </p>
+                  )}
 
                   {/* Submit Button */}
                   <Button
