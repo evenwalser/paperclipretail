@@ -94,6 +94,7 @@ export default function AddItemPage() {
     description: "",
     price: "",
     condition: "",
+    quantity: "1",
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -129,6 +130,7 @@ export default function AddItemPage() {
     price: "",
     images: "",
     category: "",
+    quantity: "",
   });
 
   useEffect(() => {
@@ -486,7 +488,8 @@ export default function AddItemPage() {
       name: '',
       price: '',
       images: '',
-      category: ''
+      category: '',
+      quantity: ''
     });
 
     // Validate fields
@@ -495,7 +498,8 @@ export default function AddItemPage() {
       name: '',
       price: '',
       images: '',
-      category: ''
+      category: '',
+      quantity: ''
     };
 
     if (!itemDetails.name.trim()) {
@@ -505,6 +509,13 @@ export default function AddItemPage() {
 
     if (!itemDetails.price || parseFloat(itemDetails.price) <= 0) {
       newErrors.price = 'Valid price is required';
+      hasErrors = true;
+    }
+
+    // Add quantity validation
+    const quantityNum = parseInt(itemDetails.quantity);
+    if (!itemDetails.quantity || quantityNum < 1) {
+      newErrors.quantity = 'Quantity must be at least 1';
       hasErrors = true;
     }
 
@@ -564,7 +575,8 @@ export default function AddItemPage() {
           list_on_paperclip: true,
           store_id: user?.store_id,
           created_by: user?.id,
-          status: "available",
+          quantity: parseInt(itemDetails.quantity),
+          // status will be set by the trigger
         })
         .select()
         .single();
@@ -1066,6 +1078,31 @@ export default function AddItemPage() {
                         </p>
                       )}
                     </div>
+                  </div>
+
+                  {/* Add this after the price input field */}
+                  <div>
+                    <Label htmlFor="quantity">Quantity</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      value={itemDetails.quantity}
+                      onChange={(e) =>
+                        setItemDetails((prev) => ({
+                          ...prev,
+                          quantity: e.target.value,
+                        }))
+                      }
+                      placeholder="1"
+                      min="1"
+                      step="1"
+                      className={cn(fieldErrors.quantity && "border-red-500")}
+                    />
+                    {fieldErrors.quantity && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {fieldErrors.quantity}
+                      </p>
+                    )}
                   </div>
 
                   {/* Categories */}

@@ -45,6 +45,7 @@ interface ItemType {
   title: string;
   description: string;
   price: number;
+  quantity: number;
   category_id: string;
   condition: string;
   size?: string;
@@ -87,6 +88,7 @@ export default function EditItemPage() {
     name: "",
     description: "",
     price: "",
+    quantity: 1,
     condition: "New",
     size: "",
     availableInStore: true,
@@ -137,6 +139,7 @@ export default function EditItemPage() {
           name: itemData.title,
           description: itemData.description,
           price: itemData.price.toString(),
+          quantity: itemData.quantity || 1,
           condition: itemData.condition,
           size: itemData.size || "",
           availableInStore: itemData.available_in_store,
@@ -375,6 +378,7 @@ export default function EditItemPage() {
           title: itemDetails.name,
           description: itemDetails.description,
           price: parseFloat(itemDetails.price),
+          quantity: itemDetails.quantity,
           category_id:
             selectedCategories.level3 ||
             selectedCategories.level2 ||
@@ -673,6 +677,21 @@ export default function EditItemPage() {
                 {fieldErrors.price && (
                   <p className="text-sm text-red-500 mt-1">{fieldErrors.price}</p>
                 )}
+              </div>
+
+              <div>
+                <Label>Quantity</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={itemDetails.quantity}
+                  onChange={(e) =>
+                    setItemDetails((prev) => ({
+                      ...prev,
+                      quantity: parseInt(e.target.value) || 0,
+                    }))
+                  }
+                />
               </div>
 
               {/* Category Selectors */}

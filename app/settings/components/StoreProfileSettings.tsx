@@ -47,6 +47,12 @@ export function StoreProfileSettings() {
   const [error, setError] = useState<string | null>(null);
   const [isValidPostcode, setIsValidPostcode] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState({
+    storeName: '',
+    phone: '',
+    email: '',
+    address: ''
+  });
   const router = useRouter();
 
 
@@ -150,37 +156,42 @@ export function StoreProfileSettings() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setError(null);
+    
+    // Reset form errors
+    setFormErrors({
+      storeName: '',
+      phone: '',
+      email: '',
+      address: ''
+    });
 
-    if (!user) {
-      toast.error("Authentication required");
-      setIsSubmitting(false);
-      return;
+    let hasErrors = false;
+
+    // Validate store name
+    if (!storeDetails.name.trim()) {
+      setFormErrors(prev => ({ ...prev, storeName: 'Store name is required' }));
+      hasErrors = true;
     }
 
-    if (!storeDetails.name || !selectedAddress) {
-      toast.error("Submission failed", {
-        description:
-          "Store name and address are required fields",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!validator.isEmail(storeDetails.email)) {
-      toast.error("Submission failed", {
-        description:
-          "Please enter a valid email address",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-  
-    // Validate phone number
+    // Validate phone
     if (!validator.isMobilePhone(storeDetails.phone, 'any', { strictMode: false })) {
-      toast.error("Submission failed", {
-        description:
-          "Please enter a valid phone number",
-      });
+      setFormErrors(prev => ({ ...prev, phone: 'Please enter a valid phone number' }));
+      hasErrors = true;
+    }
+
+    // Validate email
+    if (!validator.isEmail(storeDetails.email)) {
+      setFormErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+      hasErrors = true;
+    }
+
+    // Validate address
+    if (!selectedAddress) {
+      setFormErrors(prev => ({ ...prev, address: 'Please select or enter an address' }));
+      hasErrors = true;
+    }
+
+    if (hasErrors) {
       setIsSubmitting(false);
       return;
     }
@@ -190,7 +201,7 @@ export function StoreProfileSettings() {
       // Upsert the store data into the 'stores' table
       const { data, error: storeError } = await supabase.from("stores").upsert(
         {
-          owner_id: user.id,
+          owner_id: user?.id,
           store_name: storeDetails.name,
           contact_details: {
             phone: storeDetails.phone,
@@ -214,7 +225,7 @@ export function StoreProfileSettings() {
       const { data: storeData, error: fetchError } = await supabase
         .from("stores")
         .select("id") // Select the ID and any other fields you need
-        .eq("owner_id", user.id)
+        .eq("owner_id", user?.id)
         .single(); // .single() ensures only one row is returned
 
       if (fetchError) {
@@ -229,7 +240,7 @@ export function StoreProfileSettings() {
           role: "store_owner",
           store_id: storeData?.id,
         })
-        .eq("id", user.id);
+        .eq("id", user?.id);
    
 
       if (profileError) throw profileError;
@@ -606,29 +617,48 @@ export function StoreProfileSettings() {
         {/* Store Details Section */}
         <div className="space-y-4">
           <Label>Store Details</Label>
-          <Input
-            placeholder="Store Name"
-            value={storeDetails.name}
-            onChange={(e) =>
-              setStoreDetails({ ...storeDetails, name: e.target.value })
-            }
-          />
-          <Input
-            placeholder="Phone Number"
-            value={storeDetails.phone}
-            onChange={(e) =>
-              setStoreDetails({ ...storeDetails, phone: e.target.value })
-            }
-          />
-          <Input
-            placeholder="Store Email"
-            type="email"
-            value={storeDetails.email}
-            onChange={(e) =>
-              setStoreDetails({ ...storeDetails, email: e.target.value })
-            }
-          />
+          <div className="space-y-2">
+            <Input
+              placeholder="Store Name"
+              value={storeDetails.name}
+              onChange={(e) => setStoreDetails({ ...storeDetails, name: e.target.value })}
+              className={formErrors.storeName ? 'border-red-500' : ''}
+            />
+            {formErrors.storeName && (
+              <p className="text-sm text-red-500">{formErrors.storeName}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Input
+              placeholder="Phone Number"
+              value={storeDetails.phone}
+              onChange={(e) => setStoreDetails({ ...storeDetails, phone: e.target.value })}
+              className={formErrors.phone ? 'border-red-500' : ''}
+            />
+            {formErrors.phone && (
+              <p className="text-sm text-red-500">{formErrors.phone}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Input
+              placeholder="Store Email"
+              type="email"
+              value={storeDetails.email}
+              onChange={(e) => setStoreDetails({ ...storeDetails, email: e.target.value })}
+              className={formErrors.email ? 'border-red-500' : ''}
+            />
+            {formErrors.email && (
+              <p className="text-sm text-red-500">{formErrors.email}</p>
+            )}
+          </div>
         </div>
+
+        {/* Add address error message */}
+        {formErrors.address && (
+          <p className="text-sm text-red-500 mt-2">{formErrors.address}</p>
+        )}
 
         <div className="text-end">
           <Button

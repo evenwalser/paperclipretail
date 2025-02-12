@@ -35,6 +35,7 @@ interface InventoryItem {
   price: number;
   category: string;
   item_images?: { image_url: string }[];
+  quantity?: number;
 }
 
 interface Category {
@@ -106,7 +107,6 @@ export default function InventoryPage() {
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
-
   const sendSelectedToPOS = () => {
     const selectedItemsData = items
       .filter((item) => selectedItems.includes(item.id))
@@ -117,6 +117,7 @@ export default function InventoryPage() {
         image_url: item.item_images?.[0]?.image_url, // or adjust based on your logic
         category: item.categories?.[0]?.name || item.category_id, // use first category name or fallback
         size: item.size,
+        quantity: item.quantity,
       }));
 
     addItems(selectedItemsData);
@@ -383,12 +384,12 @@ export default function InventoryPage() {
                         In Stock
                       </span>
                     )}
-                    {item.status === "low-stock" && (
+                    {item.status === "low_stock" && (
                       <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                         Low Stock
                       </span>
                     )}
-                    {item.status === "out-of-stock" && (
+                    {item.status === "out_of_stock" && (
                       <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                         Out of Stock
                       </span>
@@ -399,6 +400,9 @@ export default function InventoryPage() {
                   Category:{" "}
                   {item.categories.find((category) => category.level === 1)
                     ?.name || "N/A"}
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  Quantity: {item.quantity || 0}
                 </p>
 
                 <div className="grid grid-cols-3 gap-2">
@@ -432,6 +436,7 @@ export default function InventoryPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled= {item?.status === 'out_of_stock'}
                     className={`w-full leading-[normal] ${
                       selectedItems.includes(item.id)
                         ? "bg-[#FF3B30] text-white hover:bg-[#E6352B]"

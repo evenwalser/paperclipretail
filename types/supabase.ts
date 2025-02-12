@@ -34,6 +34,7 @@ export interface Item {
   status: string;
   store_id: number;
   title: string;
+  quantity: number;
   updated_at: string;
 }
 
