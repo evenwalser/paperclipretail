@@ -28,6 +28,12 @@ import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { Receipt } from "@/components/Receipt";
 
+// Add interface for receipt data
+interface ReceiptData {
+  saleData: any;  // Replace 'any' with proper sale record type
+  items: any[];   // Replace 'any' with proper item type
+}
+
 export default function POSPage() {
   const { items, updateQuantity, removeItem, total, clearCart } = useCart();
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
@@ -40,7 +46,7 @@ export default function POSPage() {
   );
   const [change, setChange] = useState(0);
   const [showReceipt, setShowReceipt] = useState(false);
-  const [receiptData, setReceiptData] = useState(null);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
 
   useEffect(() => {
     if (typeof total === "number") {
@@ -181,7 +187,7 @@ export default function POSPage() {
     setShowPaymentOptions(true);
   };
 
-  const validateAndUpdateQuantity = async (itemId, newQuantity) => {
+  const validateAndUpdateQuantity = async (itemId: string, newQuantity: number) => {
     // Optimistically update the UI immediately.
     updateQuantity(itemId, newQuantity);
 
