@@ -27,16 +27,18 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { Receipt } from "@/components/Receipt";
+import { getUser } from "@/lib/services/items";
 
 // Add interface for receipt data
 interface ReceiptData {
-  saleData: any;  // Replace 'any' with proper sale record type
-  items: any[];   // Replace 'any' with proper item type
+  saleData: any; // Replace 'any' with proper sale record type
+  items: any[]; // Replace 'any' with proper item type
 }
 
 export default function POSPage() {
   const { items, updateQuantity, removeItem, total, clearCart } = useCart();
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [user, setuser] = useState<any>(null);
   const router = useRouter();
   const supabase = createClient();
   const [amount, setAmount] = useState("0.00");
@@ -47,6 +49,18 @@ export default function POSPage() {
   const [change, setChange] = useState(0);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const user = await getUser();
+        setuser(user);
+      } catch (error) {
+        console.error("Failed to load items:", error);
+      }
+    };
+    loadUser();
+  }, []);
 
   useEffect(() => {
     if (typeof total === "number") {
@@ -183,11 +197,13 @@ export default function POSPage() {
       return;
     }
 
-    // Instead of processing immediately, show payment method options
     setShowPaymentOptions(true);
   };
 
-  const validateAndUpdateQuantity = async (itemId: string, newQuantity: number) => {
+  const validateAndUpdateQuantity = async (
+    itemId: string,
+    newQuantity: number
+  ) => {
     // Optimistically update the UI immediately.
     updateQuantity(itemId, newQuantity);
 
@@ -230,13 +246,18 @@ export default function POSPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Cart Section */}
-        <Card className="bg-white dark:bg-gray-800 shadow-lg">
-          <CardHeader>
+        <Card className="bg-white dark:bg-gray-800 shadow-lg justify-between">
+          <div className="border-b border-[#3e4a5c] flex items-center gap-2 flex-row justify-between px-4 py-3 !m-0">
             <CardTitle className="flex items-center">
-              <ShoppingCart className="mr-2 h-5 w-5 text-paperclip-red" />
-              Cart Items
+              <ShoppingCart className="mr-2 h-5 w-5 text-paperclip-red" /> Cart Items
             </CardTitle>
-          </CardHeader>
+            <div className="m-0">
+              <Button onClick={clearCart} className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
+        font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
+        disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-9 px-4 py-2 min-w-[100px]
+         bg-[#fff] text-[#333] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] m-0">Clear Cart</Button>
+            </div>
+          </div>
           <CardContent>
             <div className="space-y-4 max-h-[400px] overflow-y-auto">
               {items.map((item) => (
@@ -343,7 +364,6 @@ export default function POSPage() {
                 )}
               </div>
             </Button>
-
             <div className="grid grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, ".", 0, "C"].map((num) => (
                 <Button
@@ -351,9 +371,9 @@ export default function POSPage() {
                   variant={num === "C" ? "destructive" : "outline"}
                   className="h-16 text-xl font-semibold"
                   onClick={() => {
-                    if (num === "C") handleClear();
-                    else if (num === ".") handleDecimal();
-                    else handleNumberClick(num.toString());
+                    if (num === "C") handleClear(); // Reset the amount
+                    else if (num === ".") handleDecimal(); // Add decimal
+                    else handleNumberClick(num.toString()); // Add the number to amount
                   }}
                 >
                   {num}
@@ -387,11 +407,16 @@ export default function POSPage() {
       </div>
 
       {showPaymentOptions && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
-            <h2 className="text-xl mb-4">Select Payment Method</h2>
-            <div className="flex gap-4">
+        <div className="fixed inset-0 flex items-center justify-center bg-[#191e25] bg-opacity-50 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-[500px]">
+            <h2 className="text-xl m-0 p-5 bottom-0 border-b-[1px] border-[#384454]">Select Payment Method</h2>
+
+            <div className="flex gap-4 p-6">
               <Button
+              className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
+        font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
+        disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-4 py-2 min-w-[100px]
+         bg-transparent text-[#fff] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] hover:bg-[#dc2626] hover:border-[#dc2626]"
                 onClick={() => {
                   handlePayment("cash");
                   setShowPaymentOptions(false);
@@ -400,6 +425,10 @@ export default function POSPage() {
                 Cash Payment
               </Button>
               <Button
+              className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
+        font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
+        disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-4 py-2 min-w-[100px]
+         bg-transparent text-[#fff] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] hover:bg-[#dc2626] hover:border-[#dc2626]"
                 onClick={() => {
                   handlePayment("card");
                   setShowPaymentOptions(false);
@@ -408,6 +437,10 @@ export default function POSPage() {
                 Card Payment
               </Button>
               <Button
+              className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
+        font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
+        disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-4 py-2 min-w-[100px]
+         bg-transparent text-[#fff] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] hover:bg-[#dc2626] hover:border-[#dc2626]"
                 variant="destructive"
                 onClick={() => setShowPaymentOptions(false)}
               >
@@ -419,10 +452,11 @@ export default function POSPage() {
       )}
 
       {showReceipt && receiptData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-[#191e25] bg-opacity-50 flex items-center justify-center p-4 z-50">
           <Receipt
             saleData={receiptData.saleData}
             items={receiptData.items}
+            userId={user.id}
             onClose={() => {
               setShowReceipt(false);
               setIsProcessing(false);

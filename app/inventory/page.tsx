@@ -58,6 +58,24 @@ export default function InventoryPage() {
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [defaultSorting, setDefaultSorting] = useState("newest");
+
+  useEffect(() => {
+    const fetchDefaultSorting = async () => {
+      const { data, error } = await supabase
+        .from("store_settings")
+        .select("setting_value")
+        .eq("setting_key", "default_sorting")
+        .single();
+      if (error) {
+        console.error("Error fetching default sorting:", error);
+      } else if (data) {
+        setDefaultSorting(data.setting_value);
+      }
+    };
+
+    fetchDefaultSorting();
+  }, []);
 
   useEffect(() => {
     const loadItems = async () => {
@@ -95,6 +113,21 @@ export default function InventoryPage() {
       item.title.toLowerCase().includes(searchQuery.toLowerCase());
 
     return matchesCategory && matchesSearch;
+  });
+
+  const sortedItems = filteredItems.slice().sort((a, b) => {
+    switch (defaultSorting) {
+      case "newest":
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      case "lowStock":
+        return (a.quantity || 0) - (b.quantity || 0);
+      case "highStock":
+        return (b.quantity || 0) - (a.quantity || 0);
+      case "alphabetical":
+        return a.title.localeCompare(b.title);
+      default:
+        return 0;
+    }
   });
 
   const handleCategoryChange = (newValue: string) => {
@@ -302,7 +335,7 @@ export default function InventoryPage() {
               <CardContent className="p-4"></CardContent>
             </Card>
           ))
-        ) : filteredItems.length === 0 ? (
+        ) : sortedItems.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-12">
             <p className="text-xl text-gray-500 mb-4">No items found</p>
             {/* <p className="text-sm text-gray-400">
@@ -310,7 +343,7 @@ export default function InventoryPage() {
             </p> */}
           </div>
         ) : (
-          filteredItems.map((item) => (
+          sortedItems.map((item) => (
             <Card
               key={item.id}
               className={`overflow-hidden transition-shadow duration-300 ${
