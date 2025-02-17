@@ -688,7 +688,7 @@ export default function EditItemPage() {
                   onChange={(e) =>
                     setItemDetails((prev) => ({
                       ...prev,
-                      quantity: parseInt(e.target.value) || 0,
+                      quantity: parseInt(e.target.value),
                     }))
                   }
                 />

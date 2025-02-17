@@ -58,24 +58,10 @@ export default function InventoryPage() {
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [defaultSorting, setDefaultSorting] = useState("newest");
-
-  useEffect(() => {
-    const fetchDefaultSorting = async () => {
-      const { data, error } = await supabase
-        .from("store_settings")
-        .select("setting_value")
-        .eq("setting_key", "default_sorting")
-        .single();
-      if (error) {
-        console.error("Error fetching default sorting:", error);
-      } else if (data) {
-        setDefaultSorting(data.setting_value);
-      }
-    };
-
-    fetchDefaultSorting();
-  }, []);
+  const [storeSettings, setStoreSettings] = useState({
+    lowStockThreshold: null,
+    defaultSorting: 'newest',
+  });
 
   useEffect(() => {
     const loadItems = async () => {
@@ -103,6 +89,31 @@ export default function InventoryPage() {
     loadItems();
   }, [currentPage]);
 
+  useEffect(() => {
+    const fetchStoreSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('stores')
+          .select('low_stock_threshold, default_sorting')
+          .eq('id', user.store_id) // Replace with the actual store ID
+          .single();
+
+        if (error) {
+          console.error('Error fetching store settings:', error);
+        } else if (data) {
+          setStoreSettings({
+            lowStockThreshold: data.low_stock_threshold,
+            defaultSorting: data.default_sorting,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching store settings:', error);
+      }
+    };
+
+    fetchStoreSettings();
+  }, [user]);
+
   const filteredItems = items.filter((item) => {
     const matchesCategory =
       selectedCategory === "all" ||
@@ -114,9 +125,10 @@ export default function InventoryPage() {
 
     return matchesCategory && matchesSearch;
   });
+  console.log("here is my filtered storeSettings ", storeSettings);
 
   const sortedItems = filteredItems.slice().sort((a, b) => {
-    switch (defaultSorting) {
+    switch (storeSettings.defaultSorting) {
       case "newest":
         return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
       case "lowStock":
@@ -442,7 +454,7 @@ export default function InventoryPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full leading-[normal]"
+                    className="w-full leading-[normal] hover:bg-[#f42037] "
                     onClick={() => router.push(`/inventory/edit/${item.id}`)}
                   >
                     <Pencil className="mr-1 h-3 w-3" /> Edit
@@ -473,7 +485,7 @@ export default function InventoryPage() {
                     className={`w-full leading-[normal] ${
                       selectedItems.includes(item.id)
                         ? "bg-[#FF3B30] text-white hover:bg-[#E6352B]"
-                        : "hover:bg-gray-100"
+                        : "hover:bg-[#f42037]"
                     }`}
                     onClick={() => toggleItemSelection(item.id)}
                   >

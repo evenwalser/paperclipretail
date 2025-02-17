@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { createClient } from '@/utils/supabase/client'
 
 interface InventorySettingsProps {
+  storeId: string;
   lowStockThreshold: number;
   setLowStockThreshold: React.Dispatch<React.SetStateAction<number>>;
   hideLowStock: boolean;
@@ -19,6 +20,7 @@ interface InventorySettingsProps {
 }
 
 export function InventorySettings({
+  storeId,
   lowStockThreshold,
   setLowStockThreshold,
   hideLowStock,
@@ -30,20 +32,17 @@ export function InventorySettings({
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
   const handleSaveChanges = async () => {
-    // Update the low_stock_threshold setting.
-    const { error: errorLow } = await supabase
-      .from('store_settings')
-      .update({ setting_value: lowStockThreshold.toString() })
-      .eq('setting_key', 'low_stock_threshold')
+    // Update the store's settings in the "stores" table.
+    const { error } = await supabase
+      .from('stores')
+      .update({
+        low_stock_threshold: lowStockThreshold,
+        default_sorting: defaultSorting,
+      })
+      .eq('id', storeId)
 
-    // Update the default_sorting setting.
-    const { error: errorSort } = await supabase
-      .from('store_settings')
-      .update({ setting_value: defaultSorting })
-      .eq('setting_key', 'default_sorting')
-
-    if (errorLow || errorSort) {
-      console.error("Error updating settings:", errorLow || errorSort)
+    if (error) {
+      console.error("Error updating store settings:", error)
       setSaveMessage("Error updating settings")
     } else {
       setSaveMessage("Settings updated successfully!")

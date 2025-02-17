@@ -35,6 +35,12 @@ interface ReceiptData {
   items: any[]; // Replace 'any' with proper item type
 }
 
+// Add interface for customer data
+interface CustomerData {
+  name: string;
+  email: string;
+}
+
 export default function POSPage() {
   const { items, updateQuantity, removeItem, total, clearCart } = useCart();
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
@@ -49,6 +55,11 @@ export default function POSPage() {
   const [change, setChange] = useState(0);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [customerData, setCustomerData] = useState<CustomerData>({
+    name: '',
+    email: ''
+  });
 
   useEffect(() => {
     const loadUser = async () => {
@@ -90,8 +101,37 @@ export default function POSPage() {
     router.push("/inventory");
   };
 
+  const handleCompleteSale = () => {
+    if (items.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
+
+    if (parseFloat(amount) < total) {
+      toast.error("Amount is less than total");
+      return;
+    }
+
+    setShowCustomerForm(true);
+  };
+
+  const handleCustomerSubmit = () => {
+    if (!customerData.name.trim()) {
+      toast.error("Customer name is required");
+      return;
+    }
+    
+    // Email validation
+    if (customerData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerData.email)) {
+      toast.error("Please enter a valid email");
+      return;
+    }
+
+    setShowCustomerForm(false);
+    setShowPaymentOptions(true);
+  };
+
   const handlePayment = async (method: "card" | "cash") => {
-    // Add stock validation before processing payment
     try {
       // Validate all items in cart
       for (const item of items) {
@@ -131,7 +171,19 @@ export default function POSPage() {
         setChange(changeAmount);
       }
 
-      // Create sale record
+      // Create customer record first
+      const { data: customerRecord, error: customerError } = await supabase
+        .from("customers")
+        .insert({
+          name: customerData.name,
+          email: customerData.email || null
+        })
+        .select()
+        .single();
+
+      if (customerError) throw customerError;
+
+      // Update sale data to include customer_id
       const saleData = {
         total_amount: total,
         payment_method: method,
@@ -139,6 +191,7 @@ export default function POSPage() {
         payment_status: "paid",
         amount_tendered: method === "cash" ? parseFloat(amount) : total,
         change_amount: method === "cash" ? parseFloat(amount) - total : 0,
+        customer_id: customerRecord.id
       };
 
       const { data: saleRecord, error: saleError } = await supabase
@@ -184,20 +237,6 @@ export default function POSPage() {
       setIsProcessing(false);
       setPaymentMethod(null);
     }
-  };
-
-  const handleCompleteSale = () => {
-    if (items.length === 0) {
-      toast.error("Cart is empty");
-      return;
-    }
-
-    if (parseFloat(amount) < total) {
-      toast.error("Amount is less than total");
-      return;
-    }
-
-    setShowPaymentOptions(true);
   };
 
   const validateAndUpdateQuantity = async (
@@ -405,6 +444,48 @@ export default function POSPage() {
           Process Refund
         </Button>
       </div>
+
+      {showCustomerForm && (
+        <div className="fixed inset-0 flex items-center justify-center bg-[#191e25] bg-opacity-50 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-[500px]">
+            <h2 className="text-xl m-0 p-5 border-b-[1px] border-[#384454]">Customer Information</h2>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Name *</label>
+                <Input
+                  value={customerData.name}
+                  onChange={(e) => setCustomerData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter customer name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Email (Optional)</label>
+                <Input
+                  type="email"
+                  value={customerData.email}
+                  onChange={(e) => setCustomerData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Enter customer email"
+                />
+              </div>
+              <div className="flex gap-4">
+                <Button
+                  className="flex-1 bg-paperclip-red hover:bg-red-700 text-white"
+                  onClick={handleCustomerSubmit}
+                >
+                  Continue to Payment
+                </Button>
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  onClick={() => setShowCustomerForm(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showPaymentOptions && (
         <div className="fixed inset-0 flex items-center justify-center bg-[#191e25] bg-opacity-50 z-50">

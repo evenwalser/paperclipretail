@@ -19,10 +19,14 @@ interface ReceiptProps {
     quantity: number;
   }[];
   userId: string; // Pass the user ID to fetch store details
+  customerDetails?: {
+    name: string;
+    email: string;
+  };
   onClose: () => void;
 }
 
-export function Receipt({ saleData, items, userId, onClose }: ReceiptProps) {
+export function Receipt({ saleData, items, userId, customerDetails, onClose }: ReceiptProps) {
   const supabase = createClient();
   const [storeDetails, setStoreDetails] = useState<{
     store_name: string;

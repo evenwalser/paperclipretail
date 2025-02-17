@@ -31,6 +31,7 @@ import { POSSettings } from "./components/POSSettings";
 import { NotificationSettings } from "./components/NotificationSettings";
 import { IntegrationSettings } from "./components/IntegrationSettings";
 import { createClient } from "@/utils/supabase/client";
+import { getUser } from "@/lib/services/items";
 
 interface Address {
   street: string;
@@ -43,6 +44,7 @@ const SettingsPage = (): any => {
   // Store Profile states
   // Store Profile states
   const [logo, setLogo] = useState<string | null>(null);
+  const [user, setuser] = useState<any>(null);
   const [storefrontImage, setStorefrontImage] = useState<string | null>(null);
   const [postcode, setPostcode] = useState("");
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -58,6 +60,7 @@ const SettingsPage = (): any => {
   const [lowStockThreshold, setLowStockThreshold] = useState(5);
   const [hideLowStock, setHideLowStock] = useState(false);
   const [defaultSorting, setDefaultSorting] = useState("newest");
+  const [storeId, setStoreId] = useState<string>("");
 
   // POS states
   const [acceptCash, setAcceptCash] = useState(true);
@@ -86,27 +89,32 @@ const SettingsPage = (): any => {
   // On mount, fetch the current low_stock_threshold setting from the database.
   // Fetch both low_stock_threshold and default_sorting settings on mount.
   useEffect(() => {
-    const fetchSettings = async () => {
-      const { data, error } = await supabase
-        .from("store_settings")
-        .select("setting_key, setting_value")
-        .in("setting_key", ["low_stock_threshold", "default_sorting"]);
+    const fetchStoreSettings = async () => {
+      // Replace with your method for fetching the current user.
+          const user = await getUser();
+          setuser(user);
+      const userId = user.id;
 
+      const { data, error } = await supabase
+        .from("stores")
+        .select("id, low_stock_threshold, default_sorting, store_name, contact_details")
+        .eq("owner_id", userId)
+        .single();
       if (error) {
         console.error("Error fetching store settings:", error);
       } else if (data) {
-        data.forEach((setting) => {
-          if (setting.setting_key === "low_stock_threshold") {
-            setLowStockThreshold(parseInt(setting.setting_value));
-          }
-          if (setting.setting_key === "default_sorting") {
-            setDefaultSorting(setting.setting_value);
-          }
+        setStoreId(data.id);
+        setLowStockThreshold(data.low_stock_threshold);
+        setDefaultSorting(data.default_sorting);
+        setStoreDetails({
+          name: data.store_name || '',
+          phone: data.contact_details?.phone || '',
+          email: data.contact_details?.email || ''
         });
       }
     };
 
-    fetchSettings();
+    fetchStoreSettings();
   }, [supabase]);
 
   const handleImageUpload = (
@@ -229,6 +237,7 @@ const SettingsPage = (): any => {
             </TabsContent>
             <TabsContent value="inventory">
               <InventorySettings
+                storeId={storeId}
                 lowStockThreshold={lowStockThreshold}
                 setLowStockThreshold={setLowStockThreshold}
                 hideLowStock={hideLowStock}

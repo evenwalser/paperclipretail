@@ -263,54 +263,6 @@ export function StoreProfileSettings() {
     }
   };
 
-  // const handleSubmit = async () => {
-  //   setIsSubmitting(true)
-  //   setError(null)
-
-  //   if (!user) {
-  //     toast.error("Authentication required")
-  //     setIsSubmitting(false)
-  //     return
-  //   }
-
-  //   if (!storeDetails.name || !selectedAddress) {
-  //     setError("Store name and address are required fields")
-  //     setIsSubmitting(false)
-  //     return
-  //   }
-
-  //   try {
-  //     const { error } = await supabase.from('stores').upsert({
-  //       owner_id: user.id,
-  //       store_name: storeDetails.name,
-  //       contact_details: {
-  //         phone: storeDetails.phone,
-  //         email: storeDetails.email
-  //       },
-  //       address: selectedAddress,
-  //       store_logo: logo,
-  //       storefront_image: storefrontImage,
-  //       updated_at: new Date().toISOString()
-  //     }, {
-  //       onConflict: 'owner_id'
-  //     })
-
-  //     if (error) throw error
-
-  //     toast.success("Store profile saved", {
-  //       description: "Your store details have been successfully updated"
-  //     })
-
-  //   } catch (err) {
-  //     console.error('Submission error:', err)
-  //     toast.error("Submission failed", {
-  //       description: err instanceof Error ? err.message : "Could not save store profile"
-  //     })
-  //   } finally {
-  //     setIsSubmitting(false)
-  //   }
-  // }
-
   const handlePostcodeLookup = async () => {
     setError(null);
     setAddresses([]);
