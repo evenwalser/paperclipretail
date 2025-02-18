@@ -32,11 +32,17 @@ export function InventorySettings({
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
   const handleSaveChanges = async () => {
-    // Update the store's settings in the "stores" table.
+    // Validate numeric input
+    const threshold = parseInt(lowStockThreshold.toString(), 10)
+    if (isNaN(threshold) || threshold < 0) {
+      setSaveMessage("Please enter a valid positive number for threshold")
+      return
+    }
+
     const { error } = await supabase
       .from('stores')
       .update({
-        low_stock_threshold: lowStockThreshold,
+        low_stock_threshold: threshold,
         default_sorting: defaultSorting,
       })
       .eq('id', storeId)
@@ -64,11 +70,19 @@ export function InventorySettings({
           <Label htmlFor="lowStockThreshold">Low Stock Alert Threshold</Label>
           <Input 
             id="lowStockThreshold" 
-            type="number" 
+            type="text" 
+            pattern="[0-9]*"
+            inputMode="numeric"
             placeholder="e.g., 5 units"
             className="max-w-xs mt-1"
             value={lowStockThreshold}
-            onChange={(e) => setLowStockThreshold(parseInt(e.target.value))}
+            onChange={(e) => {
+              const value = e.target.value
+              // Allow empty input or valid numbers
+              if (value === '' || /^\d+$/.test(value)) {
+                setLowStockThreshold(value === '' ? 0 : parseInt(value, 10))
+              }
+            }}
           />
         </div>
         

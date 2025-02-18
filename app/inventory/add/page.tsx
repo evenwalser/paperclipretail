@@ -502,19 +502,22 @@ export default function AddItemPage() {
       quantity: ''
     };
 
+    // Name validation
     if (!itemDetails.name.trim()) {
       newErrors.name = 'Item name is required';
       hasErrors = true;
     }
 
-    if (!itemDetails.price || parseFloat(itemDetails.price) <= 0) {
+    // Price validation
+    const priceNum = parseFloat(itemDetails.price);
+    if (!itemDetails.price || isNaN(priceNum) || priceNum <= 0) {
       newErrors.price = 'Valid price is required';
       hasErrors = true;
     }
 
-    // Add quantity validation
+    // Quantity validation
     const quantityNum = parseInt(itemDetails.quantity);
-    if (!itemDetails.quantity || quantityNum < 1) {
+    if (!itemDetails.quantity || isNaN(quantityNum) || quantityNum < 1) {
       newErrors.quantity = 'Quantity must be at least 1';
       hasErrors = true;
     }
@@ -556,17 +559,16 @@ export default function AddItemPage() {
         return;
       }
 
-      // 1. First create the item record
-      const category_id =
-        selectedCategories.level3 ||
-        selectedCategories.level2 ||
-        selectedCategories.level1;
+      const category_id = selectedCategories.level3 || 
+                         selectedCategories.level2 || 
+                         selectedCategories.level1;
 
+      // Ensure all numbers are properly parsed before sending to database
       const { data: item, error: itemError } = await supabase
         .from("items")
         .insert({
-          title: itemDetails.name,
-          description: itemDetails.description,
+          title: itemDetails.name.trim(),
+          description: itemDetails.description.trim(),
           price: parseFloat(itemDetails.price) || 0,
           category_id,
           condition,
@@ -575,8 +577,7 @@ export default function AddItemPage() {
           list_on_paperclip: true,
           store_id: user?.store_id,
           created_by: user?.id,
-          quantity: parseInt(itemDetails.quantity),
-          // status will be set by the trigger
+          quantity: parseInt(itemDetails.quantity) || 1,
         })
         .select()
         .single();
@@ -659,6 +660,24 @@ export default function AddItemPage() {
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
+  };
+
+  // Update the price input handler to ensure valid number input
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow empty string or valid positive numbers with up to 2 decimal places
+    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+      setItemDetails(prev => ({ ...prev, price: value }));
+    }
+  };
+
+  // Update the quantity input handler to ensure valid integer input
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow only positive integers
+    if (value === '' || /^\d+$/.test(value)) {
+      setItemDetails(prev => ({ ...prev, quantity: value }));
+    }
   };
 
   return (
@@ -1059,17 +1078,10 @@ export default function AddItemPage() {
                       <Label htmlFor="price">Price (£)</Label>
                       <Input
                         id="price"
-                        type="number"
+                        type="text"
                         value={itemDetails.price}
-                        onChange={(e) =>
-                          setItemDetails((prev) => ({
-                            ...prev,
-                            price: e.target.value,
-                          }))
-                        }
+                        onChange={handlePriceChange}
                         placeholder="0.00"
-                        step="0.01"
-                        min="0.01"
                         className={cn(fieldErrors.price && "border-red-500")}
                       />
                       {fieldErrors.price && (
@@ -1085,17 +1097,10 @@ export default function AddItemPage() {
                     <Label htmlFor="quantity">Quantity</Label>
                     <Input
                       id="quantity"
-                      type="number"
+                      type="text"
                       value={itemDetails.quantity}
-                      onChange={(e) =>
-                        setItemDetails((prev) => ({
-                          ...prev,
-                          quantity: e.target.value,
-                        }))
-                      }
+                      onChange={handleQuantityChange}
                       placeholder="1"
-                      min="1"
-                      step="1"
                       className={cn(fieldErrors.quantity && "border-red-500")}
                     />
                     {fieldErrors.quantity && (

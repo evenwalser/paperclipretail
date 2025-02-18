@@ -88,7 +88,7 @@ export default function EditItemPage() {
     name: "",
     description: "",
     price: "",
-    quantity: 1,
+    quantity: "1",
     condition: "New",
     size: "",
     availableInStore: true,
@@ -139,7 +139,7 @@ export default function EditItemPage() {
           name: itemData.title,
           description: itemData.description,
           price: itemData.price.toString(),
-          quantity: itemData.quantity || 1,
+          quantity: itemData.quantity?.toString() || "1",
           condition: itemData.condition,
           size: itemData.size || "",
           availableInStore: itemData.available_in_store,
@@ -338,7 +338,7 @@ export default function EditItemPage() {
       hasErrors = true;
     }
 
-    if (!itemDetails.price || parseFloat(itemDetails.price) <= 0) {
+    if (!itemDetails.price || isNaN(parseFloat(itemDetails.price)) || parseFloat(itemDetails.price) <= 0) {
       newErrors.price = 'Valid price is required';
       hasErrors = true;
     }
@@ -377,8 +377,8 @@ export default function EditItemPage() {
         .update({
           title: itemDetails.name,
           description: itemDetails.description,
-          price: parseFloat(itemDetails.price),
-          quantity: itemDetails.quantity,
+          price: parseFloat(itemDetails.price) || 0,
+          quantity: parseInt(itemDetails.quantity) || 0,
           category_id:
             selectedCategories.level3 ||
             selectedCategories.level2 ||
@@ -664,14 +664,17 @@ export default function EditItemPage() {
               <div>
                 <Label>Price (£)</Label>
                 <Input
-                  type="number"
+                  type="text"
                   value={itemDetails.price}
-                  onChange={(e) =>
-                    setItemDetails((prev) => ({
-                      ...prev,
-                      price: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                      setItemDetails(prev => ({
+                        ...prev,
+                        price: value
+                      }))
+                    }
+                  }}
                   className={cn(fieldErrors.price && "border-red-500")}
                 />
                 {fieldErrors.price && (
@@ -682,15 +685,17 @@ export default function EditItemPage() {
               <div>
                 <Label>Quantity</Label>
                 <Input
-                  type="number"
-                  min="0"
+                  type="text"
                   value={itemDetails.quantity}
-                  onChange={(e) =>
-                    setItemDetails((prev) => ({
-                      ...prev,
-                      quantity: parseInt(e.target.value),
-                    }))
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '' || /^\d+$/.test(value)) {
+                      setItemDetails(prev => ({
+                        ...prev,
+                        quantity: value
+                      }))
+                    }
+                  }}
                 />
               </div>
 
