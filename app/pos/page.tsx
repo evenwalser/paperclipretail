@@ -183,7 +183,7 @@ export default function POSPage() {
 
       if (customerError) throw customerError;
 
-      // Update sale data to include customer_id
+      // Update sale data to include store_id
       const saleData = {
         total_amount: total,
         payment_method: method,
@@ -191,7 +191,8 @@ export default function POSPage() {
         payment_status: "paid",
         amount_tendered: method === "cash" ? parseFloat(amount) : total,
         change_amount: method === "cash" ? parseFloat(amount) - total : 0,
-        customer_id: customerRecord.id
+        customer_id: customerRecord.id,
+        store_id: user.store_id
       };
 
       const { data: saleRecord, error: saleError } = await supabase

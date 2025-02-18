@@ -14,6 +14,9 @@ import { TopSellingItems } from "@/components/TopSellingItems";
 import { CategoryInsights } from "@/components/CategoryInsights";
 import { CategoryStats, getCategoryStats } from "@/lib/services/categoryStats";
 import { QuickActions } from "@/components/QuickActions";
+import { getRecentSales, RecentSale } from "@/lib/services/recentSales";
+import { RecentSales } from "@/components/RecentSales";
+import { getUser } from "@/lib/services/items";
 
 interface OverviewProps {
   currency: string;
@@ -21,20 +24,62 @@ interface OverviewProps {
   dateRange?: DateRange;
 }
 
+type DashboardMetrics = {
+  total_revenue: number;
+  total_inventory: number;
+  active_customers: number;
+  new_customers: number;
+  sales_velocity_percent: number;
+};
+
 export default function DashboardPage() {
   const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(),
-    to: addDays(new Date(), 7),
+    from: new Date(new Date().setDate(new Date().getDate() - 30)), // Last 30 days
+    to: new Date(),
   });
+  const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>();
   const [stats, setStats] = useState<CategoryStats | null>(null);
   const [loading, setLoading] = useState(true);
   const { data: session } = useSession();
   const [error, setError] = useState<string | null>(null);
+  const [storeId, setStoreId] = useState<number | null>(null);
 
   const handleSignIn = () => {
     signIn("google", { prompt: "select_account" });
   };
+
+  useEffect(() => {
+    async function fetchUserStore() {
+      try {
+        const user = await getUser();
+        setStoreId(user?.store_id);
+      } catch (error) {
+        console.error("Failed to fetch user store:", error);
+        setError("Failed to load store information");
+      }
+    }
+
+    fetchUserStore();
+  }, [session]);
+
+  
+
+  useEffect(() => {
+    async function fetchRecentSales() {
+      console.log("here is store id ", storeId);
+      if (!storeId) return;
+
+      try {
+        const sales = await getRecentSales(date, storeId);
+        setRecentSales(sales);
+      } catch (error) {
+        console.error("Failed to fetch recent sales:", error);
+      }
+    }
+
+    fetchRecentSales();
+  }, [date, storeId]);
 
   useEffect(() => {
     async function fetchStats() {
@@ -74,6 +119,7 @@ export default function DashboardPage() {
       ) : (
         <button onClick={() => signIn("google")}>Sign in with Google</button>
       )} */}
+      <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-1"></div>
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         <div className="flex items-center space-x-4">
@@ -82,10 +128,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <QuickActions />
 
       {/* Category Selector - Now using V2 */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Select Category</CardTitle>
         </CardHeader>
@@ -95,15 +140,13 @@ export default function DashboardPage() {
             selectedCategory={selectedCategory}
           />
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Category Performance Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="border foreground ">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Category Revenue
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <PoundSterling className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -112,18 +155,18 @@ export default function DashboardPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               {/* <p className="text-xs text-muted-foreground"> */}
-                {(stats?.revenue.percentageChange ?? 0) > 0 ? "+" : ""}
-                {(stats?.revenue.percentageChange ?? 0).toFixed(1)}% from last
-                month
+              {(stats?.revenue.percentageChange ?? 0) > 0 ? "+" : ""}
+              {(stats?.revenue.percentageChange ?? 0).toFixed(1)}% from last
+              month
               {/* </p> */}
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border foreground ">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Items in Category
+            Total Inventory
             </CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -137,10 +180,10 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border foreground ">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Sales Velocity
+            Active Customers
             </CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -154,9 +197,9 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border foreground">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Return Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">Sales Velocity</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -177,7 +220,7 @@ export default function DashboardPage() {
 
       {/* Category Analytics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+        <Card className="col-span-4 border foreground">
           <CardHeader>
             <CardTitle>Category Performance</CardTitle>
           </CardHeader>
@@ -190,15 +233,27 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        {recentSales && (
+          <Card className="col-span-3 border foreground">
+            <CardHeader>
+              <CardTitle className="text-2xl">Recent Sales</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RecentSales data={recentSales} />
+            </CardContent>
+          </Card>
+        )}
+        {/* <Card className="col-span-3">
           <CardHeader>
             <CardTitle>Top Selling Items</CardTitle>
           </CardHeader>
           <CardContent>
             <TopSellingItems categoryId={selectedCategory} dateRange={date} />
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
+
+      <QuickActions />
     </div>
   );
 }
