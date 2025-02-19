@@ -97,7 +97,7 @@ export default function InventoryPage() {
           .select('low_stock_threshold, default_sorting')
           .eq('id', user.store_id) // Replace with the actual store ID
           .single();
-
+          console.log("here is my data ", data,'store id', user.store_id);
         if (error) {
           console.error('Error fetching store settings:', error);
         } else if (data) {

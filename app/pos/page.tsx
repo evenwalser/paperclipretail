@@ -39,6 +39,7 @@ interface ReceiptData {
 interface CustomerData {
   name: string;
   email: string;
+  phone: string;
 }
 
 export default function POSPage() {
@@ -58,7 +59,8 @@ export default function POSPage() {
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [customerData, setCustomerData] = useState<CustomerData>({
     name: '',
-    email: ''
+    email: '',
+    phone: ''
   });
 
   useEffect(() => {
@@ -116,13 +118,26 @@ export default function POSPage() {
   };
 
   const handleCustomerSubmit = () => {
+    // Name validation
     if (!customerData.name.trim()) {
       toast.error("Customer name is required");
       return;
     }
     
-    // Email validation
-    if (customerData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerData.email)) {
+    // Phone validation - now required
+    if (!customerData.phone?.trim()) {
+      toast.error("Phone number is required");
+      return;
+    }
+
+    // Phone format validation
+    if (!/^\+?[\d\s-]{10,}$/.test(customerData.phone)) {
+      toast.error("Please enter a valid phone number");
+      return;
+    }
+
+    // Email format validation (if provided)
+    if (customerData.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerData.email)) {
       toast.error("Please enter a valid email");
       return;
     }
@@ -171,17 +186,56 @@ export default function POSPage() {
         setChange(changeAmount);
       }
 
-      // Create customer record first
-      const { data: customerRecord, error: customerError } = await supabase
-        .from("customers")
-        .insert({
-          name: customerData.name,
-          email: customerData.email || null
-        })
-        .select()
-        .single();
+      // First, try to find existing customer
+      let customerQuery = supabase
+        .from('customers')
+        .select('*')
+        .eq('store_id', user.store_id);
 
-      if (customerError) throw customerError;
+      if (customerData.email) {
+        customerQuery = customerQuery.eq('email', customerData.email);
+      } else if (customerData.phone) {
+        customerQuery = customerQuery.eq('phone', customerData.phone);
+      }
+
+      const { data: existingCustomer, error: customerSearchError } = await customerQuery.single();
+
+      let customerRecord;
+      if (existingCustomer) {
+        // Update existing customer
+        const { data: updatedCustomer, error: updateError } = await supabase
+          .from('customers')
+          .update({
+            name: customerData.name, // Update name in case it changed
+            last_purchase_date: new Date().toISOString(),
+            total_purchases: existingCustomer.total_purchases + 1,
+            total_spent: existingCustomer.total_spent + total
+          })
+          .eq('id', existingCustomer.id)
+          .select()
+          .single();
+
+        if (updateError) throw updateError;
+        customerRecord = updatedCustomer;
+      } else {
+        // Create new customer
+        const { data: newCustomer, error: createError } = await supabase
+          .from('customers')
+          .insert({
+            name: customerData.name,
+            email: customerData.email || null,
+            phone: customerData.phone || null,
+            store_id: user.store_id,
+            last_purchase_date: new Date().toISOString(),
+            total_purchases: 1,
+            total_spent: total
+          })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        customerRecord = newCustomer;
+      }
 
       // Update sale data to include store_id
       const saleData = {
@@ -457,6 +511,15 @@ export default function POSPage() {
                   value={customerData.name}
                   onChange={(e) => setCustomerData(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Enter customer name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Phone *</label>
+                <Input
+                  type="tel"
+                  value={customerData.phone}
+                  onChange={(e) => setCustomerData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="Enter customer phone"
                 />
               </div>
               <div>

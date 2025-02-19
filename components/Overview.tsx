@@ -25,9 +25,10 @@ interface OverviewProps {
 }
 
 interface MonthlySales {
-  month: string;
-  total: number;
-  count: number;
+  month: number;
+  month_name: string;
+  total_sales: number;
+  year: number;
 }
 
 interface TooltipProps {
@@ -48,18 +49,13 @@ export function Overview({ currency, categoryId, dateRange }: OverviewProps) {
       try {
         setError(null);
         setLoading(true);
-        const { data, error } = await supabase
-          .rpc('handle_new_user',{
-            id: categoryId,
-            email: 'test@gmail.com',
-          })
-          console.log('error', error)
+        
+        const currentYear = dateRange?.from?.getFullYear() || new Date().getFullYear();
         const { data: sales, error: apiError } = await supabase
-          .rpc('get_monthly_category_sales', {
-            category_id: categoryId,
-            start_date: dateRange?.from?.toISOString(),
-            end_date: dateRange?.to?.toISOString()
-          })
+          .rpc('get_monthly_sales', {
+            store_id_param: 105,
+            year_param: currentYear
+          });
 
         if (apiError) throw apiError;
         setData(sales || []);
@@ -81,21 +77,20 @@ export function Overview({ currency, categoryId, dateRange }: OverviewProps) {
   }, [showComparison, categoryId, dateRange])
 
   const fetchComparisonData = async () => {
-    if (!dateRange?.from || !dateRange?.to) return;
+    if (!dateRange?.from) return;
     
-    const previousFrom = subMonths(dateRange.from, 12)
-    const previousTo = subMonths(dateRange.to, 12)
+    const previousYear = (dateRange.from.getFullYear() - 1);
     
     try {
-      const { data: sales } = await supabase.rpc('get_monthly_category_sales', {
-        category_id: categoryId,
-        start_date: previousFrom.toISOString(),
-        end_date: previousTo.toISOString()
-      })
+      const { data: sales, error } = await supabase.rpc('get_monthly_sales', {
+        store_id_param: 105,
+        year_param: previousYear
+      });
       
-      setComparisonData(sales || [])
+      if (error) throw error;
+      setComparisonData(sales || []);
     } catch (error) {
-      console.error('Failed to fetch comparison data:', error)
+      console.error('Failed to fetch comparison data:', error);
     }
   }
 
@@ -120,7 +115,7 @@ export function Overview({ currency, categoryId, dateRange }: OverviewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      {/* <div className="flex justify-end">
         <Button
           variant="outline"
           size="sm"
@@ -128,18 +123,18 @@ export function Overview({ currency, categoryId, dateRange }: OverviewProps) {
         >
           {showComparison ? 'Hide' : 'Show'} Year-over-Year
         </Button>
-      </div>
+      </div> */}
 
       <div className="h-[350px] w-full">
         <ResponsiveContainer>
           <ComposedChart data={data}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
+            <XAxis dataKey="month_name" />
             <YAxis />
             <Tooltip content={(props) => <CustomTooltip {...props} currency={currency} />} />
             <Legend />
             <Bar
-              dataKey="total"
+              dataKey="total_sales"
               fill="#adfa1d"
               name="Revenue"
               radius={[4, 4, 0, 0]}
@@ -147,7 +142,7 @@ export function Overview({ currency, categoryId, dateRange }: OverviewProps) {
             {showComparison && comparisonData.length > 0 && (
               <Line
                 type="monotone"
-                dataKey="total"
+                dataKey="total_sales"
                 data={comparisonData}
                 stroke="#888888"
                 name="Previous Year"
