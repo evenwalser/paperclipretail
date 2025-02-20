@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { addDays, format } from "date-fns"
+import { addDays, format, isBefore, isAfter, startOfDay, endOfDay } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { DateRange } from "react-day-picker"
 
@@ -13,27 +13,105 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface CalendarDateRangePickerProps {
   className?: string
   date: DateRange | undefined
   onDateChange: (date: DateRange | undefined) => void
+  highlightedDates?: Date[]
 }
 
 export function CalendarDateRangePicker({
   className,
   date,
   onDateChange,
+  highlightedDates = [],
 }: CalendarDateRangePickerProps) {
+  const [isOpen, setIsOpen] = React.useState(false)
+
+  // Predefined date ranges
+  const dateRanges = {
+    today: {
+      label: "Today",
+      range: {
+        from: startOfDay(new Date()),
+        to: endOfDay(new Date())
+      }
+    },
+    last7Days: {
+      label: "Last 7 Days",
+      range: {
+        from: startOfDay(addDays(new Date(), -6)),
+        to: endOfDay(new Date())
+      }
+    },
+    last30Days: {
+      label: "Last 30 Days",
+      range: {
+        from: startOfDay(addDays(new Date(), -29)),
+        to: endOfDay(new Date())
+      }
+    },
+    thisMonth: {
+      label: "This Month",
+      range: {
+        from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        to: endOfDay(new Date())
+      }
+    }
+  }
+
+  // Handle predefined range selection
+  const handlePredefinedRange = (rangeKey: keyof typeof dateRanges) => {
+    onDateChange(dateRanges[rangeKey].range)
+    setIsOpen(false)
+  }
+
+  // Validate date selection
+  const handleDateSelect = (selectedRange: DateRange | undefined) => {
+    if (!selectedRange) {
+      onDateChange(undefined)
+      return
+    }
+
+    // Ensure "from" date is not after "to" date
+    if (selectedRange.from && selectedRange.to && 
+        isAfter(selectedRange.from, selectedRange.to)) {
+      onDateChange({
+        from: selectedRange.to,
+        to: selectedRange.from
+      })
+      return
+    }
+
+    // Don't allow future dates
+    const today = endOfDay(new Date())
+    if (selectedRange.from && isAfter(selectedRange.from, today)) {
+      return
+    }
+    if (selectedRange.to && isAfter(selectedRange.to, today)) {
+      selectedRange.to = today
+    }
+
+    onDateChange(selectedRange)
+  }
+
   return (
     <div className={cn("grid gap-2", className)}>
-      <Popover>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
             id="date"
             variant={"outline"}
             className={cn(
-              "w-[260px] justify-start text-left font-normal border border-gray-800 rounded-[8px]",
+              "w-[300px] justify-start text-left font-normal",
               !date && "text-muted-foreground"
             )}
           >
@@ -48,21 +126,37 @@ export function CalendarDateRangePicker({
                 format(date.from, "LLL dd, y")
               )
             ) : (
-              <span>Pick a date</span>
+              <span>Pick a date range</span>
             )}
           </Button>
         </PopoverTrigger>
         <PopoverContent 
-          className="w-auto p-0 bg-white dark:bg-gray-800 border dark:border-gray-700 shadow-lg" 
-          align="end"
+          className="w-auto p-0" 
+          align="start"
+          side="bottom"
         >
+          <div className="p-3 border-b">
+            <div className="space-y-2">
+              {Object.entries(dateRanges).map(([key, value]) => (
+                <Button
+                  key={key}
+                  variant="ghost"
+                  className="w-full justify-start text-left font-normal"
+                  onClick={() => handlePredefinedRange(key as keyof typeof dateRanges)}
+                >
+                  {value.label}
+                </Button>
+              ))}
+            </div>
+          </div>
           <Calendar
             initialFocus
             mode="range"
             defaultMonth={date?.from}
             selected={date}
-            onSelect={onDateChange}
+            onSelect={handleDateSelect}
             numberOfMonths={2}
+            disabled={(date) => isAfter(date, new Date())}
             className="p-3"
             classNames={{
               months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
@@ -85,7 +179,8 @@ export function CalendarDateRangePicker({
               ),
               day: cn(
                 "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
-                "hover:bg-accent hover:text-accent-foreground"
+                "hover:bg-accent hover:text-accent-foreground",
+                "[&.highlighted]:bg-primary/15"
               ),
               day_range_end: "day-range-end",
               day_selected:
@@ -96,6 +191,32 @@ export function CalendarDateRangePicker({
               day_range_middle:
                 "aria-selected:bg-accent aria-selected:text-accent-foreground",
               day_hidden: "invisible",
+            }}
+            components={{
+              Dropdown: ({ value, onChange, children, ...props }) => {
+                return (
+                  <Select
+                    value={String(value)}
+                    onValueChange={(val: string) => onChange?.({ target: { value: val } } as any)}
+                  >
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue>{value}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {children}
+                    </SelectContent>
+                  </Select>
+                )
+              }
+            }}
+            modifiers={{
+              highlighted: highlightedDates
+            }}
+            modifiersStyles={{
+              highlighted: {
+                backgroundColor: "rgba(var(--primary-500), 0.15)",
+                borderRadius: "0"
+              }
             }}
           />
         </PopoverContent>

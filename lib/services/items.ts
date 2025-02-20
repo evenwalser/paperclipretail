@@ -124,6 +124,7 @@ export async function getItems(
       `
       )
       .eq("store_id", user.store_id)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .range(startIndex, startIndex + itemsPerPage - 1),
   ]);

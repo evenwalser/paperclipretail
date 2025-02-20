@@ -115,19 +115,25 @@ export default function DashboardPage() {
 
       try {
         const [inventoryData, revenueData, customerData, monthlySalesData] = await Promise.all([
-          supabase.rpc('get_total_inventory', { store_id_param: storeId }),
+          supabase.rpc('get_total_inventory', { 
+            store_id_param: storeId,
+            start_date: date?.from?.toISOString() || null,
+            end_date: date?.to?.toISOString() || null
+          }),
           supabase.rpc('get_total_revenue', { 
             store_id_param: storeId,
-            start_date: date?.from?.toISOString(),
-            end_date: date?.to?.toISOString()
+            start_date: date?.from?.toISOString() || null,
+            end_date: date?.to?.toISOString() || null
           }),
           supabase.rpc('get_active_customers', { 
             store_id_param: storeId,
-            days_lookback: 30
+            start_date: date?.from?.toISOString() || null,
+            end_date: date?.to?.toISOString() || null
           }),
           supabase.rpc('get_monthly_sales', { 
             store_id_param: storeId,
-            year_param: new Date().getFullYear()
+            start_date: date?.from?.toISOString() || null,
+            end_date: date?.to?.toISOString() || null
           })
         ]);
 
@@ -171,8 +177,8 @@ export default function DashboardPage() {
     fetchStats();
   }, [selectedCategory, date]);
 
-  const setDateHandler = (data: DateRange) => {
-    setDate(date);
+  const setDateHandler = (data: DateRange | undefined) => {
+    setDate(data);
   };
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
@@ -288,7 +294,7 @@ export default function DashboardPage() {
           <CardContent className="pl-2">
             <Overview
               currency="£"
-              categoryId={selectedCategory}
+              storeId={storeId ?? undefined}
               dateRange={date}
             />
           </CardContent>

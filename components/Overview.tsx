@@ -22,6 +22,7 @@ interface OverviewProps {
   currency: string;
   categoryId?: string;
   dateRange?: DateRange;
+  storeId?: number
 }
 
 interface MonthlySales {
@@ -37,7 +38,7 @@ interface TooltipProps {
   label?: string;
 }
 
-export function Overview({ currency, categoryId, dateRange }: OverviewProps) {
+export function Overview({ currency, categoryId, storeId, dateRange }: OverviewProps) {
   const [data, setData] = useState<MonthlySales[]>([])
   const [comparisonData, setComparisonData] = useState<MonthlySales[]>([])
   const [showComparison, setShowComparison] = useState(false)
@@ -51,14 +52,16 @@ export function Overview({ currency, categoryId, dateRange }: OverviewProps) {
         setLoading(true);
         
         const currentYear = dateRange?.from?.getFullYear() || new Date().getFullYear();
+       if(storeId) {
         const { data: sales, error: apiError } = await supabase
-          .rpc('get_monthly_sales', {
-            store_id_param: 105,
-            year_param: currentYear
-          });
+        .rpc('get_monthly_sales', {
+          store_id_param: storeId,
+          year_param: currentYear
+        });
 
-        if (apiError) throw apiError;
-        setData(sales || []);
+      if (apiError) throw apiError;
+      setData(sales || []);
+       }
       } catch (err) {
         console.error('Failed to fetch monthly sales:', err);
         setError('Failed to load sales data');
@@ -68,7 +71,7 @@ export function Overview({ currency, categoryId, dateRange }: OverviewProps) {
     }
 
     fetchMonthlySales();
-  }, [categoryId, dateRange]);
+  }, [categoryId, dateRange,storeId]);
 
   useEffect(() => {
     if (showComparison) {

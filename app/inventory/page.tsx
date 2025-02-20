@@ -75,7 +75,7 @@ export default function InventoryPage() {
           console.log("here is my categories data ", categoryData);
           console.log("here is items", items);
           setCategories(categoryData);
-          setItems(items);
+          setItems(items.filter(item => !item.deleted_at));
           console.log("here is my items ", items);
           setTotalPages(totalPages);
         }
@@ -176,38 +176,20 @@ export default function InventoryPage() {
   const handleDelete = async (itemId: string) => {
     setDeletingItems((prev) => new Set(prev).add(itemId));
     try {
-      // First, delete associated images from storage
-      const { data: imageData } = await supabase
-        .from("item_images")
-        .select("image_url")
-        .eq("item_id", itemId);
+      const { error } = await supabase
+        .from("items")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", itemId);
 
-      if (imageData?.length) {
-        // Extract file paths from URLs and delete from storage
-        const filePaths = imageData.map((img) => {
-          const url = new URL(img.image_url);
-          return url.pathname.split("/").pop()!;
-        });
+      if (error) throw error;
 
-        if (filePaths.length > 0) {
-          await supabase.storage.from("items").remove(filePaths);
-        }
-      }
-
-      // Delete image records
-      await supabase.from("item_images").delete().eq("item_id", itemId);
-
-      // Delete the item
-      await supabase.from("items").delete().eq("id", itemId);
-
-      // Update local state
       setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
-
-      // Close the delete dialog if open
       setItemToDelete(null);
+      
+      toast.success("Item successfully removed from inventory");
     } catch (error) {
-      console.error("Error deleting item:", error);
-      alert("Failed to delete item. Please try again.");
+      console.error("Error removing item:", error);
+      toast.error("Failed to remove item. Please try again.");
     } finally {
       setDeletingItems((prev) => {
         const next = new Set(prev);
