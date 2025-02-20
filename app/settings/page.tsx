@@ -57,7 +57,7 @@ const SettingsPage = (): any => {
   });
 
   // Inventory states
-  const [lowStockThreshold, setLowStockThreshold] = useState(5);
+  const [lowStockThreshold, setLowStockThreshold] = useState(0);
   const [hideLowStock, setHideLowStock] = useState(false);
   const [defaultSorting, setDefaultSorting] = useState("newest");
   const [storeId, setStoreId] = useState<string>("");

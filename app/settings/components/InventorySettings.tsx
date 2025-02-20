@@ -39,19 +39,18 @@ export function InventorySettings({
       return
     }
 
-    const { error } = await supabase
-      .from('stores')
-      .update({
-        low_stock_threshold: threshold,
-        default_sorting: defaultSorting,
-      })
-      .eq('id', storeId)
-
+    // Start a transaction to update both store and items
+    const { data, error } = await supabase.rpc('update_store_threshold_and_items', {
+      p_store_id: storeId,
+      p_threshold: threshold,
+      p_default_sorting: defaultSorting
+    })
+    console.log('here es my data', data, 'here is my error', error)
     if (error) {
-      console.error("Error updating store settings:", error)
+      console.error("Error updating settings:", error)
       setSaveMessage("Error updating settings")
     } else {
-      setSaveMessage("Settings updated successfully!")
+      setSaveMessage("Settings and item statuses updated successfully!")
     }
     console.log("Settings saved:", {
       lowStockThreshold,
@@ -86,7 +85,7 @@ export function InventorySettings({
           />
         </div>
         
-        <div className="flex items-center space-x-2">
+        {/* <div className="flex items-center space-x-2">
           <Switch 
             id="hideLowStock" 
             checked={hideLowStock}
@@ -95,7 +94,7 @@ export function InventorySettings({
           <Label htmlFor="hideLowStock">
             Hide Low Stock Items on Marketplace
           </Label>
-        </div>
+        </div> */}
         
         <div>
           <Label htmlFor="defaultSorting">Default Inventory Sorting</Label>
@@ -115,7 +114,11 @@ export function InventorySettings({
         <Button onClick={handleSaveChanges} className="w-full bg-[#FF3B30] hover:bg-[#E6352B] text-white">
           Save Changes
         </Button>
-        {saveMessage && <p className="mt-2 text-sm">{saveMessage}</p>}
+        {saveMessage && (
+          <p className={`mt-2 text-sm ${saveMessage.includes('Error') ? 'text-red-500' : 'text-green-500'}`}>
+            {saveMessage}
+          </p>
+        )}
       </CardContent>
     </Card>
   )
