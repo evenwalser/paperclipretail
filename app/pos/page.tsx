@@ -58,9 +58,15 @@ export default function POSPage() {
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [customerData, setCustomerData] = useState<CustomerData>({
-    name: '',
-    email: '',
-    phone: ''
+    name: "",
+    email: "",
+    phone: "",
+  });
+  const [posSettings, setPosSettings] = useState({
+    acceptCash: true,
+    acceptCard: true,
+    receiptLogo: "",
+    receiptMessage: "Thank you for shopping with us!",
   });
 
   useEffect(() => {
@@ -68,6 +74,7 @@ export default function POSPage() {
       try {
         const user = await getUser();
         setuser(user);
+        console.log("here is my user", user);
       } catch (error) {
         console.error("Failed to load items:", error);
       }
@@ -80,6 +87,36 @@ export default function POSPage() {
       setAmount(total.toFixed(2));
     }
   }, [total]);
+
+  useEffect(() => {
+    const fetchPOSSettings = async () => {
+      try {
+        if (!user) return;
+        const { data, error } = await supabase
+          .from("stores")
+          .select("accept_cash, accept_card, receipt_logo, receipt_message")
+          .eq("owner_id", user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setPosSettings({
+            acceptCash: data.accept_cash ?? true,
+            acceptCard: data.accept_card ?? true,
+            receiptLogo: data.receipt_logo || "",
+            receiptMessage:
+              data.receipt_message || "Thank you for shopping with us!",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching POS settings:", error);
+        toast.error("Failed to load POS settings");
+      }
+    };
+
+    fetchPOSSettings();
+  }, [user,supabase]);
 
   const handleNumberClick = (num: string) => {
     if (amount === "0.00") {
@@ -152,7 +189,7 @@ export default function POSPage() {
       toast.error("Customer name is required");
       return;
     }
-    
+
     // Phone validation - now required
     if (!customerData.phone?.trim()) {
       toast.error("Phone number is required");
@@ -166,7 +203,10 @@ export default function POSPage() {
     }
 
     // Email format validation (if provided)
-    if (customerData.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerData.email)) {
+    if (
+      customerData.email?.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerData.email)
+    ) {
       toast.error("Please enter a valid email");
       return;
     }
@@ -217,30 +257,31 @@ export default function POSPage() {
 
       // First, try to find existing customer
       let customerQuery = supabase
-        .from('customers')
-        .select('*')
-        .eq('store_id', user.store_id);
+        .from("customers")
+        .select("*")
+        .eq("store_id", user.store_id);
 
       if (customerData.email) {
-        customerQuery = customerQuery.eq('email', customerData.email);
+        customerQuery = customerQuery.eq("email", customerData.email);
       } else if (customerData.phone) {
-        customerQuery = customerQuery.eq('phone', customerData.phone);
+        customerQuery = customerQuery.eq("phone", customerData.phone);
       }
 
-      const { data: existingCustomer, error: customerSearchError } = await customerQuery.single();
+      const { data: existingCustomer, error: customerSearchError } =
+        await customerQuery.single();
 
       let customerRecord;
       if (existingCustomer) {
         // Update existing customer
         const { data: updatedCustomer, error: updateError } = await supabase
-          .from('customers')
+          .from("customers")
           .update({
             name: customerData.name, // Update name in case it changed
             last_purchase_date: new Date().toISOString(),
             total_purchases: existingCustomer.total_purchases + 1,
-            total_spent: existingCustomer.total_spent + total
+            total_spent: existingCustomer.total_spent + total,
           })
-          .eq('id', existingCustomer.id)
+          .eq("id", existingCustomer.id)
           .select()
           .single();
 
@@ -249,7 +290,7 @@ export default function POSPage() {
       } else {
         // Create new customer
         const { data: newCustomer, error: createError } = await supabase
-          .from('customers')
+          .from("customers")
           .insert({
             name: customerData.name,
             email: customerData.email || null,
@@ -257,7 +298,7 @@ export default function POSPage() {
             store_id: user.store_id,
             last_purchase_date: new Date().toISOString(),
             total_purchases: 1,
-            total_spent: total
+            total_spent: total,
           })
           .select()
           .single();
@@ -275,7 +316,7 @@ export default function POSPage() {
         amount_tendered: method === "cash" ? parseFloat(amount) : total,
         change_amount: method === "cash" ? parseFloat(amount) - total : 0,
         customer_id: customerRecord.id,
-        store_id: user.store_id
+        store_id: user.store_id,
       };
 
       const { data: saleRecord, error: saleError } = await supabase
@@ -372,13 +413,19 @@ export default function POSPage() {
         <Card className="bg-white dark:bg-gray-800 shadow-lg justify-between">
           <div className="border-b border-[#3e4a5c] flex items-center gap-2 flex-row justify-between px-4 py-3 !m-0">
             <CardTitle className="flex items-center">
-              <ShoppingCart className="mr-2 h-5 w-5 text-paperclip-red" /> Cart Items
+              <ShoppingCart className="mr-2 h-5 w-5 text-paperclip-red" /> Cart
+              Items
             </CardTitle>
             <div className="m-0">
-              <Button onClick={clearCart} className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
+              <Button
+                onClick={clearCart}
+                className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
         font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
         disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-9 px-4 py-2 min-w-[100px]
-         bg-[#fff] text-[#333] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] m-0">Clear Cart</Button>
+         bg-[#fff] text-[#333] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] m-0"
+              >
+                Clear Cart
+              </Button>
             </div>
           </div>
           <CardContent>
@@ -532,31 +579,52 @@ export default function POSPage() {
       {showCustomerForm && (
         <div className="fixed inset-0 flex items-center justify-center bg-[#191e25] bg-opacity-50 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-[500px]">
-            <h2 className="text-xl m-0 p-5 border-b-[1px] border-[#384454]">Customer Information</h2>
+            <h2 className="text-xl m-0 p-5 border-b-[1px] border-[#384454]">
+              Customer Information
+            </h2>
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Name *</label>
                 <Input
                   value={customerData.name}
-                  onChange={(e) => setCustomerData(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
+                  }
                   placeholder="Enter customer name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Phone *</label>
+                <label className="block text-sm font-medium mb-1">
+                  Phone *
+                </label>
                 <Input
                   type="tel"
                   value={customerData.phone}
-                  onChange={(e) => setCustomerData(prev => ({ ...prev, phone: e.target.value }))}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({
+                      ...prev,
+                      phone: e.target.value,
+                    }))
+                  }
                   placeholder="Enter customer phone"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Email (Optional)</label>
+                <label className="block text-sm font-medium mb-1">
+                  Email (Optional)
+                </label>
                 <Input
                   type="email"
                   value={customerData.email}
-                  onChange={(e) => setCustomerData(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({
+                      ...prev,
+                      email: e.target.value,
+                    }))
+                  }
                   placeholder="Enter customer email"
                 />
               </div>
@@ -583,38 +651,52 @@ export default function POSPage() {
       {showPaymentOptions && (
         <div className="fixed inset-0 flex items-center justify-center bg-[#191e25] bg-opacity-50 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-[500px]">
-            <h2 className="text-xl m-0 p-5 bottom-0 border-b-[1px] border-[#384454]">Select Payment Method</h2>
+            <h2 className="text-xl m-0 p-5 bottom-0 border-b-[1px] border-[#384454]">
+              Select Payment Method
+            </h2>
 
             <div className="flex gap-4 p-6">
+              {posSettings.acceptCash && (
+                <Button
+                  className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
+                font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring 
+                disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 
+                [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-4 py-2 min-w-[100px] bg-transparent 
+                text-[#fff] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] hover:bg-[#dc2626] 
+                hover:border-[#dc2626]"
+                  onClick={() => {
+                    handlePayment("cash");
+                    setShowPaymentOptions(false);
+                  }}
+                >
+                  Cash Payment
+                </Button>
+              )}
+
+              {posSettings.acceptCard && (
+                <Button
+                  className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
+                font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring 
+                disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 
+                [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-4 py-2 min-w-[100px] bg-transparent 
+                text-[#fff] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] hover:bg-[#dc2626] 
+                hover:border-[#dc2626]"
+                  onClick={() => {
+                    handlePayment("card");
+                    setShowPaymentOptions(false);
+                  }}
+                >
+                  Card Payment
+                </Button>
+              )}
+
               <Button
-              className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
-        font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
-        disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-4 py-2 min-w-[100px]
-         bg-transparent text-[#fff] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] hover:bg-[#dc2626] hover:border-[#dc2626]"
-                onClick={() => {
-                  handlePayment("cash");
-                  setShowPaymentOptions(false);
-                }}
-              >
-                Cash Payment
-              </Button>
-              <Button
-              className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
-        font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
-        disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-4 py-2 min-w-[100px]
-         bg-transparent text-[#fff] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] hover:bg-[#dc2626] hover:border-[#dc2626]"
-                onClick={() => {
-                  handlePayment("card");
-                  setShowPaymentOptions(false);
-                }}
-              >
-                Card Payment
-              </Button>
-              <Button
-              className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
-        font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
-        disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-4 py-2 min-w-[100px]
-         bg-transparent text-[#fff] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] hover:bg-[#dc2626] hover:border-[#dc2626]"
+                className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
+              font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring 
+              disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 
+              [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-4 py-2 min-w-[100px] bg-transparent 
+              text-[#fff] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] hover:bg-[#dc2626] 
+              hover:border-[#dc2626]"
                 variant="destructive"
                 onClick={() => setShowPaymentOptions(false)}
               >
@@ -631,6 +713,8 @@ export default function POSPage() {
             saleData={receiptData.saleData}
             items={receiptData.items}
             userId={user.id}
+            receiptLogo={posSettings.receiptLogo}
+            receiptMessage={posSettings.receiptMessage}
             onClose={() => {
               setShowReceipt(false);
               setIsProcessing(false);

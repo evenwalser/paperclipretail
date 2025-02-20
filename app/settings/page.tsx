@@ -62,14 +62,6 @@ const SettingsPage = (): any => {
   const [defaultSorting, setDefaultSorting] = useState("newest");
   const [storeId, setStoreId] = useState<string>("");
 
-  // POS states
-  const [acceptCash, setAcceptCash] = useState(true);
-  const [acceptCard, setAcceptCard] = useState(true);
-  const [receiptLogo, setReceiptLogo] = useState<string | null>(null);
-  const [receiptMessage, setReceiptMessage] = useState(
-    "Thank you for shopping with us!"
-  );
-
   // Notification states
   const [notificationChannels, setNotificationChannels] = useState<string[]>(
     []
@@ -247,16 +239,7 @@ const SettingsPage = (): any => {
               />
             </TabsContent>
             <TabsContent value="pos">
-              <POSSettings
-              // acceptCash={acceptCash}
-              // setAcceptCash={setAcceptCash}
-              // acceptCard={acceptCard}
-              // setAcceptCard={setAcceptCard}
-              // receiptLogo={receiptLogo}
-              // setReceiptLogo={setReceiptLogo}
-              // receiptMessage={receiptMessage}
-              // setReceiptMessage={setReceiptMessage}
-              />
+              <POSSettings />
             </TabsContent>
             <TabsContent value="notifications">
               <NotificationSettings

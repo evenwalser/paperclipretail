@@ -23,10 +23,12 @@ interface ReceiptProps {
     name: string;
     email: string;
   };
+  receiptLogo?: string;
+  receiptMessage?: string;
   onClose: () => void;
 }
 
-export function Receipt({ saleData, items, userId, customerDetails, onClose }: ReceiptProps) {
+export function Receipt({ saleData, items, userId, customerDetails, receiptLogo, receiptMessage = 'Thank you for shopping with us!', onClose }: ReceiptProps) {
   const supabase = createClient();
   const [storeDetails, setStoreDetails] = useState<{
     store_name: string;
@@ -70,13 +72,22 @@ export function Receipt({ saleData, items, userId, customerDetails, onClose }: R
 
   return (
     <div className="bg-[#191e25] p-6 rounded-lg max-w-[600px] w-full mx-auto receipt-content">
+       {/* {receiptLogo && (
+        <div className="flex justify-center mb-4">
+          <img 
+            src={receiptLogo} 
+            alt="Store Logo" 
+            className="max-h-16 object-contain"
+          />
+        </div>
+      )} */}
       {/* Store Header */}
       {storeDetails && (
         <div className="mb-5 flex gap-2 border-[1px] border-[rgb(31,41,55)]">
          <div className="w-[180px] h-[180px] p-4 overflow-hidden">
           {storeDetails.store_logo && (
               <img
-                src={storeDetails.store_logo}
+                src={receiptLogo}
                 alt="Store Logo"                
               />
             )}
@@ -126,8 +137,7 @@ export function Receipt({ saleData, items, userId, customerDetails, onClose }: R
       <div className="flex justify-between gap-3 align-center mb-5">
          {/* Thank You Message */}
          <div className="text-sm">
-          <p>Thank you for your purchase!</p>
-          <p>Please come again</p>
+          <p>{receiptMessage}</p>
         </div>
         {/* Totals */}
         <div className="text-sm grid gap-2 w-[200px] pr-4">

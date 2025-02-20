@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -9,23 +9,131 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Upload, CreditCard, Banknote } from 'lucide-react'
 import { Separator } from "@/components/ui/separator"
+import { createClient } from "@/utils/supabase/client"
+import { getUser } from "@/lib/services/items"
+import { toast } from "sonner"
 
 export function POSSettings() {
   const [acceptCash, setAcceptCash] = useState(true)
   const [acceptCard, setAcceptCard] = useState(true)
   const [receiptLogo, setReceiptLogo] = useState<string>('')
   const [receiptMessage, setReceiptMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const supabase = createClient()
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    const fetchPOSSettings = async () => {
+      try {
+        const user = await getUser()
+        setUser(user)
+        const { data, error } = await supabase
+          .from('stores')
+          .select('accept_cash, accept_card, receipt_logo, receipt_message')
+          .eq('owner_id', user.id)
+          .single()
+
+        if (error) throw error
+
+        if (data) {
+          setAcceptCash(data.accept_cash ?? true)
+          setAcceptCard(data.accept_card ?? true)
+          setReceiptLogo(data.receipt_logo || '')
+          setReceiptMessage(data.receipt_message || 'Thank you for shopping with us!')
+        }
+      } catch (error) {
+        console.error('Error fetching POS settings:', error)
+        toast.error('Failed to load POS settings')
+      }
+    }
+
+    fetchPOSSettings()
+  }, [supabase])
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setReceiptLogo(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file || !user) return;
+
+    // Delete previous image if exists
+    let pathToDelete = "";
+    if (receiptLogo) {
+      try {
+        // Extract path from URL
+        const urlParts = receiptLogo.split("/");
+        const bucket = urlParts[3];
+        const fileName = urlParts.slice(4).join("/");
+        pathToDelete = fileName;
+      } catch (error) {
+        console.error("Error parsing image URL:", error);
+      }
+    }
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${user.id}/receipt-logo-${Date.now()}.${fileExt}`;
+
+    try {
+      if (pathToDelete) {
+        const { error: deleteError } = await supabase.storage
+          .from("store-images")
+          .remove([pathToDelete]);
+
+        if (deleteError) throw deleteError;
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from("store-images")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("store-images").getPublicUrl(fileName);
+
+      setReceiptLogo(publicUrl);
+
+      // Update the store record with the new receipt logo URL
+      const { error: updateError } = await supabase
+        .from('stores')
+        .update({ receipt_logo: publicUrl })
+        .eq('owner_id', user.id);
+
+      if (updateError) throw updateError;
+
+      toast.success("Receipt logo uploaded successfully");
+    } catch (error) {
+      console.error("Upload failed:", error);
+      toast.error("Upload failed", {
+        description: error instanceof Error ? error.message : "Could not upload image",
+      });
     }
   };
+
+  const handleSaveChanges = async () => {
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('stores')
+        .update({
+          accept_cash: acceptCash,
+          accept_card: acceptCard,
+          receipt_logo: receiptLogo,
+          receipt_message: receiptMessage
+        })
+        .eq('owner_id', user.id)
+
+      if (error) throw error
+      toast.success('POS settings updated successfully')
+    } catch (error) {
+      console.error('Error saving POS settings:', error)
+      toast.error('Failed to save POS settings')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -144,8 +252,12 @@ export function POSSettings() {
             </div>
           </div>
 
-          <Button className="w-full bg-[#FF3B30] hover:bg-[#E6352B] text-white font-medium">
-            Save Changes
+          <Button 
+            className="w-full bg-[#FF3B30] hover:bg-[#E6352B] text-white font-medium"
+            onClick={handleSaveChanges}
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : 'Save Changes'}
           </Button>
         </CardContent>
       </Card>
