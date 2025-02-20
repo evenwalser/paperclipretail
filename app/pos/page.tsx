@@ -103,7 +103,7 @@ export default function POSPage() {
     router.push("/inventory");
   };
 
-  const handleCompleteSale = () => {
+  const handleCompleteSale = async () => {
     if (items.length === 0) {
       toast.error("Cart is empty");
       return;
@@ -114,7 +114,36 @@ export default function POSPage() {
       return;
     }
 
-    setShowCustomerForm(true);
+    // Validate stock quantities for all items before proceeding
+    try {
+      for (const item of items) {
+        const { data: currentItem, error } = await supabase
+          .from("items")
+          .select("quantity")
+          .eq("id", item.id)
+          .single();
+
+        if (error) throw error;
+        if (!currentItem) {
+          toast.error(`Item "${item.title}" not found`);
+          return;
+        }
+
+        if (item.quantity > currentItem.quantity) {
+          toast.error(
+            `Only ${currentItem.quantity} items available for "${item.title}"`
+          );
+          updateQuantity(item.id, currentItem.quantity);
+          return;
+        }
+      }
+
+      // If all validations pass, show the customer form
+      setShowCustomerForm(true);
+    } catch (error) {
+      toast.error("Failed to validate stock quantities");
+      console.error("Stock validation error:", error);
+    }
   };
 
   const handleCustomerSubmit = () => {
