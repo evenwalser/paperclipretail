@@ -22,7 +22,7 @@ import { Navigation, Pagination } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
-import { PlusCircle, Pencil, Trash2, ShoppingCart } from "lucide-react";
+import { PlusCircle, Pencil, Trash2, ShoppingCart, Copy } from "lucide-react";
 import { useCart } from "../contexts/CartContext";
 import { supabase } from "@/lib/supabase";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -431,6 +431,14 @@ export default function InventoryPage() {
                 <p className="text-sm text-gray-600 mb-4">
                   Quantity: {item.quantity || 0}
                 </p>
+                <div className="text-sm text-gray-600 mb-4">
+                  {item.condition && (
+                    <p className="mb-1">Condition: {item.condition}</p>
+                  )}
+                  {item.size && (
+                    <p>Size: {item.size}</p>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-3 gap-2">
                   <Button
@@ -472,6 +480,14 @@ export default function InventoryPage() {
                     onClick={() => toggleItemSelection(item.id)}
                   >
                     {selectedItems.includes(item.id) ? "Deselect" : "Select"}
+                  </Button>
+                  <Button
+                    onClick={() => router.push(`/inventory/add?duplicate=${item.id}`)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    Duplicate
                   </Button>
                 </div>
               </CardContent>

@@ -67,6 +67,20 @@ const conditionOptions = [
 //   list_on_paperclip: boolean;
 // }
 
+// Add this interface near the top with other interfaces
+interface DuplicateItemData {
+  title: string;
+  description: string;
+  price: string;
+  category_id: string;
+  condition: typeof conditionOptions[number]['value'];
+  size: string;
+  available_in_store: boolean;
+  list_on_paperclip: boolean;
+  quantity: string;
+  images: ImageFile[];
+}
+
 export default function AddItemPage() {
   const router = useRouter();
   // State management
@@ -118,6 +132,9 @@ export default function AddItemPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
+
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [duplicateData, setDuplicateData] = useState<DuplicateItemData | null>(null);
 
   const currentMediaUrl = images[currentImageIndex]?.url;
 
@@ -563,7 +580,7 @@ export default function AddItemPage() {
                          selectedCategories.level2 || 
                          selectedCategories.level1;
 
-      // Ensure all numbers are properly parsed before sending to database
+      // Create new item with condition and size
       const { data: item, error: itemError } = await supabase
         .from("items")
         .insert({
@@ -578,6 +595,7 @@ export default function AddItemPage() {
           store_id: user?.store_id,
           created_by: user?.id,
           quantity: parseInt(itemDetails.quantity) || 1,
+          duplicated_from: isDuplicating ? new URLSearchParams(window.location.search).get('duplicate') : null
         })
         .select()
         .single();
@@ -602,6 +620,7 @@ export default function AddItemPage() {
             fileData = await response.blob();
           }
           console.log("all images removed", removeImage(index));
+          console.log('here is my file data ', fileData, fileName)
           // Upload to Supabase storage
           const { error: uploadError } = await supabase.storage
             .from("item-images")
@@ -646,7 +665,7 @@ export default function AddItemPage() {
       router.push("/inventory");
     } catch (error) {
       console.error("Error saving item:", error);
-      alert("Failed to save item. Please try again.");
+      toast.error("Failed to save item. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -677,6 +696,150 @@ export default function AddItemPage() {
     // Allow only positive integers
     if (value === '' || /^\d+$/.test(value)) {
       setItemDetails(prev => ({ ...prev, quantity: value }));
+    }
+  };
+
+  // Add this effect to handle duplicate data
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const duplicateItemId = searchParams.get('duplicate');
+
+    if (duplicateItemId) {
+      setIsDuplicating(true);
+      fetchItemDetails(duplicateItemId);
+    }
+  }, []);
+
+  // Add this function to fetch item details for duplication
+  const fetchItemDetails = async (itemId: string) => {
+    try {
+      setCurrentView('details');
+      // Fetch and set categories first
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from("categories")
+        .select("*")
+        .order("display_order", { ascending: true });
+        
+      if (categoriesError) throw categoriesError;
+      
+      // Fetch item details
+      const { data: item, error: itemError } = await supabase
+        .from('items')
+        .select(`
+          *,
+          categories:category_id (
+            id,
+            name,
+            parent_id
+          )
+        `)
+        .eq('id', itemId)
+        .single();
+
+      if (itemError) throw itemError;
+
+      // Fetch item images
+      const { data: imageData, error: imageError } = await supabase
+        .from('item_images')
+        .select('*')
+        .eq('item_id', itemId)
+        .order('display_order');
+
+      if (imageError) throw imageError;
+
+      // Process images
+      const processedImages = await Promise.all(
+        imageData.map(async (img) => {
+          const response = await fetch(img.image_url);
+          const blob = await response.blob();
+          const file = new File([blob], `duplicate-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          return {
+            url: img.image_url,
+            file,
+            filepath: `duplicate/${Date.now()}-${file.name}`
+          };
+        })
+      );
+
+      // Find the category hierarchy using categoriesData directly
+      const findCategoryHierarchy = (categoryId: string) => {
+        const hierarchy = { level1: '', level2: '', level3: '' };
+        
+        // Get the selected category
+        const currentCategory = categoriesData.find(cat => cat.id === categoryId);
+        if (!currentCategory) return hierarchy;
+
+        // Build hierarchy from bottom up
+        if (!currentCategory.parent_id) {
+          // This is a level 1 category
+          hierarchy.level1 = currentCategory.id;
+        } else {
+          // Find parent
+          const parent = categoriesData.find(cat => cat.id === currentCategory.parent_id);
+          if (!parent) return hierarchy;
+
+          if (!parent.parent_id) {
+            // This is a level 2 category
+            hierarchy.level1 = parent.id;
+            hierarchy.level2 = currentCategory.id;
+          } else {
+            // This is a level 3 category
+            const grandparent = categoriesData.find(cat => cat.id === parent.parent_id);
+            if (grandparent) {
+              hierarchy.level1 = grandparent.id;
+              hierarchy.level2 = parent.id;
+              hierarchy.level3 = currentCategory.id;
+            }
+          }
+        }
+
+        return hierarchy;
+      };
+
+      // Set categories first
+      setCategories(categoriesData);
+      
+      // Calculate hierarchy using the fetched categoriesData
+      const categoryHierarchy = findCategoryHierarchy(item.category_id);
+      
+      // Set the rest of the state
+      setSelectedCategories(categoryHierarchy);
+      setIsPrePopulated(true);
+
+      // Set the duplicate data
+      setDuplicateData({
+        title: item.title,
+        description: item.description,
+        price: item.price.toString(),
+        category_id: item.category_id,
+        condition: item.condition,
+        size: item.size,
+        available_in_store: item.available_in_store,
+        list_on_paperclip: item.list_on_paperclip,
+        quantity: item.quantity.toString(),
+        images: processedImages
+      });
+
+      // Pre-populate the form
+      setItemDetails({
+        name: item.title,
+        description: item.description,
+        price: item.price.toString(),
+        quantity: item.quantity.toString(),
+        condition: item.condition || ''
+      });
+      setCondition(item.condition);
+      setSize(item.size);
+      setAvailableInStore(item.available_in_store);
+      setListOnPaperclip(item.list_on_paperclip);
+      setImages(processedImages);
+
+      // Move to details view
+    } catch (error) {
+      console.error('Error fetching item details:', error);
+      toast.error('Failed to load item details for duplication');
+    } finally {
+      setIsDuplicating(false);
     }
   };
 
