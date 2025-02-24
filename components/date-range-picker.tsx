@@ -134,6 +134,12 @@ export function CalendarDateRangePicker({
           className="w-auto p-0" 
           align="start"
           side="bottom"
+          alignOffset={-30}
+          style={{ 
+            position: 'absolute',
+            right: '-336px',
+            marginRight: '30px'
+          }}
         >
           <div className="p-3 border-b">
             <div className="space-y-2">
@@ -157,7 +163,7 @@ export function CalendarDateRangePicker({
             onSelect={handleDateSelect}
             numberOfMonths={2}
             disabled={(date) => isAfter(date, new Date())}
-            className="p-3"
+            className="p-3 demos"
             classNames={{
               months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
               month: "space-y-4",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -16,17 +17,86 @@ import {
 import Image from "next/image";
 import { ASSETS } from "@/lib/constants";
 import { logout } from "@/app/login/actions";
+import { supabase } from '@/lib/supabase';
 
-const sidebarItems = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Inventory", href: "/inventory", icon: Package },
-  { name: "POS", href: "/pos", icon: PoundSterling },
-  { name: "Notifications", href: "/notifications", icon: Bell },
-  { name: "Settings", href: "/settings", icon: Settings },
-];
+// Add a NotificationBadge component
+const NotificationBadge = ({ count }: { count: number }) => {
+  if (count === 0) return null;
+  
+  return (
+    <div className="absolute -right-1 -top-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+      {count > 99 ? '99+' : count}
+    </div>
+  );
+};
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    fetchUnreadCount();
+
+    const channel = supabase
+      .channel('notification-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+        },
+        async (payload) => {
+          // Immediately fetch the current unread count instead of trying to calculate it
+          fetchUnreadCount();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+        },
+        async (payload) => {
+          // For new notifications, just fetch the current count
+          fetchUnreadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('read', false)
+        .is('deleted_at', null);
+
+      if (error) throw error;
+      setUnreadCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  const sidebarItems = [
+    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Inventory", href: "/inventory", icon: Package },
+    { name: "POS", href: "/pos", icon: PoundSterling },
+    { 
+      name: "Notifications", 
+      href: "/notifications", 
+      icon: Bell,
+      badge: unreadCount > 0 ? unreadCount : null 
+    },
+    { name: "Settings", href: "/settings", icon: Settings },
+  ];
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 w-64 border-r border-gray-200 dark:border-gray-800">
@@ -46,7 +116,7 @@ export function Sidebar() {
               <Button
                 variant="ghost"
                 className={cn(
-                  "w-full justify-start rounded-[8px]",
+                  "w-full justify-start rounded-[8px] relative",
                   pathname === item.href
                     ? "bg-gray-100 dark:bg-gray-800 text-[#dc2626]"
                     : "hover:bg-gray-800 hover:text-[#fff]"
@@ -54,6 +124,7 @@ export function Sidebar() {
               >
                 <item.icon className="mr-2 h-4 w-4" />
                 {item.name}
+                {item.badge && <NotificationBadge count={item.badge} />}
               </Button>
             </Link>
           ))}
