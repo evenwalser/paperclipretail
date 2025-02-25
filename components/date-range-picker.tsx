@@ -138,10 +138,11 @@ export function CalendarDateRangePicker({
           style={{ 
             position: 'absolute',
             right: '-336px',
-            marginRight: '30px'
+            marginRight: '30px',
+            display: 'flex',
           }}
         >
-          <div className="p-3 border-b">
+          <div className="p-3">
             <div className="space-y-2">
               {Object.entries(dateRanges).map(([key, value]) => (
                 <Button
@@ -215,6 +216,15 @@ export function CalendarDateRangePicker({
                 )
               }
             }}
+            // modifiers={{
+            //   highlighted: highlightedDates
+            // }}
+            // modifiersStyles={{
+            //   highlighted: {
+            //     backgroundColor: "rgba(var(--primary-500), 0.15)",
+            //     borderRadius: "0"
+            //   }
+            // }}
             modifiers={{
               highlighted: highlightedDates
             }}
@@ -223,6 +233,12 @@ export function CalendarDateRangePicker({
                 backgroundColor: "rgba(var(--primary-500), 0.15)",
                 borderRadius: "0"
               }
+            }}
+            modifiersClassNames={{
+              highlighted: "bg-primary/15 border border-primary rounded-md", // Your custom class for highlighted dates
+              disabled: "opacity-50 cursor-not-allowed", // Custom style for disabled dates
+              today: "bg-accent text-accent-foreground", // Custom style for today's date
+              selected: "bg-[#435476] text-primary-foreground rounded-[4px]", // Custom style for selected date
             }}
           />
         </PopoverContent>

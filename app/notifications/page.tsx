@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Mail, MessageSquare, Tag, Clock, CheckCircle2, XCircle, CornerUpRight, DollarSign, MoreHorizontal, ArrowLeft } from 'lucide-react'
+import { Mail, MessageSquare, Tag, Clock, CheckCircle2, XCircle, CornerUpRight, DollarSign, MoreHorizontal, ArrowLeft, Bell } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,7 +97,7 @@ const NotificationIcon = ({ type }: { type: string }) => {
     case 'email':
       return <Mail className="h-5 w-5 text-purple-500" />
     case 'low_stock':
-      return <DollarSign className="h-5 w-5 text-yellow-500" />
+      return <Bell className="h-4 w-4 text-white" />
     default:
       return null
   }
@@ -326,7 +326,9 @@ export default function NotificationsPage() {
                   {!notification.read && <UnreadIndicator />}
                   <div className="p-4 flex items-start gap-4 pl-6">
                     <div className="flex-shrink-0 pt-1">
-                      <NotificationIcon type={notification.type} />
+                      <div className="w-[26px] h-[26px] rounded-full bg-[#5a9300] flex items-center justify-center">
+                         <NotificationIcon type={notification.type} />
+                      </div>
                     </div>
                     
                     <div className="flex-grow min-w-0">

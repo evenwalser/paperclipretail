@@ -24,7 +24,7 @@ const NotificationBadge = ({ count }: { count: number }) => {
   if (count === 0) return null;
   
   return (
-    <div className="absolute -right-1 -top-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+    <div className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
       {count > 99 ? '99+' : count}
     </div>
   );

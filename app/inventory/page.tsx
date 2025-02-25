@@ -344,7 +344,7 @@ export default function InventoryPage() {
                 selectedItems.includes(item.id) ? "ring-2 ring-[#FF3B30]" : ""
               }`}
             >
-              <CardContent className="p-4">
+              <CardContent className="p-4 relative">
                 <div className="relative mb-4 aspect-[4/2]">
                   <div className="relative mb-4">
                     {item.item_images?.length > 0 ? (
@@ -481,13 +481,13 @@ export default function InventoryPage() {
                   >
                     {selectedItems.includes(item.id) ? "Deselect" : "Select"}
                   </Button>
-                  <Button
+                  <Button className="absolute top-2 right-2 bg-[#fff] z-10 p-[5px] border-none w-[30px] h-[30px] rounded-[4px] flex justify-center items-center"
                     onClick={() => router.push(`/inventory/add?duplicate=${item.id}`)}
                     variant="outline"
                     size="sm"
                   >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Duplicate
+                    <Copy className="text-[#000]" />
+                  
                   </Button>
                 </div>
               </CardContent>

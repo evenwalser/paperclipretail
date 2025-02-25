@@ -28,11 +28,32 @@ import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { Receipt } from "@/components/Receipt";
 import { getUser } from "@/lib/services/items";
+import { RefundReceipt } from "@/components/RefundReceipt";
 
 // Add interface for receipt data
 interface ReceiptData {
-  saleData: any; // Replace 'any' with proper sale record type
-  items: any[]; // Replace 'any' with proper item type
+  saleData: {
+    id: string;
+    created_at: string;
+    total_amount: number;
+    payment_method: string;
+    amount_tendered: number;
+    change_amount: number;
+  } | {
+    id: string;
+    created_at: string;
+    total_amount: number;
+    refund_method: string;
+    reason: string;
+    originalSaleId: string;
+    isRefund: boolean;
+    customer?: {
+      name: string;
+      email?: string;
+      phone?: string;
+    };
+  };
+  items: any[];
 }
 
 // Add interface for customer data
@@ -40,6 +61,77 @@ interface CustomerData {
   name: string;
   email: string;
   phone: string;
+}
+
+// Add these interfaces
+interface RefundSale {
+  id: string;
+  created_at: string;
+  total_amount: number;
+  payment_method: string;
+  customer_id: string;
+  sale_items: RefundSaleItem[];
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+}
+
+// First, define the base SaleItem interface
+interface SaleItem {
+  id: string;
+  item_id: string;
+  quantity: number;
+  price: number;
+  title: string;
+  image_url?: string;
+}
+
+// Then define the RefundSaleItem interface that extends SaleItem
+interface RefundSaleItem extends SaleItem {
+  original_quantity: number;
+  refunded_quantity: number;
+  refund_quantity?: number;
+}
+
+interface RefundQuantities {
+  [key: string]: number;
+}
+
+interface RefundRecord {
+  sale_item_id: string;
+  quantity: number;
+}
+
+interface SaleReceiptData {
+  saleData: {
+    id: string;
+    created_at: string;
+    total_amount: number;
+    payment_method: string;
+    amount_tendered: number;
+    change_amount: number;
+  };
+  items: any[];
+}
+
+interface RefundReceiptData {
+  saleData: {
+    id: string;
+    created_at: string;
+    total_amount: number;
+    refund_method: string;
+    reason: string;
+    originalSaleId: string;
+    isRefund: boolean;
+    customer?: {
+      name: string;
+      email?: string;
+      phone?: string;
+    };
+  };
+  items: any[];
 }
 
 export default function POSPage() {
@@ -55,7 +147,7 @@ export default function POSPage() {
   );
   const [change, setChange] = useState(0);
   const [showReceipt, setShowReceipt] = useState(false);
-  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [receiptData, setReceiptData] = useState<SaleReceiptData | null>(null);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [customerData, setCustomerData] = useState<CustomerData>({
     name: "",
@@ -68,6 +160,13 @@ export default function POSPage() {
     receiptLogo: "",
     receiptMessage: "Thank you for shopping with us!",
   });
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [searchSaleId, setSearchSaleId] = useState("");
+  const [selectedSale, setSelectedSale] = useState<RefundSale | null>(null);
+  const [refundItems, setRefundItems] = useState<RefundSaleItem[]>([]);
+  const [refundReason, setRefundReason] = useState("");
+  const [showRefundReceipt, setShowRefundReceipt] = useState(false);
+  const [refundReceiptData, setRefundReceiptData] = useState<RefundReceiptData | null>(null);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -137,7 +236,7 @@ export default function POSPage() {
   };
 
   const handleProcessRefund = () => {
-    router.push("/inventory");
+    setShowRefundModal(true);
   };
 
   const handleCompleteSale = async () => {
@@ -402,6 +501,259 @@ export default function POSPage() {
     }
   };
 
+  const searchSale = async () => {
+    try {
+      const { data: saleData, error: saleError } = await supabase
+        .from('sales')
+        .select(`
+          *,
+          customer:customers(
+            id,
+            name,
+            email,
+            phone
+          ),
+          sale_items:sale_items(
+            id,
+            item_id,
+            quantity,
+            price,
+            item:items(
+              id,
+              title,
+              images:item_images(
+                image_url
+              )
+            )
+          ),
+          refunds(*)
+        `)
+        .eq('id', searchSaleId)
+        .single();
+
+      if (saleError) throw saleError;
+      if (!saleData) {
+        toast.error('Sale not found');
+        return;
+      }
+
+      // Check if sale is already fully refunded
+      if (saleData.status === 'refunded') {
+        toast.error('This sale has already been fully refunded');
+        return;
+      }
+
+      // Get all refunded quantities for each item
+      const { data: existingRefunds, error: refundsError } = await supabase
+        .from('refund_items')
+        .select(`
+          quantity,
+          sale_item_id
+        `)
+        .in('refund_id', saleData.refunds.map((r: { id: string }) => r.id));
+
+      if (refundsError) throw refundsError;
+
+      // Create a map of already refunded quantities
+      const refundedQuantities = existingRefunds?.reduce((acc: RefundQuantities, refund: RefundRecord) => {
+        acc[refund.sale_item_id] = (acc[refund.sale_item_id] || 0) + refund.quantity;
+        return acc;
+      }, {} as RefundQuantities);
+
+      // Format the sale data and subtract already refunded quantities
+      const formattedSale: RefundSale = {
+        ...saleData,
+        sale_items: saleData.sale_items.map((item: any) => {
+          const alreadyRefundedQty = refundedQuantities?.[item.id] || 0;
+          const remainingQty = item.quantity - alreadyRefundedQty;
+
+          return {
+            id: item.id,
+            item_id: item.item_id,
+            quantity: remainingQty, // Only show remaining quantity
+            original_quantity: item.quantity,
+            refunded_quantity: alreadyRefundedQty,
+            price: item.price,
+            title: item.item.title,
+            image_url: item.item.images?.[0]?.image_url || "/placeholder.svg",
+            refund_quantity: 0
+          };
+        }).filter((item: RefundSaleItem) => item.quantity > 0) // Only show items with remaining quantity
+      };
+
+      if (formattedSale.sale_items.length === 0) {
+        toast.error('All items in this sale have already been refunded');
+        return;
+      }
+
+      setSelectedSale(formattedSale);
+      setRefundItems(formattedSale.sale_items);
+    } catch (error) {
+      console.error('Error searching sale:', error);
+      toast.error('Error searching for sale');
+    }
+  };
+
+  const updateRefundQuantity = (itemId: string, quantity: number) => {
+    setRefundItems(items =>
+      items.map(item =>
+        item.id === itemId
+          ? {
+              ...item,
+              refund_quantity: Math.max(0, Math.min(quantity, item.quantity))
+            }
+          : item
+      )
+    );
+  };
+
+  const calculateRefundTotal = () => {
+    return refundItems.reduce((total, item) => 
+      total + (item.price * (item.refund_quantity || 0)), 0
+    );
+  };
+
+  const processRefund = async () => {
+    if (!selectedSale || !refundItems.some(item => (item.refund_quantity || 0) > 0)) {
+      toast.error('Please select items to refund');
+      return;
+    }
+
+    if (!refundReason.trim()) {
+      toast.error('Please provide a reason for the refund');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+
+      // Verify sale status hasn't changed
+      const { data: currentSale, error: saleCheckError } = await supabase
+        .from('sales')
+        .select('status')
+        .eq('id', selectedSale.id)
+        .single();
+
+      if (saleCheckError) throw saleCheckError;
+
+      if (currentSale.status === 'refunded') {
+        toast.error('This sale has already been fully refunded');
+        return;
+      }
+
+      // Calculate refund total
+      const refundTotal = calculateRefundTotal();
+
+      // Create refund record
+      const { data: refund, error: refundError } = await supabase
+        .from('refunds')
+        .insert({
+          sale_id: selectedSale.id,
+          total_amount: refundTotal,
+          refund_method: selectedSale.payment_method,
+          reason: refundReason,
+          store_id: user.store_id,
+          processed_by: user.id,
+          status: 'completed'
+        })
+        .select()
+        .single();
+
+      if (refundError) throw refundError;
+
+      // Process refund items
+      const refundItemsToProcess = refundItems
+        .filter(item => (item.refund_quantity || 0) > 0)
+        .map(item => ({
+          refund_id: refund.id,
+          sale_item_id: item.id,
+          quantity: item.refund_quantity,
+          refund_amount: item.price * (item.refund_quantity || 0)
+        }));
+
+      const { error: refundItemsError } = await supabase
+        .from('refund_items')
+        .insert(refundItemsToProcess);
+
+      if (refundItemsError) throw refundItemsError;
+
+      // Update inventory quantities
+      for (const item of refundItems) {
+        if ((item.refund_quantity || 0) > 0) {
+          const { error: updateError } = await supabase.rpc(
+            'update_item_quantity',
+            { 
+              p_item_id: item.item_id,
+              p_quantity_change: item.refund_quantity
+            }
+          );
+
+          if (updateError) {
+            console.error(`Error updating quantity for item ${item.item_id}:`, updateError);
+            toast.error(`Failed to update inventory for ${item.title}`);
+          }
+        }
+      }
+
+      // Update sale status
+      const allItemsRefunded = refundItems.every(
+        item => item.refund_quantity === item.quantity
+      );
+
+      const { error: saleUpdateError } = await supabase
+        .from('sales')
+        .update({ 
+          status: allItemsRefunded ? 'refunded' : 'partially_refunded'
+        })
+        .eq('id', selectedSale.id);
+
+      if (saleUpdateError) throw saleUpdateError;
+
+      // Set refund receipt data
+      setRefundReceiptData({
+        saleData: {
+          id: refund.id,
+          created_at: refund.created_at,
+          total_amount: refundTotal,
+          refund_method: selectedSale.payment_method,
+          reason: refundReason,
+          originalSaleId: selectedSale.id,
+          isRefund: true,
+          customer: selectedSale.customer
+        },
+        items: refundItems
+          .filter(item => (item.refund_quantity || 0) > 0)
+          .map(item => ({
+            title: item.title,
+            price: item.price,
+            refund_quantity: item.refund_quantity
+          }))
+      });
+
+      setShowRefundReceipt(true);
+      setShowRefundModal(false);
+      setSelectedSale(null);
+      setRefundItems([]);
+      setRefundReason("");
+      setSearchSaleId("");
+      toast.success('Refund processed successfully');
+
+    } catch (error) {
+      console.error('Error processing refund:', error);
+      toast.error('Error processing refund');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Add this helper function to format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP'
+    }).format(amount);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 text-gray-800 dark:text-gray-100">
@@ -577,7 +929,7 @@ export default function POSPage() {
       </div>
 
       {showCustomerForm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-[#191e25] bg-opacity-50 z-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-[#191e25] bg-opacity-50 z-50 overflow-y-auto">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-[500px]">
             <h2 className="text-xl m-0 p-5 border-b-[1px] border-[#384454]">
               Customer Information
@@ -708,11 +1060,18 @@ export default function POSPage() {
       )}
 
       {showReceipt && receiptData && (
-        <div className="fixed inset-0 bg-[#191e25] bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-[#191e25] bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-scroll">
           <Receipt
-            saleData={receiptData.saleData}
+            saleData={receiptData.saleData as { 
+              id: string;
+              created_at: string;
+              total_amount: number;
+              payment_method: string;
+              amount_tendered: number;
+              change_amount: number;
+            }}
             items={receiptData.items}
-            userId={user.id}
+            userId={user?.id || ''}
             receiptLogo={posSettings.receiptLogo}
             receiptMessage={posSettings.receiptMessage}
             onClose={() => {
@@ -720,6 +1079,194 @@ export default function POSPage() {
               setIsProcessing(false);
             }}
           />
+        </div>
+      )}
+
+      {showRefundReceipt && refundReceiptData && (
+        <div className="fixed inset-0 bg-[#191e25] bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-scroll">
+          <RefundReceipt
+            refundData={refundReceiptData.saleData}
+            items={refundReceiptData.items}
+            storeLogo={posSettings.receiptLogo}
+            storeMessage={posSettings.receiptMessage}
+            onClose={() => {
+              setShowRefundReceipt(false);
+              setIsProcessing(false);
+            }}
+          />
+        </div>
+      )}
+
+      {showRefundModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Process Refund</h2>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setShowRefundModal(false);
+                    setSelectedSale(null);
+                    setRefundItems([]);
+                    setRefundReason("");
+                    setSearchSaleId("");
+                  }}
+                >
+                  ✕
+                </Button>
+              </div>
+              
+              {!selectedSale ? (
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      value={searchSaleId}
+                      onChange={(e) => setSearchSaleId(e.target.value)}
+                      placeholder="Enter Sale ID"
+                      className="flex-1"
+                    />
+                    <Button onClick={searchSale}>Search Sale</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+                    <div>
+                      <h3 className="font-semibold mb-2">Customer Details</h3>
+                      <p>Name: {selectedSale.customer.name}</p>
+                      <p>Email: {selectedSale.customer.email || 'N/A'}</p>
+                      <p>Phone: {selectedSale.customer.phone || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-2">Sale Details</h3>
+                      <p>Sale ID: {selectedSale.id}</p>
+                      <p>Date: {new Date(selectedSale.created_at).toLocaleDateString()}</p>
+                      <p>Original Amount: {formatCurrency(selectedSale.total_amount)}</p>
+                      <p>Payment Method: {selectedSale.payment_method}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="font-semibold">Items Available for Refund</h3>
+                    <div className="space-y-4">
+                      {refundItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                        >
+                          <div className="w-20 h-20 relative rounded-md overflow-hidden flex-shrink-0">
+                            <img
+                              src={item.image_url || "/placeholder.svg"}
+                              alt={item.title}
+                              className="object-cover w-full h-full"
+                            />
+                          </div>
+                          <div className="flex-grow">
+                            <h4 className="font-medium">{item.title}</h4>
+                            <p className="text-sm text-gray-500">
+                              Price: {formatCurrency(item.price)}
+                            </p>
+                            <div className="text-sm text-gray-500">
+                              <span>Original Qty: {item.original_quantity}</span>
+                              {item.refunded_quantity > 0 && (
+                                <span className="ml-2">
+                                  (Previously Refunded: {item.refunded_quantity})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateRefundQuantity(item.id, (item.refund_quantity || 0) - 1)}
+                              disabled={(item.refund_quantity || 0) <= 0}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <div className="w-16 text-center">
+                              <Input
+                                type="number"
+                                min="0"
+                                max={item.quantity}
+                                value={item.refund_quantity || 0}
+                                onChange={(e) => 
+                                  updateRefundQuantity(
+                                    item.id,
+                                    Math.min(parseInt(e.target.value) || 0, item.quantity)
+                                  )
+                                }
+                                className="text-center"
+                              />
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateRefundQuantity(item.id, (item.refund_quantity || 0) + 1)}
+                              disabled={(item.refund_quantity || 0) >= item.quantity}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="w-32 text-right">
+                            <p className="font-medium">
+                              {formatCurrency((item.refund_quantity || 0) * item.price)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block font-medium mb-2">Refund Reason</label>
+                      <textarea
+                        value={refundReason}
+                        onChange={(e) => setRefundReason(e.target.value)}
+                        placeholder="Please provide a reason for the refund"
+                        className="w-full p-2 border rounded-md"
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+                      <div>
+                        <p className="text-sm text-gray-500">Total Refund Amount</p>
+                        <p className="text-2xl font-bold">
+                          {formatCurrency(calculateRefundTotal())}
+                        </p>
+                      </div>
+                      <div className="space-x-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setShowRefundModal(false);
+                            setSelectedSale(null);
+                            setRefundItems([]);
+                            setRefundReason("");
+                            setSearchSaleId("");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={processRefund}
+                          disabled={
+                            !refundItems.some((item) => (item.refund_quantity || 0) > 0) ||
+                            !refundReason.trim()
+                          }
+                        >
+                          Process Refund
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
