@@ -553,7 +553,8 @@ export default function POSPage() {
         .in('refund_id', saleData.refunds.map((r: { id: string }) => r.id));
 
       if (refundsError) throw refundsError;
-
+          console.log(saleData,'this are the sales data')
+          console.log(existingRefunds,'this are exisiting refunds');
       // Create a map of already refunded quantities
       const refundedQuantities = existingRefunds?.reduce((acc: RefundQuantities, refund: RefundRecord) => {
         acc[refund.sale_item_id] = (acc[refund.sale_item_id] || 0) + refund.quantity;
@@ -1240,6 +1241,10 @@ export default function POSPage() {
                       </div>
                       <div className="space-x-2">
                         <Button
+                        className="inline-flex items-center justify-center whitespace-nowrap text-sm 
+                        font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
+                        disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-2 py-2 min-w-[100px]
+                         bg-[#fff] text-[#333] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff]"
                           variant="outline"
                           onClick={() => {
                             setShowRefundModal(false);
@@ -1252,6 +1257,10 @@ export default function POSPage() {
                           Cancel
                         </Button>
                         <Button
+                        className="inline-flex items-center justify-center whitespace-nowrap text-sm 
+                          font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
+                          disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-2 py-2 min-w-[100px] 
+                          bg-[#dc2626] text-[#fff] rounded-[8px] border-[1px] border-[#dc2626] hover:text-[#dc2626]"
                           onClick={processRefund}
                           disabled={
                             !refundItems.some((item) => (item.refund_quantity || 0) > 0) ||

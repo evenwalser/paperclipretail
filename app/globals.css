@@ -220,3 +220,23 @@ h6 {
 #radix{
   margin-right: 35px;
 }
+
+/* width */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #bfcbe7;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #6c86c1;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #6c86c1;
+}
