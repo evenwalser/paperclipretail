@@ -18,6 +18,8 @@ import Image from "next/image";
 import { ASSETS } from "@/lib/constants";
 import { logout } from "@/app/login/actions";
 import { supabase } from '@/lib/supabase';
+import { useRole } from "@/hooks/useRole";
+import { toast } from "sonner";
 
 // Add a NotificationBadge component
 const NotificationBadge = ({ count }: { count: number }) => {
@@ -33,6 +35,7 @@ const NotificationBadge = ({ count }: { count: number }) => {
 export function Sidebar() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
+  const { role, isLoading } = useRole();
 
   useEffect(() => {
     fetchUnreadCount();
@@ -85,24 +88,42 @@ export function Sidebar() {
     }
   };
 
-  const sidebarItems = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Inventory", href: "/inventory", icon: Package },
-    { name: "POS", href: "/pos", icon: PoundSterling },
+  const allSidebarItems = [
+    { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ['store_owner'] },
+    { name: "Inventory", href: "/inventory", icon: Package, roles: ['store_owner','sales_associate'] },
+    { name: "POS", href: "/pos", icon: PoundSterling, roles: ['store_owner','sales_associate'] },
     { 
       name: "Notifications", 
       href: "/notifications", 
       icon: Bell,
-      badge: unreadCount > 0 ? unreadCount : null 
+      badge: unreadCount > 0 ? unreadCount : null,
+      roles: ['store_owner']
     },
-    { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Settings", href: "/settings", icon: Settings, roles: ['admin', 'store_owner'] },
   ];
+
+  const handleItemClick = (e: React.MouseEvent, item: typeof allSidebarItems[0]) => {
+    if (role === 'sales_associate' && !item.roles.includes('sales_associate')) {
+      e.preventDefault();
+      toast.error("You don't have permission to access this feature");
+    }
+  };
+
+  // Filter items based on user's role
+  const sidebarItems = allSidebarItems.filter(item => 
+    item.roles.includes(role as string)
+  );
+
+  // Show loading state or return null while role is being fetched
+  if (isLoading) {
+    return <div className="flex flex-col h-full bg-white dark:bg-gray-900 w-64 border-r border-gray-200 dark:border-gray-800" />;
+  }
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 w-64 border-r border-gray-200 dark:border-gray-800">
       <div className="p-4 flex items-center justify-center border-b border-gray-200 dark:border-gray-800">
         <img
-          src={"/paperclip_logo_red.png"}
+          src={"https://icravvnxexuvxoehhfsa.supabase.co/storage/v1/object/public/store-images//paperclip_logo_red.png"}
           alt="Paperclip Logo"
           width={200}
           height={67}
@@ -112,7 +133,14 @@ export function Sidebar() {
       <ScrollArea className="flex-1">
         <nav className="space-y-2 p-4">
           {sidebarItems.map((item) => (
-            <Link key={item.name} href={item.href}>
+            <Link 
+              key={item.name} 
+              href={item.href}
+              onClick={(e) => handleItemClick(e, item)}
+              className={cn(
+                role === 'sales_associate' && !item.roles.includes('sales_associate') && 'opacity-50'
+              )}
+            >
               <Button
                 variant="ghost"
                 className={cn(

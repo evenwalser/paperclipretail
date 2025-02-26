@@ -28,6 +28,9 @@ import { supabase } from "@/lib/supabase";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { RoleGuard } from "@/components/RoleGuard";
+import { useRole } from "@/hooks/useRole";
+
 
 interface InventoryItem {
   id: string;
@@ -62,12 +65,14 @@ export default function InventoryPage() {
     lowStockThreshold: null,
     defaultSorting: 'newest',
   });
+  const { role, isLoading: roleLoading } = useRole();
 
   useEffect(() => {
     const loadItems = async () => {
       try {
         setIsLoading(true);
         const user = await getUser();
+        console.log('here is user', user);
         setuser(user);
         if (user) {
           const { items, totalPages } = await getItems(currentPage, 9, user);
@@ -256,6 +261,11 @@ export default function InventoryPage() {
     </div>
   );
 
+  // Add helper function to check permissions
+  const canManageItems = () => {
+    return role && [ 'store_owner'].includes(role);
+  };
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
@@ -268,7 +278,8 @@ export default function InventoryPage() {
           >
             Send to POS
           </Button>
-          {user && (
+          {/* Only show Add New Item button if user has permission */}
+          {canManageItems() && user && (
             <Button
               onClick={() => {
                 if (user?.store_id) {
@@ -440,38 +451,50 @@ export default function InventoryPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2">
+                  {canManageItems() && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full leading-[normal] hover:bg-[#f42037]"
+                        onClick={() => router.push(`/inventory/edit/${item.id}`)}
+                      >
+                        <Pencil className="mr-1 h-3 w-3" /> Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 leading-[normal]"
+                        disabled={deletingItems.has(item.id)}
+                        onClick={() => handleDeleteClick(item.id)}
+                      >
+                        {deletingItems.has(item.id) ? (
+                          <>
+                            <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full mr-1" />
+                            <span>Deleting...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            Delete
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full leading-[normal]"
+                        onClick={() => router.push(`/inventory/add?duplicate=${item.id}`)}
+                      >
+                        <Copy className="mr-1 h-3 w-3" /> Copy
+                      </Button>
+                    </div>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full leading-[normal] hover:bg-[#f42037] "
-                    onClick={() => router.push(`/inventory/edit/${item.id}`)}
-                  >
-                    <Pencil className="mr-1 h-3 w-3" /> Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 leading-[normal]"
-                    disabled={deletingItems.has(item.id)}
-                    onClick={() => handleDeleteClick(item.id)}
-                  >
-                    {deletingItems.has(item.id) ? (
-                      <>
-                        <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full mr-1" />
-                        <span>Deleting...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        Delete
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled= {item?.status === 'out_of_stock'}
+                    disabled={item?.status === 'out_of_stock'}
                     className={`w-full leading-[normal] ${
                       selectedItems.includes(item.id)
                         ? "bg-[#FF3B30] text-white hover:bg-[#E6352B]"
@@ -480,14 +503,6 @@ export default function InventoryPage() {
                     onClick={() => toggleItemSelection(item.id)}
                   >
                     {selectedItems.includes(item.id) ? "Deselect" : "Select"}
-                  </Button>
-                  <Button className="absolute top-2 right-2 bg-[#fff] z-10 p-[5px] border-none w-[30px] h-[30px] rounded-[4px] flex justify-center items-center"
-                    onClick={() => router.push(`/inventory/add?duplicate=${item.id}`)}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Copy className="text-[#000]" />
-                  
                   </Button>
                 </div>
               </CardContent>
