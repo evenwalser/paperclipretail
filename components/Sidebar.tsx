@@ -89,17 +89,17 @@ export function Sidebar() {
   };
 
   const allSidebarItems = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ['store_owner'] },
-    { name: "Inventory", href: "/inventory", icon: Package, roles: ['store_owner','sales_associate'] },
-    { name: "POS", href: "/pos", icon: PoundSterling, roles: ['store_owner','sales_associate'] },
+    { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ['store_owner','user'] },
+    { name: "Inventory", href: "/inventory", icon: Package, roles: ['store_owner','sales_associate','user'] },
+    { name: "POS", href: "/pos", icon: PoundSterling, roles: ['store_owner','sales_associate','user'] },
     { 
       name: "Notifications", 
       href: "/notifications", 
       icon: Bell,
       badge: unreadCount > 0 ? unreadCount : null,
-      roles: ['store_owner']
+      roles: ['store_owner','user']
     },
-    { name: "Settings", href: "/settings", icon: Settings, roles: ['admin', 'store_owner'] },
+    { name: "Settings", href: "/settings", icon: Settings, roles: ['admin', 'store_owner','user'] },
   ];
 
   const handleItemClick = (e: React.MouseEvent, item: typeof allSidebarItems[0]) => {

@@ -28,22 +28,37 @@ export async function updateSession(request: NextRequest) {
   )
 
   // Define public routes that do not require authentication
-  const publicRoutes = ['/login', '/reset-password', '/update-password', '/accept-invite']
+  const publicRoutes = ['/login', '/reset-password', '/update-password', '/accept-invite', '/signup']
   
   // Define route permissions with their allowed roles
   const routePermissions = {
-    '/': ['store_owner'], // Add home page restriction
-    '/dashboard': ['store_owner'],
-    '/inventory': ['sales_associate', 'store_owner'],
-    '/inventory/edit/:id': ['store_owner'],
-    '/inventory/add': ['store_owner'],
-    '/pos': ['sales_associate', 'store_owner']  // Added POS route
+    '/': ['store_owner','user'], // Add home page restriction
+    '/dashboard': ['store_owner','user'],
+    '/inventory': ['sales_associate', 'store_owner','user'],
+    '/inventory/edit/:id': ['store_owner','user'],
+    '/inventory/add': ['store_owner','user'],
+    '/pos': ['sales_associate', 'store_owner','user']  // Added POS route
     // Add more route-role mappings as needed
+  }
+
+  const pathname = request.nextUrl.pathname
+
+  // If this is a public route, allow access without authentication
+  if (publicRoutes.some((route) => pathname.startsWith(route))) {
+    return supabaseResponse
   }
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
+
+  // If user is not logged in, redirect to login page
+  if (!user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.searchParams.set('redirectTo', pathname)
+    return NextResponse.redirect(url)
+  }
 
   // Get user role from the database
   let userRole = null
@@ -56,49 +71,21 @@ export async function updateSession(request: NextRequest) {
     userRole = userData?.role
   }
 
-  const pathname = request.nextUrl.pathname
-
   // Check if the route requires role-based access
-  // Find the most specific matching route
   const matchingRoute = Object.entries(routePermissions)
     .filter(([route]) => pathname.startsWith(route))
-    .sort((a, b) => b[0].length - a[0].length)[0]; // Sort by route length to get most specific match
+    .sort((a, b) => b[0].length - a[0].length)[0]
 
-  const requiredRoles = matchingRoute?.[1];
+  const requiredRoles = matchingRoute?.[1]
 
-  if (requiredRoles) {
-    // If route requires specific roles but user is not logged in
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      return NextResponse.redirect(url)
-    }
-
-    // If user's role is not in the allowed roles
-    if (!userRole || !requiredRoles.includes(userRole)) {
-      // Special handling for sales_associate
-      if (userRole === 'sales_associate') {
-        // Redirect to inventory page from home page or inventory edit pages
-        if (pathname === '/' || pathname.startsWith('/inventory/edit/')) {
-          return NextResponse.redirect(new URL('/inventory', request.url))
-        }
-      }
-      // For inventory/add, redirect to inventory page instead of unauthorized
-      if (pathname.startsWith('/inventory/add')) {
-        return NextResponse.redirect(new URL('/inventory', request.url))
-      }
+  if (requiredRoles && (!userRole || !requiredRoles.includes(userRole))) {
+    // Handle unauthorized access based on role
+    if (userRole === 'sales_associate') {
+      // Redirect sales associates to inventory page
       return NextResponse.redirect(new URL('/inventory', request.url))
     }
-  }
-  
-  // Handle non-role-protected routes
-  if (
-    !user &&
-    !publicRoutes.some((route) => pathname.startsWith(route))
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+    // For all other unauthorized access, redirect to inventory
+    return NextResponse.redirect(new URL('/inventory', request.url))
   }
 
   return supabaseResponse
