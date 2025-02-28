@@ -34,7 +34,7 @@ declare global {
   interface Window {
     NDEFReader: any;
   }
-  const NDEFReader: any;
+
 }
 
 // Add these interfaces
@@ -262,11 +262,11 @@ export default function POSPage() {
       if (!scanButton.current) return;
       scanButton.current?.addEventListener("click", async () => {
         alert("User clicked scan button");
-        alert(window);
+     
       
         try {
-          const ndef =  new NDEFReader() 
-          alert(window);
+          const ndef =  new window.NDEFReader() 
+       
           await ndef.scan();
           alert("> Scan started");
         alert(window.NDEFReader)
