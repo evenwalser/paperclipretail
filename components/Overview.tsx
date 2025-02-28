@@ -8,7 +8,6 @@ import {
   YAxis,
   Tooltip,
   Legend,
-  CartesianGrid,
   ComposedChart,
   ResponsiveContainer,
 } from "recharts"
@@ -131,7 +130,6 @@ export function Overview({ currency, categoryId, storeId, dateRange }: OverviewP
       <div className="h-[350px] w-full">
         <ResponsiveContainer>
           <ComposedChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month_name" />
             <YAxis />
             <Tooltip content={(props) => <CustomTooltip {...props} currency={currency} />} />
@@ -141,6 +139,7 @@ export function Overview({ currency, categoryId, storeId, dateRange }: OverviewP
               fill="#adfa1d"
               name="Revenue"
               radius={[4, 4, 0, 0]}
+              isAnimationActive={false}
             />
             {showComparison && comparisonData.length > 0 && (
               <Line
@@ -150,6 +149,7 @@ export function Overview({ currency, categoryId, storeId, dateRange }: OverviewP
                 stroke="#888888"
                 name="Previous Year"
                 dot={false}
+                isAnimationActive={false}
               />
             )}
           </ComposedChart>

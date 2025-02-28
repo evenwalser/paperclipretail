@@ -25,10 +25,15 @@ interface ReceiptProps {
   };
   receiptLogo?: string;
   receiptMessage?: string;
+  discount?: {
+    type: 'percentage' | 'fixed';
+    value: number;
+    savingsAmount: number;
+  };
   onClose: () => void;
 }
 
-export function Receipt({ saleData, items, userId, customerDetails, receiptLogo, receiptMessage = 'Thank you for shopping with us!', onClose }: ReceiptProps) {
+export function Receipt({ saleData, items, userId, customerDetails, receiptLogo, receiptMessage = 'Thank you for shopping with us!', discount, onClose }: ReceiptProps) {
   const supabase = createClient();
   const [storeDetails, setStoreDetails] = useState<{
     store_name: string;
@@ -141,6 +146,18 @@ export function Receipt({ saleData, items, userId, customerDetails, receiptLogo,
         </div>
         {/* Totals */}
         <div className="text-sm grid gap-2 w-[200px] pr-4">
+          <div className="flex justify-between">
+            <span>Subtotal:</span>
+            <span>£{(saleData.total_amount + (discount?.savingsAmount || 0)).toFixed(2)}</span>
+          </div>
+          {discount && discount.value > 0 && (
+            <div className="flex justify-between text-green-500">
+              <span>
+                Discount ({discount.type === 'percentage' ? `${discount.value}%` : `£${discount.value}`}):
+              </span>
+              <span>-£{discount.savingsAmount.toFixed(2)}</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold">
             <span>Total:</span>
             <span>£{saleData.total_amount.toFixed(2)}</span>

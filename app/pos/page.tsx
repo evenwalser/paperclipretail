@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "../contexts/CartContext";
 import {
@@ -30,29 +30,48 @@ import { Receipt } from "@/components/Receipt";
 import { getUser } from "@/lib/services/items";
 import { RefundReceipt } from "@/components/RefundReceipt";
 
+declare global {
+  interface Window {
+    NDEFReader: any;
+  }
+  const NDEFReader: any;
+}
+
+// Add these interfaces
+interface NDEFMessage {
+  records: any[];
+}
+
+interface NDEFReadingEvent {
+  message: NDEFMessage;
+  serialNumber: string;
+}
+
 // Add interface for receipt data
 interface ReceiptData {
-  saleData: {
-    id: string;
-    created_at: string;
-    total_amount: number;
-    payment_method: string;
-    amount_tendered: number;
-    change_amount: number;
-  } | {
-    id: string;
-    created_at: string;
-    total_amount: number;
-    refund_method: string;
-    reason: string;
-    originalSaleId: string;
-    isRefund: boolean;
-    customer?: {
-      name: string;
-      email?: string;
-      phone?: string;
-    };
-  };
+  saleData:
+    | {
+        id: string;
+        created_at: string;
+        total_amount: number;
+        payment_method: string;
+        amount_tendered: number;
+        change_amount: number;
+      }
+    | {
+        id: string;
+        created_at: string;
+        total_amount: number;
+        refund_method: string;
+        reason: string;
+        originalSaleId: string;
+        isRefund: boolean;
+        customer?: {
+          name: string;
+          email?: string;
+          phone?: string;
+        };
+      };
   items: any[];
 }
 
@@ -114,6 +133,11 @@ interface SaleReceiptData {
     change_amount: number;
   };
   items: any[];
+  discount?: {
+    type: "percentage" | "fixed";
+    value: number;
+    savingsAmount: number;
+  };
 }
 
 interface RefundReceiptData {
@@ -132,6 +156,12 @@ interface RefundReceiptData {
     };
   };
   items: any[];
+}
+
+// Add these interfaces
+interface Discount {
+  type: "percentage" | "fixed";
+  value: number;
 }
 
 export default function POSPage() {
@@ -166,7 +196,15 @@ export default function POSPage() {
   const [refundItems, setRefundItems] = useState<RefundSaleItem[]>([]);
   const [refundReason, setRefundReason] = useState("");
   const [showRefundReceipt, setShowRefundReceipt] = useState(false);
-  const [refundReceiptData, setRefundReceiptData] = useState<RefundReceiptData | null>(null);
+  const [refundReceiptData, setRefundReceiptData] =
+    useState<RefundReceiptData | null>(null);
+  const [discount, setDiscount] = useState<Discount>({
+    type: "fixed",
+    value: 0,
+  });
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [nfcStatus, setNfcStatus] = useState<string>('');
+  const scanButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -215,7 +253,104 @@ export default function POSPage() {
     };
 
     fetchPOSSettings();
-  }, [user,supabase]);
+  }, [user, supabase]);
+
+  useEffect(() => {
+    let nfcReader: any = null;
+
+    const startNfcScan = async () => {
+      if (!scanButton.current) return;
+      scanButton.current?.addEventListener("click", async () => {
+        alert("User clicked scan button");
+        alert(window);
+      
+        try {
+          const ndef =  new NDEFReader() 
+          alert(window);
+          await ndef.scan();
+          alert("> Scan started");
+        alert(window.NDEFReader)
+          ndef.addEventListener("readingerror", () => {
+            alert("Argh! Cannot read data from the NFC tag. Try another one?");
+          });
+      
+          ndef.addEventListener("reading", ({ message, serialNumber }: NDEFReadingEvent) => {
+            alert(`> Serial Number: ${serialNumber}`);
+            alert(`> Records: (${message.records.length})`);
+          });
+        } catch (error) {
+          alert("Argh! " + error);
+        }
+      });
+      
+      // writeButton.addEventListener("click", async () => {
+      //   alert("User clicked write button");
+      
+      //   try {
+      //     const ndef = new NDEFReader();
+      //     await ndef.write("Hello world!");
+      //     alert("> Message written");
+      //   } catch (error) {
+      //     alert("Argh! " + error);
+      //   }
+      // });
+      
+      // makeReadOnlyButton.addEventListener("click", async () => {
+      //   alert("User clicked make read-only button");
+      
+      //   try {
+      //     const ndef = new NDEFReader();
+      //     await ndef.makeReadOnly();
+      //     alert("> NFC tag has been made permanently read-only");
+      //   } catch (error) {
+      //     alert("Argh! " + error);
+      //   }
+      // });
+
+      // try {
+      //   nfcReader = new (window as any).NDEFReader();
+      //   await nfcReader.scan();
+        
+      //   setNfcStatus("NFC scan started - ready to read tags");
+
+      //   nfcReader.addEventListener("reading", (event: any) => {
+      //     try {
+      //       const decoder = new TextDecoder();
+      //       for (const record of event.message.records) {
+      //         if (record.recordType === "text") {
+      //           const text = decoder.decode(record.data);
+      //           // Handle the NFC tag data here
+      //           toast.success(`NFC Tag Read: ${text}`);
+      //         }
+      //       }
+      //     } catch (error) {
+      //       toast.error("Error reading NFC tag data");
+      //     }
+      //   });
+
+      //   nfcReader.addEventListener("readingerror", () => {
+      //     toast.error("Error reading NFC tag");
+      //   });
+
+      // } catch (error) {
+      //   if (error instanceof Error) {
+      //     setNfcStatus(`Error starting NFC scan: ${error.message}`);
+      //   } else {
+      //     setNfcStatus("Failed to start NFC scan");
+      //   }
+      // }
+    };
+
+    startNfcScan();
+
+    // Cleanup function
+    return () => {
+      if (nfcReader) {
+        // Remove event listeners if necessary
+        nfcReader = null;
+      }
+    };
+  }, []);
 
   const handleNumberClick = (num: string) => {
     if (amount === "0.00") {
@@ -245,7 +380,8 @@ export default function POSPage() {
       return;
     }
 
-    if (parseFloat(amount) < total) {
+    const finalTotal = calculateFinalTotal();
+    if (parseFloat(amount) < finalTotal) {
       toast.error("Amount is less than total");
       return;
     }
@@ -406,14 +542,18 @@ export default function POSPage() {
         customerRecord = newCustomer;
       }
 
-      // Update sale data to include store_id
+      const originalAmount = total;
+      const finalAmount = calculateFinalTotal();
       const saleData = {
-        total_amount: total,
+        total_amount: finalAmount,
+        original_amount: originalAmount,
+        discount_type: discount.value > 0 ? discount.type : null,
+        discount_value: discount.value > 0 ? discount.value : null,
         payment_method: method,
         status: "completed",
         payment_status: "paid",
-        amount_tendered: method === "cash" ? parseFloat(amount) : total,
-        change_amount: method === "cash" ? parseFloat(amount) - total : 0,
+        amount_tendered: method === "cash" ? parseFloat(amount) : finalAmount,
+        change_amount: method === "cash" ? parseFloat(amount) - finalAmount : 0,
         customer_id: customerRecord.id,
         store_id: user.store_id,
       };
@@ -443,10 +583,18 @@ export default function POSPage() {
         throw saleItemsError;
       }
 
-      // Set receipt data
+      // Update receipt data to include discount information
       setReceiptData({
         saleData: saleRecord,
         items: items,
+        discount:
+          discount.value > 0
+            ? {
+                type: discount.type,
+                value: discount.value,
+                savingsAmount: originalAmount - finalAmount,
+              }
+            : undefined,
       });
       setShowReceipt(true);
 
@@ -504,8 +652,9 @@ export default function POSPage() {
   const searchSale = async () => {
     try {
       const { data: saleData, error: saleError } = await supabase
-        .from('sales')
-        .select(`
+        .from("sales")
+        .select(
+          `
           *,
           customer:customers(
             id,
@@ -527,81 +676,93 @@ export default function POSPage() {
             )
           ),
           refunds(*)
-        `)
-        .eq('id', searchSaleId)
+        `
+        )
+        .eq("id", searchSaleId)
         .single();
 
       if (saleError) throw saleError;
       if (!saleData) {
-        toast.error('Sale not found');
+        toast.error("Sale not found");
         return;
       }
 
       // Check if sale is already fully refunded
-      if (saleData.status === 'refunded') {
-        toast.error('This sale has already been fully refunded');
+      if (saleData.status === "refunded") {
+        toast.error("This sale has already been fully refunded");
         return;
       }
 
       // Get all refunded quantities for each item
       const { data: existingRefunds, error: refundsError } = await supabase
-        .from('refund_items')
-        .select(`
+        .from("refund_items")
+        .select(
+          `
           quantity,
           sale_item_id
-        `)
-        .in('refund_id', saleData.refunds.map((r: { id: string }) => r.id));
+        `
+        )
+        .in(
+          "refund_id",
+          saleData.refunds.map((r: { id: string }) => r.id)
+        );
 
       if (refundsError) throw refundsError;
-          console.log(saleData,'this are the sales data')
-          console.log(existingRefunds,'this are exisiting refunds');
+      console.log(saleData, "this are the sales data");
+      console.log(existingRefunds, "this are exisiting refunds");
       // Create a map of already refunded quantities
-      const refundedQuantities = existingRefunds?.reduce((acc: RefundQuantities, refund: RefundRecord) => {
-        acc[refund.sale_item_id] = (acc[refund.sale_item_id] || 0) + refund.quantity;
-        return acc;
-      }, {} as RefundQuantities);
+      const refundedQuantities = existingRefunds?.reduce(
+        (acc: RefundQuantities, refund: RefundRecord) => {
+          acc[refund.sale_item_id] =
+            (acc[refund.sale_item_id] || 0) + refund.quantity;
+          return acc;
+        },
+        {} as RefundQuantities
+      );
 
       // Format the sale data and subtract already refunded quantities
       const formattedSale: RefundSale = {
         ...saleData,
-        sale_items: saleData.sale_items.map((item: any) => {
-          const alreadyRefundedQty = refundedQuantities?.[item.id] || 0;
-          const remainingQty = item.quantity - alreadyRefundedQty;
+        sale_items: saleData.sale_items
+          .map((item: any) => {
+            const alreadyRefundedQty = refundedQuantities?.[item.id] || 0;
+            const remainingQty = item.quantity - alreadyRefundedQty;
 
-          return {
-            id: item.id,
-            item_id: item.item_id,
-            quantity: remainingQty, // Only show remaining quantity
-            original_quantity: item.quantity,
-            refunded_quantity: alreadyRefundedQty,
-            price: item.price,
-            title: item.item.title,
-            image_url: item.item.images?.[0]?.image_url || "/placeholder.svg",
-            refund_quantity: 0
-          };
-        }).filter((item: RefundSaleItem) => item.quantity > 0) // Only show items with remaining quantity
+            return {
+              id: item.id,
+              item_id: item.item_id,
+              quantity: remainingQty, // Only show remaining quantity
+              original_quantity: item.quantity,
+              refunded_quantity: alreadyRefundedQty,
+              price: item.price,
+              title: item.item.title,
+              image_url: item.item.images?.[0]?.image_url || "/placeholder.svg",
+              refund_quantity: 0,
+            };
+          })
+          .filter((item: RefundSaleItem) => item.quantity > 0), // Only show items with remaining quantity
       };
 
       if (formattedSale.sale_items.length === 0) {
-        toast.error('All items in this sale have already been refunded');
+        toast.error("All items in this sale have already been refunded");
         return;
       }
 
       setSelectedSale(formattedSale);
       setRefundItems(formattedSale.sale_items);
     } catch (error) {
-      console.error('Error searching sale:', error);
-      toast.error('Error searching for sale');
+      console.error("Error searching sale:", error);
+      toast.error("Error searching for sale");
     }
   };
 
   const updateRefundQuantity = (itemId: string, quantity: number) => {
-    setRefundItems(items =>
-      items.map(item =>
+    setRefundItems((items) =>
+      items.map((item) =>
         item.id === itemId
           ? {
               ...item,
-              refund_quantity: Math.max(0, Math.min(quantity, item.quantity))
+              refund_quantity: Math.max(0, Math.min(quantity, item.quantity)),
             }
           : item
       )
@@ -609,19 +770,23 @@ export default function POSPage() {
   };
 
   const calculateRefundTotal = () => {
-    return refundItems.reduce((total, item) => 
-      total + (item.price * (item.refund_quantity || 0)), 0
+    return refundItems.reduce(
+      (total, item) => total + item.price * (item.refund_quantity || 0),
+      0
     );
   };
 
   const processRefund = async () => {
-    if (!selectedSale || !refundItems.some(item => (item.refund_quantity || 0) > 0)) {
-      toast.error('Please select items to refund');
+    if (
+      !selectedSale ||
+      !refundItems.some((item) => (item.refund_quantity || 0) > 0)
+    ) {
+      toast.error("Please select items to refund");
       return;
     }
 
     if (!refundReason.trim()) {
-      toast.error('Please provide a reason for the refund');
+      toast.error("Please provide a reason for the refund");
       return;
     }
 
@@ -630,15 +795,15 @@ export default function POSPage() {
 
       // Verify sale status hasn't changed
       const { data: currentSale, error: saleCheckError } = await supabase
-        .from('sales')
-        .select('status')
-        .eq('id', selectedSale.id)
+        .from("sales")
+        .select("status")
+        .eq("id", selectedSale.id)
         .single();
 
       if (saleCheckError) throw saleCheckError;
 
-      if (currentSale.status === 'refunded') {
-        toast.error('This sale has already been fully refunded');
+      if (currentSale.status === "refunded") {
+        toast.error("This sale has already been fully refunded");
         return;
       }
 
@@ -647,7 +812,7 @@ export default function POSPage() {
 
       // Create refund record
       const { data: refund, error: refundError } = await supabase
-        .from('refunds')
+        .from("refunds")
         .insert({
           sale_id: selectedSale.id,
           total_amount: refundTotal,
@@ -655,7 +820,7 @@ export default function POSPage() {
           reason: refundReason,
           store_id: user.store_id,
           processed_by: user.id,
-          status: 'completed'
+          status: "completed",
         })
         .select()
         .single();
@@ -664,16 +829,16 @@ export default function POSPage() {
 
       // Process refund items
       const refundItemsToProcess = refundItems
-        .filter(item => (item.refund_quantity || 0) > 0)
-        .map(item => ({
+        .filter((item) => (item.refund_quantity || 0) > 0)
+        .map((item) => ({
           refund_id: refund.id,
           sale_item_id: item.id,
           quantity: item.refund_quantity,
-          refund_amount: item.price * (item.refund_quantity || 0)
+          refund_amount: item.price * (item.refund_quantity || 0),
         }));
 
       const { error: refundItemsError } = await supabase
-        .from('refund_items')
+        .from("refund_items")
         .insert(refundItemsToProcess);
 
       if (refundItemsError) throw refundItemsError;
@@ -682,15 +847,18 @@ export default function POSPage() {
       for (const item of refundItems) {
         if ((item.refund_quantity || 0) > 0) {
           const { error: updateError } = await supabase.rpc(
-            'update_item_quantity',
-            { 
+            "update_item_quantity",
+            {
               p_item_id: item.item_id,
-              p_quantity_change: item.refund_quantity
+              p_quantity_change: item.refund_quantity,
             }
           );
 
           if (updateError) {
-            console.error(`Error updating quantity for item ${item.item_id}:`, updateError);
+            console.error(
+              `Error updating quantity for item ${item.item_id}:`,
+              updateError
+            );
             toast.error(`Failed to update inventory for ${item.title}`);
           }
         }
@@ -698,15 +866,15 @@ export default function POSPage() {
 
       // Update sale status
       const allItemsRefunded = refundItems.every(
-        item => item.refund_quantity === item.quantity
+        (item) => item.refund_quantity === item.quantity
       );
 
       const { error: saleUpdateError } = await supabase
-        .from('sales')
-        .update({ 
-          status: allItemsRefunded ? 'refunded' : 'partially_refunded'
+        .from("sales")
+        .update({
+          status: allItemsRefunded ? "refunded" : "partially_refunded",
         })
-        .eq('id', selectedSale.id);
+        .eq("id", selectedSale.id);
 
       if (saleUpdateError) throw saleUpdateError;
 
@@ -720,15 +888,15 @@ export default function POSPage() {
           reason: refundReason,
           originalSaleId: selectedSale.id,
           isRefund: true,
-          customer: selectedSale.customer
+          customer: selectedSale.customer,
         },
         items: refundItems
-          .filter(item => (item.refund_quantity || 0) > 0)
-          .map(item => ({
+          .filter((item) => (item.refund_quantity || 0) > 0)
+          .map((item) => ({
             title: item.title,
             price: item.price,
-            refund_quantity: item.refund_quantity
-          }))
+            refund_quantity: item.refund_quantity,
+          })),
       });
 
       setShowRefundReceipt(true);
@@ -737,11 +905,10 @@ export default function POSPage() {
       setRefundItems([]);
       setRefundReason("");
       setSearchSaleId("");
-      toast.success('Refund processed successfully');
-
+      toast.success("Refund processed successfully");
     } catch (error) {
-      console.error('Error processing refund:', error);
-      toast.error('Error processing refund');
+      console.error("Error processing refund:", error);
+      toast.error("Error processing refund");
     } finally {
       setIsProcessing(false);
     }
@@ -749,18 +916,104 @@ export default function POSPage() {
 
   // Add this helper function to format currency
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: 'GBP'
+    return new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
     }).format(amount);
   };
+
+  // Add this function to calculate final total after discount
+  const calculateFinalTotal = () => {
+    if (discount.value === 0) return total;
+
+    if (discount.type === "percentage") {
+      return total - total * (discount.value / 100);
+    } else {
+      return Math.max(0, total - discount.value);
+    }
+  };
+
+  // Add this component for the discount modal
+  const DiscountModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md">
+        <div className="p-6">
+          <h2 className="text-xl font-bold mb-4">Apply Discount</h2>
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <Button
+                variant={discount.type === "percentage" ? "default" : "outline"}
+                onClick={() =>
+                  setDiscount((prev) => ({ ...prev, type: "percentage" }))
+                }
+              >
+                Percentage (%)
+              </Button>
+              <Button
+                variant={discount.type === "fixed" ? "default" : "outline"}
+                onClick={() =>
+                  setDiscount((prev) => ({ ...prev, type: "fixed" }))
+                }
+              >
+                Fixed Amount (£)
+              </Button>
+            </div>
+            <Input
+              type="number"
+              min="0"
+              max={discount.type === "percentage" ? 100 : total}
+              value={discount.value}
+              onChange={(e) =>
+                setDiscount((prev) => ({
+                  ...prev,
+                  value: parseFloat(e.target.value) || 0,
+                }))
+              }
+              placeholder={
+                discount.type === "percentage"
+                  ? "Enter percentage"
+                  : "Enter amount"
+              }
+            />
+            <div className="text-sm">
+              Original Total: £{total.toFixed(2)}
+              <br />
+              Final Total: £{calculateFinalTotal().toFixed(2)}
+              <br />
+              Savings: £{(total - calculateFinalTotal()).toFixed(2)}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  setShowDiscountModal(false);
+                }}
+              >
+                Apply
+              </Button>
+              <Button
+                className="flex-1"
+                variant="outline"
+                onClick={() => {
+                  setDiscount({ type: "fixed", value: 0 });
+                  setShowDiscountModal(false);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 text-gray-800 dark:text-gray-100">
-        Point of Sale
+        Point of Saless {nfcStatus}
       </h1>
-
+      <button ref={scanButton} >Scan</button>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Cart Section */}
         <Card className="bg-white dark:bg-gray-800 shadow-lg justify-between">
@@ -769,16 +1022,14 @@ export default function POSPage() {
               <ShoppingCart className="mr-2 h-5 w-5 text-paperclip-red" /> Cart
               Items
             </CardTitle>
-            <div className="m-0">
+            <div className="flex gap-2">
               <Button
-                onClick={clearCart}
-                className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
-        font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
-        disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-9 px-4 py-2 min-w-[100px]
-         bg-[#fff] text-[#333] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] m-0"
+                onClick={() => setShowDiscountModal(true)}
+                className="inline-flex items-center justify-center gap-2"
               >
-                Clear Cart
+                Discount
               </Button>
+              <Button onClick={clearCart}>Clear Cart</Button>
             </div>
           </div>
           <CardContent>
@@ -841,11 +1092,37 @@ export default function POSPage() {
               ))}
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between items-center">
-            <span className="text-xl font-semibold">Total:</span>
-            <span className="text-2xl font-bold text-paperclip-red">
-              £{total.toFixed(2)}
-            </span>
+          <CardFooter className="flex flex-col">
+            <div className="w-full flex justify-between items-center mb-2">
+              <span className="text-xl font-semibold">Subtotal:</span>
+              <span className="text-xl">£{total.toFixed(2)}</span>
+            </div>
+            {discount.value > 0 && (
+              <div className="w-full flex justify-between items-center mb-2 text-green-500">
+                <span>
+                  Discount (
+                  {discount.type === "percentage"
+                    ? `${discount.value}%`
+                    : `£${discount.value}`}
+                  ):
+                </span>
+                <span>-£{(total - calculateFinalTotal()).toFixed(2)}</span>
+              </div>
+            )}
+            <div className="w-full flex justify-between items-center">
+              <span className="text-xl font-semibold">Final Total:</span>
+              <span
+                className={`text-2xl font-bold ${
+                  discount.value > 0
+                    ? discount.type === "percentage"
+                      ? "text-yellow-500"
+                      : "text-green-500"
+                    : "text-paperclip-red"
+                }`}
+              >
+                £{calculateFinalTotal().toFixed(2)}
+              </span>
+            </div>
           </CardFooter>
         </Card>
 
@@ -1063,18 +1340,21 @@ export default function POSPage() {
       {showReceipt && receiptData && (
         <div className="fixed inset-0 bg-[#191e25] bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-scroll">
           <Receipt
-            saleData={receiptData.saleData as { 
-              id: string;
-              created_at: string;
-              total_amount: number;
-              payment_method: string;
-              amount_tendered: number;
-              change_amount: number;
-            }}
+            saleData={
+              receiptData.saleData as {
+                id: string;
+                created_at: string;
+                total_amount: number;
+                payment_method: string;
+                amount_tendered: number;
+                change_amount: number;
+              }
+            }
             items={receiptData.items}
-            userId={user?.id || ''}
+            userId={user?.id || ""}
             receiptLogo={posSettings.receiptLogo}
             receiptMessage={posSettings.receiptMessage}
+            discount={receiptData.discount}
             onClose={() => {
               setShowReceipt(false);
               setIsProcessing(false);
@@ -1117,7 +1397,7 @@ export default function POSPage() {
                   ✕
                 </Button>
               </div>
-              
+
               {!selectedSale ? (
                 <div className="space-y-4">
                   <div className="flex gap-2">
@@ -1136,20 +1416,28 @@ export default function POSPage() {
                     <div>
                       <h3 className="font-semibold mb-2">Customer Details</h3>
                       <p>Name: {selectedSale.customer.name}</p>
-                      <p>Email: {selectedSale.customer.email || 'N/A'}</p>
-                      <p>Phone: {selectedSale.customer.phone || 'N/A'}</p>
+                      <p>Email: {selectedSale.customer.email || "N/A"}</p>
+                      <p>Phone: {selectedSale.customer.phone || "N/A"}</p>
                     </div>
                     <div>
                       <h3 className="font-semibold mb-2">Sale Details</h3>
                       <p>Sale ID: {selectedSale.id}</p>
-                      <p>Date: {new Date(selectedSale.created_at).toLocaleDateString()}</p>
-                      <p>Original Amount: {formatCurrency(selectedSale.total_amount)}</p>
+                      <p>
+                        Date:{" "}
+                        {new Date(selectedSale.created_at).toLocaleDateString()}
+                      </p>
+                      <p>
+                        Original Amount:{" "}
+                        {formatCurrency(selectedSale.total_amount)}
+                      </p>
                       <p>Payment Method: {selectedSale.payment_method}</p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <h3 className="font-semibold">Items Available for Refund</h3>
+                    <h3 className="font-semibold">
+                      Items Available for Refund
+                    </h3>
                     <div className="space-y-4">
                       {refundItems.map((item) => (
                         <div
@@ -1169,10 +1457,13 @@ export default function POSPage() {
                               Price: {formatCurrency(item.price)}
                             </p>
                             <div className="text-sm text-gray-500">
-                              <span>Original Qty: {item.original_quantity}</span>
+                              <span>
+                                Original Qty: {item.original_quantity}
+                              </span>
                               {item.refunded_quantity > 0 && (
                                 <span className="ml-2">
-                                  (Previously Refunded: {item.refunded_quantity})
+                                  (Previously Refunded: {item.refunded_quantity}
+                                  )
                                 </span>
                               )}
                             </div>
@@ -1181,7 +1472,12 @@ export default function POSPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => updateRefundQuantity(item.id, (item.refund_quantity || 0) - 1)}
+                              onClick={() =>
+                                updateRefundQuantity(
+                                  item.id,
+                                  (item.refund_quantity || 0) - 1
+                                )
+                              }
                               disabled={(item.refund_quantity || 0) <= 0}
                             >
                               <Minus className="h-4 w-4" />
@@ -1192,10 +1488,13 @@ export default function POSPage() {
                                 min="0"
                                 max={item.quantity}
                                 value={item.refund_quantity || 0}
-                                onChange={(e) => 
+                                onChange={(e) =>
                                   updateRefundQuantity(
                                     item.id,
-                                    Math.min(parseInt(e.target.value) || 0, item.quantity)
+                                    Math.min(
+                                      parseInt(e.target.value) || 0,
+                                      item.quantity
+                                    )
                                   )
                                 }
                                 className="text-center"
@@ -1204,15 +1503,24 @@ export default function POSPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => updateRefundQuantity(item.id, (item.refund_quantity || 0) + 1)}
-                              disabled={(item.refund_quantity || 0) >= item.quantity}
+                              onClick={() =>
+                                updateRefundQuantity(
+                                  item.id,
+                                  (item.refund_quantity || 0) + 1
+                                )
+                              }
+                              disabled={
+                                (item.refund_quantity || 0) >= item.quantity
+                              }
                             >
                               <Plus className="h-4 w-4" />
                             </Button>
                           </div>
                           <div className="w-32 text-right">
                             <p className="font-medium">
-                              {formatCurrency((item.refund_quantity || 0) * item.price)}
+                              {formatCurrency(
+                                (item.refund_quantity || 0) * item.price
+                              )}
                             </p>
                           </div>
                         </div>
@@ -1222,7 +1530,9 @@ export default function POSPage() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block font-medium mb-2">Refund Reason</label>
+                      <label className="block font-medium mb-2">
+                        Refund Reason
+                      </label>
                       <textarea
                         value={refundReason}
                         onChange={(e) => setRefundReason(e.target.value)}
@@ -1234,14 +1544,16 @@ export default function POSPage() {
 
                     <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
                       <div>
-                        <p className="text-sm text-gray-500">Total Refund Amount</p>
+                        <p className="text-sm text-gray-500">
+                          Total Refund Amount
+                        </p>
                         <p className="text-2xl font-bold">
                           {formatCurrency(calculateRefundTotal())}
                         </p>
                       </div>
                       <div className="space-x-2">
                         <Button
-                        className="inline-flex items-center justify-center whitespace-nowrap text-sm 
+                          className="inline-flex items-center justify-center whitespace-nowrap text-sm 
                         font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
                         disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-2 py-2 min-w-[100px]
                          bg-[#fff] text-[#333] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff]"
@@ -1257,14 +1569,15 @@ export default function POSPage() {
                           Cancel
                         </Button>
                         <Button
-                        className="inline-flex items-center justify-center whitespace-nowrap text-sm 
+                          className="inline-flex items-center justify-center whitespace-nowrap text-sm 
                           font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
                           disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-2 py-2 min-w-[100px] 
                           bg-[#dc2626] text-[#fff] rounded-[8px] border-[1px] border-[#dc2626] hover:text-[#dc2626]"
                           onClick={processRefund}
                           disabled={
-                            !refundItems.some((item) => (item.refund_quantity || 0) > 0) ||
-                            !refundReason.trim()
+                            !refundItems.some(
+                              (item) => (item.refund_quantity || 0) > 0
+                            ) || !refundReason.trim()
                           }
                         >
                           Process Refund
@@ -1278,6 +1591,8 @@ export default function POSPage() {
           </div>
         </div>
       )}
+
+      {showDiscountModal && <DiscountModal />}
     </div>
   );
 }
