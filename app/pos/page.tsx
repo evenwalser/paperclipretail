@@ -261,84 +261,57 @@ export default function POSPage() {
     const startNfcScan = async () => {
       if (!scanButton.current) return;
       scanButton.current?.addEventListener("click", async () => {
-        alert("User clicked scan button");
-     
-      
         try {
-          const ndef =  new window.NDEFReader() 
-       
+          const ndef = new window.NDEFReader();
           await ndef.scan();
-          alert("> Scan started");
-        alert(window.NDEFReader)
+          setNfcStatus("Scan started - Please tap your NFC card");
+
+          // Handle reading errors
           ndef.addEventListener("readingerror", () => {
-            alert("Argh! Cannot read data from the NFC tag. Try another one?");
+            setNfcStatus("Error reading NFC card - Please try again");
+            toast.error("Failed to read NFC card");
           });
-      
+
+          // Handle successful reads
           ndef.addEventListener("reading", ({ message, serialNumber }: NDEFReadingEvent) => {
-            alert(`> Serial Number: ${serialNumber}`);
-            alert(`> Records: (${message.records.length})`);
+            setNfcStatus(`Card detected! Serial: ${serialNumber}`);
+            
+            // Process the NFC message records
+            message.records.forEach((record, index) => {
+              try {
+                if (record.recordType === "text") {
+                  const textDecoder = new TextDecoder();
+                  const text = textDecoder.decode(record.data);
+                  toast.success(`Card Data (${index + 1}): ${text}`);
+                } else if (record.recordType === "url") {
+                  const textDecoder = new TextDecoder();
+                  const url = textDecoder.decode(record.data);
+                  toast.success(`URL found: ${url}`);
+                } else {
+                  console.log(`Record ${index + 1} type: ${record.recordType}`);
+                }
+              } catch (error) {
+                console.error(`Error processing record ${index + 1}:`, error);
+              }
+            });
           });
+
         } catch (error) {
-          alert("Argh! " + error);
+          if (error instanceof Error) {
+            if (error.name === 'NotAllowedError') {
+              setNfcStatus("NFC permission denied");
+              toast.error("Please enable NFC permissions");
+            } else if (error.name === 'NotSupportedError') {
+              setNfcStatus("NFC not supported on this device");
+              toast.error("NFC is not supported on your device");
+            } else {
+              setNfcStatus(`NFC Error: ${error.message}`);
+              toast.error(error.message);
+            }
+          }
+          console.error("NFC Error:", error);
         }
       });
-      
-      // writeButton.addEventListener("click", async () => {
-      //   alert("User clicked write button");
-      
-      //   try {
-      //     const ndef = new NDEFReader();
-      //     await ndef.write("Hello world!");
-      //     alert("> Message written");
-      //   } catch (error) {
-      //     alert("Argh! " + error);
-      //   }
-      // });
-      
-      // makeReadOnlyButton.addEventListener("click", async () => {
-      //   alert("User clicked make read-only button");
-      
-      //   try {
-      //     const ndef = new NDEFReader();
-      //     await ndef.makeReadOnly();
-      //     alert("> NFC tag has been made permanently read-only");
-      //   } catch (error) {
-      //     alert("Argh! " + error);
-      //   }
-      // });
-
-      // try {
-      //   nfcReader = new (window as any).NDEFReader();
-      //   await nfcReader.scan();
-        
-      //   setNfcStatus("NFC scan started - ready to read tags");
-
-      //   nfcReader.addEventListener("reading", (event: any) => {
-      //     try {
-      //       const decoder = new TextDecoder();
-      //       for (const record of event.message.records) {
-      //         if (record.recordType === "text") {
-      //           const text = decoder.decode(record.data);
-      //           // Handle the NFC tag data here
-      //           toast.success(`NFC Tag Read: ${text}`);
-      //         }
-      //       }
-      //     } catch (error) {
-      //       toast.error("Error reading NFC tag data");
-      //     }
-      //   });
-
-      //   nfcReader.addEventListener("readingerror", () => {
-      //     toast.error("Error reading NFC tag");
-      //   });
-
-      // } catch (error) {
-      //   if (error instanceof Error) {
-      //     setNfcStatus(`Error starting NFC scan: ${error.message}`);
-      //   } else {
-      //     setNfcStatus("Failed to start NFC scan");
-      //   }
-      // }
     };
 
     startNfcScan();
