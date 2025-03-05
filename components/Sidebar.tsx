@@ -109,11 +109,6 @@ export function Sidebar() {
     }
   };
 
-  // Filter items based on user's role
-  const sidebarItems = allSidebarItems.filter(item => 
-    item.roles.includes(role as string)
-  );
-
   // Show loading state or return null while role is being fetched
   if (isLoading) {
     return <div className="flex flex-col h-full bg-white dark:bg-gray-900 w-64 border-r border-gray-200 dark:border-gray-800" />;
@@ -132,22 +127,24 @@ export function Sidebar() {
       </div>
       <ScrollArea className="flex-1">
         <nav className="space-y-2 p-4">
-          {sidebarItems.map((item) => (
+          {allSidebarItems.map((item) => (
             <Link 
               key={item.name} 
               href={item.href}
               onClick={(e) => handleItemClick(e, item)}
               className={cn(
-                role === 'sales_associate' && !item.roles.includes('sales_associate') && 'opacity-50'
+                role === 'sales_associate' && !item.roles.includes('sales_associate') && 'opacity-50 cursor-not-allowed'
               )}
             >
               <Button
                 variant="ghost"
+                disabled={role === 'sales_associate' && !item.roles.includes('sales_associate')}
                 className={cn(
                   "w-full justify-start rounded-[8px] relative",
                   pathname === item.href
                     ? "bg-gray-100 dark:bg-gray-800 text-[#dc2626]"
-                    : "hover:bg-gray-800 hover:text-[#fff]"
+                    : "hover:bg-gray-800 hover:text-[#fff]",
+                  role === 'sales_associate' && !item.roles.includes('sales_associate') && 'opacity-50 cursor-not-allowed'
                 )}
               >
                 <item.icon className="mr-2 h-4 w-4" />

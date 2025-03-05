@@ -15,8 +15,8 @@ export default function AcceptInvitePage() {
 
   useEffect(() => {
     const validateInvitation = async () => {
-      const token = searchParams.get('token');
-      const email = searchParams.get('email');
+      const token = searchParams?.get('token');
+      const email = searchParams?.get('email');
       console.log('here is token', token, 'and here is email', email);
       if (!token || !email) {
         setLoading(false);

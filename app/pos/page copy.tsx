@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCart } from "../contexts/CartContext";
 import {
   ShoppingCart,
@@ -165,7 +165,6 @@ interface Discount {
 }
 
 export default function POSPage() {
-  const searchParams = useSearchParams();
   const { items, updateQuantity, removeItem, total, clearCart } = useCart();
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [user, setuser] = useState<any>(null);
@@ -207,9 +206,6 @@ export default function POSPage() {
   const [nfcStatus, setNfcStatus] = useState<string>('');
   const scanButton = useRef<HTMLButtonElement>(null);
 
-  const paymentStatus = searchParams?.get('done');
-  if (paymentStatus){toast.success("Payment successful!");}
-
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -223,51 +219,28 @@ export default function POSPage() {
     loadUser(); 
   }, []); 
 
-  const handlePaymentSquare = async () => {
+  const handlePaymentSquere = async () => {
     try {
-      if (items.length === 0) {
-        toast.error("Cart is empty");
-        return;
-      }
-
-      if (!customerData.name || !customerData.phone) {
-        toast.error("Customer information is required");
-        return;
-      }
-
-      setIsProcessing(true);
-
       const response = await fetch('/api/create-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          amount: calculateFinalTotal(),
-          orderId: crypto.randomUUID(),
-          items: items,
-          customerData: customerData,
-          storeId: user.store_id,
+          amount: '500', // Use actual total instead of hardcoded value
+          orderId: crypto.randomUUID() // Generate a unique order ID
         }),
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.details || 'Payment initialization failed');
+        throw new Error('Failed to create payment');
       }
       
       const data = await response.json();
-      
-      // Store payment ID in localStorage for later reference
-      localStorage.setItem('pendingPaymentId', data.paymentId);
-      
-      // Redirect to Square payment page
       window.location.href = data.url;
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error(error instanceof Error ? error.message : 'Payment initialization failed');
-    } finally {
-      setIsProcessing(false);
+      toast.error('Failed to initiate payment');
     }
-  };
+  }
 
   useEffect(() => {
     if (typeof total === "number") {
@@ -1036,7 +1009,7 @@ export default function POSPage() {
       <h1 className="text-3xl font-bold mb-8 text-gray-800 dark:text-gray-100">
         Point of Saless {nfcStatus}
       </h1>
- 
+      <button onClick={handlePaymentSquere}>Pay Now</button>
       {/* <button ref={scanButton} >Scan</button>q */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Cart Section */}
@@ -1326,24 +1299,8 @@ export default function POSPage() {
                   Cash Payment
                 </Button>
               )}
-                    <Button
-                  className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
-                font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring 
-                disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 
-                [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-4 py-2 min-w-[100px] bg-transparent 
-                text-[#fff] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff] hover:bg-[#dc2626] 
-                hover:border-[#dc2626]"
-                  onClick={() => {
-                    handlePaymentSquare();
-                    setShowPaymentOptions(false);
-                  }}
-                >
-                  Pay Now
-                </Button>
 
-
-
-              {/* {posSettings.acceptCard && (
+              {posSettings.acceptCard && (
                 <Button
                   className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
                 font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring 
@@ -1358,7 +1315,7 @@ export default function POSPage() {
                 >
                   Card Payment
                 </Button>
-              )} */}
+              )}
 
               <Button
                 className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 

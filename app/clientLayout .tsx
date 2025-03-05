@@ -17,7 +17,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
  // Add more routes as needed
 
   // Check if the current route is an auth route
-  const isAuthRoute = authRoutes.includes(pathname);
+  const isAuthRoute = authRoutes.includes(pathname ?? '');
 
   return isAuthRoute ? (
     <main>{children}</main>

@@ -65,7 +65,7 @@ const conditionOptions = [
 ] as const;
 
 export default function EditItemPage() {
-  const { id } = useParams();
+  const { id } = useParams() as { id: string };
   const router = useRouter();
   const supabase = createClient();
   const [item, setItem] = useState<ItemType | null>(null);
