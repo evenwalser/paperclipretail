@@ -1009,7 +1009,6 @@ export default function POSPage() {
       <h1 className="text-3xl font-bold mb-8 text-gray-800 dark:text-gray-100">
         Point of Saless {nfcStatus}
       </h1>
-      <button onClick={handlePaymentSquere}>Pay Now</button>
       {/* <button ref={scanButton} >Scan</button>q */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Cart Section */}

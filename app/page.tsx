@@ -18,6 +18,7 @@ import { QuickActions } from "@/components/QuickActions";
 import { getRecentSales, RecentSale } from "@/lib/services/recentSales";
 import { RecentSales } from "@/components/RecentSales";
 import { getUser } from "@/lib/services/items";
+import POS from "@/components/POS";
 
 interface OverviewProps {
   currency: string;
@@ -268,15 +269,18 @@ export default function DashboardPage() {
 
       <QuickActions />
 
-      <div className="mt-4 p-4 bg-gray-100 rounded">
+      {/* <div className="mt-4 p-4 bg-gray-100 rounded">
         <h2 className="font-bold mb-2">Logs:</h2>
         {logs.map((log, index) => (
           <div key={index} className="mb-1">
             {log}
           </div>
         ))}
-      </div>
+      </div> */}
+      <POS/>
     </div>
+
+ 
   );
 }
 

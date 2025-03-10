@@ -77,7 +77,7 @@ export function Receipt({ saleData, items, userId, customerDetails, receiptLogo,
 
   return (
     <div className="bg-[#191e25] p-6 rounded-lg max-w-[600px] w-full mx-auto receipt-content">
-       {/* {receiptLogo && (
+       {receiptLogo && (
         <div className="flex justify-center mb-4">
           <img 
             src={receiptLogo} 
@@ -85,7 +85,7 @@ export function Receipt({ saleData, items, userId, customerDetails, receiptLogo,
             className="max-h-16 object-contain"
           />
         </div>
-      )} */}
+      )}
       {/* Store Header */}
       {storeDetails && (
         <div className="mb-5 flex gap-2 border-[1px] border-[rgb(31,41,55)]">
