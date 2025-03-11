@@ -22,6 +22,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Settings,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -29,19 +32,34 @@ import { createClient } from "@/utils/supabase/client";
 import { Receipt } from "@/components/Receipt";
 import { getUser } from "@/lib/services/items";
 import { RefundReceipt } from "@/components/RefundReceipt";
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe } from "@stripe/stripe-js";
 
 declare global {
   interface Window {
     NDEFReader: any;
   }
-
 }
 
+interface Reader {
+  id: string;
+  object: string;
+  device_type: string;
+  label: string;
+  status: string;
+}
 // Add these interfaces
 interface NDEFMessage {
   records: any[];
 }
+
+interface ReaderState {
+  id: string;
+  label: string;
+  status: string;
+  device_type: string;
+  last_connected: string;
+}
+
 
 interface NDEFReadingEvent {
   message: NDEFMessage;
@@ -166,7 +184,9 @@ interface Discount {
 }
 
 // Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || "");
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY || ""
+);
 
 // Add these interfaces for Stripe Terminal
 interface Reader {
@@ -177,6 +197,16 @@ interface Reader {
   status: string;
 }
 
+// Add these interfaces for reader management
+interface ReaderState {
+  id: string;
+  label: string;
+  status: string;
+  device_type: string;
+  last_connected: string;
+}
+
+
 interface Transaction {
   id: string;
   amount: number;
@@ -184,6 +214,9 @@ interface Transaction {
 }
 
 export default function POSPage() {
+
+  const [availableReaders, setAvailableReaders] = useState<Reader[]>([]);
+  const [showReaderManager, setShowReaderManager] = useState(false);
   const { items, updateQuantity, removeItem, total, clearCart } = useCart();
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [user, setuser] = useState<any>(null);
@@ -223,13 +256,15 @@ export default function POSPage() {
     value: 0,
   });
   const [showDiscountModal, setShowDiscountModal] = useState(false);
-  const [nfcStatus, setNfcStatus] = useState<string>('');
+  const [nfcStatus, setNfcStatus] = useState<string>("");
   const scanButton = useRef<HTMLButtonElement>(null);
 
   // Add Stripe Terminal states
   const [reader, setReader] = useState<Reader | null>(null);
   const [paymentIntent, setPaymentIntent] = useState<string | null>(null);
-  const [terminalStatus, setTerminalStatus] = useState<string>('Stripe Terminal not initialized');
+  const [terminalStatus, setTerminalStatus] = useState<string>(
+    "Stripe Terminal not initialized"
+  );
   const [terminalLoading, setTerminalLoading] = useState(false);
 
   // Add these new states for terminal payment processing
@@ -245,31 +280,67 @@ export default function POSPage() {
         console.error("Failed to load items:", error);
       }
     };
-    loadUser(); 
-  }, []); 
+    loadUser();
+  }, []);
+
+  useEffect(() => {
+    const loadSavedReader = async () => {
+      try {
+        // Try to get reader from local storage first
+        const savedReader = localStorage.getItem('pos_active_reader');
+        
+        if (savedReader) {
+          const readerData = JSON.parse(savedReader);
+          setReader(readerData);
+          setTerminalStatus(`Reader loaded: ${readerData.label || readerData.id}`);
+        } else {
+          // Try to get reader from database if user is logged in
+          if (user?.store_id) {
+            const { data } = await supabase
+              .from('terminal_readers')
+              .select('*')
+              .eq('store_id', user.store_id)
+              .eq('is_active', true)
+              .maybeSingle();
+              
+            if (data) {
+              setReader(data);
+              // Also save to localStorage for faster access next time
+              localStorage.setItem('pos_active_reader', JSON.stringify(data));
+              setTerminalStatus(`Reader loaded: ${data.label || data.id}`);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved reader:', error);
+      }
+    };
+    
+    loadSavedReader();
+  }, [user?.store_id, supabase]);
 
   const handlePaymentSquere = async () => {
     try {
-      const response = await fetch('/api/create-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          amount: '500', // Use actual total instead of hardcoded value
-          orderId: crypto.randomUUID() // Generate a unique order ID
+      const response = await fetch("/api/create-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: "500", // Use actual total instead of hardcoded value
+          orderId: crypto.randomUUID(), // Generate a unique order ID
         }),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to create payment');
+        throw new Error("Failed to create payment");
       }
-      
+
       const data = await response.json();
       window.location.href = data.url;
     } catch (error) {
-      console.error('Payment error:', error);
-      toast.error('Failed to initiate payment');
+      console.error("Payment error:", error);
+      toast.error("Failed to initiate payment");
     }
-  }
+  };
 
   useEffect(() => {
     if (typeof total === "number") {
@@ -286,7 +357,7 @@ export default function POSPage() {
           .select("accept_cash, accept_card, receipt_logo, receipt_message")
           .eq("owner_id", user.id)
           .single();
-          console.log("🚀 ~ fetchPOSSettings ~ data:", data)
+        console.log("🚀 ~ fetchPOSSettings ~ data:", data);
         if (error) throw error;
 
         if (data) {
@@ -325,35 +396,39 @@ export default function POSPage() {
           });
 
           // Handle successful reads
-          ndef.addEventListener("reading", ({ message, serialNumber }: NDEFReadingEvent) => {
-            setNfcStatus(`Card detected! Serial: ${serialNumber}`);
-            
-            // Process the NFC message records
-            message.records.forEach((record, index) => {
-              try {
-                if (record.recordType === "text") {
-                  const textDecoder = new TextDecoder();
-                  const text = textDecoder.decode(record.data);
-                  toast.success(`Card Data (${index + 1}): ${text}`);
-                } else if (record.recordType === "url") {
-                  const textDecoder = new TextDecoder();
-                  const url = textDecoder.decode(record.data);
-                  toast.success(`URL found: ${url}`);
-                } else {
-                  console.log(`Record ${index + 1} type: ${record.recordType}`);
-                }
-              } catch (error) {
-                console.error(`Error processing record ${index + 1}:`, error);
-              }
-            });
-          });
+          ndef.addEventListener(
+            "reading",
+            ({ message, serialNumber }: NDEFReadingEvent) => {
+              setNfcStatus(`Card detected! Serial: ${serialNumber}`);
 
+              // Process the NFC message records
+              message.records.forEach((record, index) => {
+                try {
+                  if (record.recordType === "text") {
+                    const textDecoder = new TextDecoder();
+                    const text = textDecoder.decode(record.data);
+                    toast.success(`Card Data (${index + 1}): ${text}`);
+                  } else if (record.recordType === "url") {
+                    const textDecoder = new TextDecoder();
+                    const url = textDecoder.decode(record.data);
+                    toast.success(`URL found: ${url}`);
+                  } else {
+                    console.log(
+                      `Record ${index + 1} type: ${record.recordType}`
+                    );
+                  }
+                } catch (error) {
+                  console.error(`Error processing record ${index + 1}:`, error);
+                }
+              });
+            }
+          );
         } catch (error) {
           if (error instanceof Error) {
-            if (error.name === 'NotAllowedError') {
+            if (error.name === "NotAllowedError") {
               setNfcStatus("NFC permission denied");
               toast.error("Please enable NFC permissions");
-            } else if (error.name === 'NotSupportedError') {
+            } else if (error.name === "NotSupportedError") {
               setNfcStatus("NFC not supported on this device");
               toast.error("NFC is not supported on your device");
             } else {
@@ -511,32 +586,39 @@ export default function POSPage() {
         setPaymentMethod("card");
         setIsProcessing(true);
         setShowPaymentOptions(false);
-        
+
         // Initialize the reader
-        let currentReader = reader;
-        if (!currentReader) {
-          const { success, reader: newReader } = await initializeReader();
-          if (!success || !newReader) {
-            toast.error("Could not initialize Stripe reader");
-            setIsProcessing(false);
-            return;
-          }
-          currentReader = newReader;
+        if (!reader) {
+          // No reader configured - show reader manager
+          toast.error("No card reader configured. Please set up a reader first.");
+          setShowReaderManager(true);
+          setIsProcessing(false);
+          return;
         }
-        
-        // Create payment intent with the reader we have
-        const { success: paymentCreated, paymentIntentId } = await createTerminalPayment(currentReader);
+
+        // Ensure reader is ready
+        const readerStatus = await checkReaderStatus(reader);
+        if (!readerStatus.ready) {
+          toast.error(`Reader issue: ${readerStatus.message}`);
+          setIsProcessing(false);
+          return;
+        }
+
+        // Create payment intent with existing reader
+        const { success: paymentCreated, paymentIntentId } = 
+          await createTerminalPayment(reader);
+          
         if (!paymentCreated || !paymentIntentId) {
           toast.error("Failed to create payment");
           setIsProcessing(false);
           return;
         }
-        
-        // Process the payment with the values we have, not relying on state
-        await processTerminalPayment(currentReader, paymentIntentId);
+
+        // Process the payment with existing reader
+        await processTerminalPayment(reader, paymentIntentId);
         return;
-      } 
-      
+      }
+
       // For cash and regular card payments, continue with existing logic
       setPaymentMethod(method);
       setIsProcessing(true);
@@ -546,15 +628,15 @@ export default function POSPage() {
         const amountTendered = parseFloat(amount);
         const finalTotal = calculateFinalTotal();
         const changeAmount = amountTendered - finalTotal;
-        
+
         if (changeAmount < 0) {
           toast.error("Insufficient payment amount");
           setIsProcessing(false);
           return;
         }
-        
+
         setChange(changeAmount);
-        
+
         // Process customer data
         const customerRecord = await processCustomerData(finalTotal);
         if (!customerRecord) {
@@ -563,7 +645,7 @@ export default function POSPage() {
         }
 
         const originalAmount = total;
-        
+
         // Create sale data
         const saleData = {
           total_amount: finalTotal,
@@ -605,33 +687,54 @@ export default function POSPage() {
           throw saleItemsError;
         }
 
-        // Update inventory quantities
-        for (const item of items) {
-          const { error: updateError } = await supabase.rpc(
-            "update_item_quantity",
-            {
-              p_item_id: item.id,
-              p_quantity_change: -item.quantity,
-            }
-          );
+        await supabase
+          .from("sales")
+          .update({ inventory_updated: true })
+          .eq("id", saleRecord.id);
 
-          if (updateError) {
-            console.error(`Error updating quantity for item ${item.id}:`, updateError);
-          }
-        }
+        // Now update inventory quantities
+        // for (const item of items) {
+        //   const { error: updateError } = await supabase.rpc(
+        //     "update_item_quantity",
+        //     {
+        //       p_item_id: item.id,
+        //       p_quantity_change: -item.quantity,
+        //     }
+        //   );
+
+        //   if (updateError) {
+        //     console.error(
+        //       `Error updating quantity for item ${item.id}:`,
+        //       updateError
+        //     );
+        //   }
+        // }
+
+        // // Update inventory quantities
+        // for (const item of items) {
+        //   const { error: updateError } = await supabase.rpc(
+        //     "update_item_quantity",
+        //     {
+        //       p_item_id: item.id,
+        //       p_quantity_change: -item.quantity,
+        //     }
+        //   );
+
+        //   if (updateError) {
+        //     console.error(`Error updating quantity for item ${item.id}:`, updateError);
+        //   }
+        // }
 
         // Create payment record
-        const { error: paymentError } = await supabase
-          .from("payments")
-          .insert({
-            order_id: saleRecord.id,
-            amount: finalTotal,
-            status: "completed",
-            customer_id: customerRecord.id,
-            customer_data: customerData,
-            items: items,
-            store_id: user.store_id
-          });
+        const { error: paymentError } = await supabase.from("payments").insert({
+          order_id: saleRecord.id,
+          amount: finalTotal,
+          status: "completed",
+          customer_id: customerRecord.id,
+          customer_data: customerData,
+          items: items,
+          store_id: user.store_id,
+        });
 
         if (paymentError) {
           console.error("Error creating payment record:", paymentError);
@@ -650,12 +753,12 @@ export default function POSPage() {
                 }
               : undefined,
         });
-        
+
         setShowReceipt(true);
-        toast.success('Payment successful via cash');
+        toast.success("Payment successful via cash");
         clearCart();
         setAmount("0.00");
-      } 
+      }
       // Handle regular card payment as before
       else if (method === "card") {
         // Your existing card payment logic
@@ -670,6 +773,199 @@ export default function POSPage() {
       setPaymentMethod(null);
     }
   };
+
+  const checkReaderStatus = async (currentReader: Reader) => {
+    try {
+      const response = await fetch("/api/reader-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ readerId: currentReader.id }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        return { 
+          ready: false, 
+          message: error.error || `Reader connection issue (${response.status})` 
+        };
+      }
+      
+      const data = await response.json();
+      
+      if (data.reader.status === "online") {
+        return { ready: true, message: "Reader is online" };
+      } else {
+        return { 
+          ready: false, 
+          message: `Reader is ${data.reader.status}. Please reconnect.` 
+        };
+      }
+    } catch (error) {
+      console.error("Error checking reader status:", error);
+      return { 
+        ready: false, 
+        message: error instanceof Error ? error.message : "Unknown reader error" 
+      };
+    }
+  };
+
+  const discoverReaders = async () => {
+    try {
+      setTerminalLoading(true);
+      setTerminalStatus("Discovering readers...");
+      
+      const response = await fetch("/api/discover-readers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.readers && Array.isArray(data.readers)) {
+        setAvailableReaders(data.readers);
+        setTerminalStatus(`Found ${data.readers.length} readers`);
+        toast.success(`Found ${data.readers.length} card readers`);
+        return data.readers;
+      } else {
+        throw new Error("Invalid reader discovery response");
+      }
+    } catch (error) {
+      console.error("Reader discovery error:", error);
+      setTerminalStatus(`Discovery Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error("Failed to discover readers");
+      return [];
+    } finally {
+      setTerminalLoading(false);
+    }
+  };
+  const selectReader = async (readerId: string) => {
+    try {
+      setTerminalLoading(true);
+      setTerminalStatus("Connecting to reader...");
+      
+      const response = await fetch("/api/connect-reader", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ readerId }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.reader) {
+        // Save the reader in both state and local storage
+        setReader(data.reader);
+        localStorage.setItem('pos_active_reader', JSON.stringify(data.reader));
+        
+        // Also save to database if logged in
+        if (user?.store_id) {
+          // First, clear any previously active readers
+          await supabase
+            .from('terminal_readers')
+            .update({ is_active: false })
+            .eq('store_id', user.store_id);
+            
+          // Then save this reader as active
+          await supabase.from('terminal_readers').upsert({
+            id: data.reader.id,
+            label: data.reader.label,
+            device_type: data.reader.device_type,
+            status: data.reader.status,
+            store_id: user.store_id,
+            is_active: true,
+            last_connected: new Date().toISOString()
+          });
+        }
+        
+        setTerminalStatus(`Connected to reader: ${data.reader.label || data.reader.id}`);
+        toast.success(`Connected to ${data.reader.label || data.reader.id}`);
+        return true;
+      } else {
+        throw new Error("Invalid reader connection response");
+      }
+    } catch (error) {
+      console.error("Reader connection error:", error);
+      setTerminalStatus(`Connection Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      toast.error("Failed to connect to reader");
+      return false;
+    } finally {
+      setTerminalLoading(false);
+    }
+  };
+
+  const ReaderManagerComponent = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md">
+        <div className="p-6">
+          <h2 className="text-xl font-bold mb-4">Stripe Terminal Reader Manager</h2>
+          
+          <div className="space-y-4">
+            {reader && (
+              <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                <h3 className="font-medium mb-2">Current Reader</h3>
+                <p><strong>Name:</strong> {reader.label || 'Unnamed Reader'}</p>
+                <p><strong>Type:</strong> {reader.device_type}</p>
+                <p><strong>Status:</strong> {reader.status}</p>
+              </div>
+            )}
+            
+            <div className="flex justify-between">
+              <Button 
+                onClick={discoverReaders}
+                disabled={terminalLoading}
+                className="flex-1 mr-2"
+              >
+                {terminalLoading ? 'Discovering...' : 'Discover Readers'}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setShowReaderManager(false)}
+                className="flex-1 ml-2"
+              >
+                Close
+              </Button>
+            </div>
+            
+            {availableReaders.length > 0 && (
+              <div className="mt-4">
+                <h3 className="font-medium mb-2">Available Readers</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {availableReaders.map((r) => (
+                    <div 
+                      key={r.id} 
+                      className={`p-3 rounded-md cursor-pointer border ${
+                        reader?.id === r.id 
+                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20' 
+                          : 'border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700/50'
+                      }`}
+                      onClick={() => selectReader(r.id)}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">{r.label || 'Unnamed Reader'}</p>
+                          <p className="text-sm text-gray-500">{r.device_type} • {r.status}</p>
+                        </div>
+                        {reader?.id === r.id && (
+                          <div className="text-green-500 text-sm font-medium">Current</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   const validateAndUpdateQuantity = async (
     itemId: string,
@@ -951,14 +1247,13 @@ export default function POSPage() {
           customer: selectedSale.customer,
         },
         items: refundItems
-          .filter((item) => (item.refund_quantity || 0))
+          .filter((item) => item.refund_quantity || 0)
           .map((item) => ({
             title: item.title,
             price: item.price,
             refund_quantity: item.refund_quantity,
-          }))
-      }),
-
+          })),
+      });
       setShowRefundReceipt(true);
       setShowRefundModal(false);
       setSelectedSale(null);
@@ -1073,20 +1368,20 @@ export default function POSPage() {
     if (terminalLoading) {
       return { success: false, reader: null };
     }
-    
+
     if (reader) {
-      setTerminalStatus('Reader is already initialized');
+      setTerminalStatus("Reader is already initialized");
       toast.success("Reader already connected");
       return { success: true, reader: reader };
     }
-    
+
     setTerminalLoading(true);
-    setTerminalStatus('Initializing Reader...');
+    setTerminalStatus("Initializing Reader...");
 
     try {
-      const response = await fetch('/api/create-reader', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/create-reader", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
       });
 
       if (!response.ok) {
@@ -1099,14 +1394,14 @@ export default function POSPage() {
       if (data.data.reader) {
         const readerData = data.data.reader;
         setReader(readerData); // Also update the state for future use
-        setTerminalStatus('Reader Ready');
+        setTerminalStatus("Reader Ready");
         toast.success("Stripe Terminal reader connected");
         return { success: true, reader: readerData }; // Return the reader directly
       } else {
-        throw new Error('No reader data received');
+        throw new Error("No reader data received");
       }
     } catch (error: any) {
-      console.error('Reader initialization error:', error);
+      console.error("Reader initialization error:", error);
       setTerminalStatus(`Reader Error: ${error.message}`);
       toast.error(`Terminal Error: ${error.message}`);
       return { success: false, reader: null };
@@ -1114,23 +1409,23 @@ export default function POSPage() {
       setTerminalLoading(false);
     }
   };
-  
+
   // Create Payment Intent for Terminal - updated function
   const createTerminalPayment = async (currentReader: Reader) => {
     if (terminalLoading) {
       toast.error("Payment processing already in progress");
       return { success: false, paymentIntentId: null };
     }
-    
+
     setTerminalLoading(true);
-    setTerminalStatus('Creating Payment...');
-    
+    setTerminalStatus("Creating Payment...");
+
     try {
       const finalAmount = calculateFinalTotal();
-      
-      const response = await fetch('/api/payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+
+      const response = await fetch("/api/payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: Math.round(finalAmount * 100) }),
       });
 
@@ -1141,22 +1436,22 @@ export default function POSPage() {
 
       const data = await response.json();
       console.log("🚀 ~ createTerminalPayment ~ data:", data);
-      
+
       if (data.clientSecret && data.paymentIntentId) {
         // Update state for future use
         setPaymentIntent(data.paymentIntentId);
-        setTerminalStatus('Payment Created - Ready to Process');
+        setTerminalStatus("Payment Created - Ready to Process");
         toast.success("Payment ready to process on terminal");
-        
+
         // Store payment context
         await storeTerminalPaymentContext(data.paymentIntentId, finalAmount);
-        
+
         return { success: true, paymentIntentId: data.paymentIntentId };
       } else {
-        throw new Error('Invalid payment intent response');
+        throw new Error("Invalid payment intent response");
       }
     } catch (error: any) {
-      console.error('Payment creation error:', error);
+      console.error("Payment creation error:", error);
       setTerminalStatus(`Payment Error: ${error.message}`);
       toast.error(`Payment creation error: ${error.message}`);
       return { success: false, paymentIntentId: null };
@@ -1166,23 +1461,26 @@ export default function POSPage() {
   };
 
   // Process Payment on Terminal - updated function
-  const processTerminalPayment = async (currentReader: Reader, currentPaymentIntentId: string) => {
+  const processTerminalPayment = async (
+    currentReader: Reader,
+    currentPaymentIntentId: string
+  ) => {
     console.log("Processing with reader:", currentReader);
     console.log("Processing with payment intent:", currentPaymentIntentId);
-    
+
     if (!currentReader || !currentPaymentIntentId) {
-      setTerminalStatus('Reader or payment intent not available');
+      setTerminalStatus("Reader or payment intent not available");
       toast.error("Reader or payment intent not available");
       return false;
     }
-    
+
     setTerminalLoading(true);
-    setTerminalStatus('Processing Payment...');
-    
+    setTerminalStatus("Processing Payment...");
+
     try {
-      const response = await fetch('/api/process-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/process-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           readerId: currentReader.id,
           paymentIntentId: currentPaymentIntentId,
@@ -1191,36 +1489,40 @@ export default function POSPage() {
 
       // Parse the response
       const responseData = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(responseData.error || `HTTP error ${response.status}`);
       }
 
       // Process payment request was successful
-      setTerminalStatus('Present Card on Reader...');
-      toast.success("Present card on reader. Payment will be processed automatically.");
-      
+      setTerminalStatus("Present Card on Reader...");
+      toast.success(
+        "Present card on reader. Payment will be processed automatically."
+      );
+
       // Start waiting for webhook response
       setWaitingForTerminal(true);
       startPollingForPaymentStatus(currentPaymentIntentId);
-      
+
       // Set up UI
       setShowTerminalOptions(true);
-      
+
       return true;
     } catch (error: any) {
-      console.error('Payment processing error:', error);
+      console.error("Payment processing error:", error);
       setTerminalStatus(`Processing Error: ${error.message}`);
       toast.error(`Processing error: ${error.message}`);
       setIsProcessing(false);
-      
+
       // Handle intent_invalid_state error
-      if (error.message && error.message.includes('intent_invalid_state')) {
-        toast.error("The payment intent is in the wrong state. Please try again.");
+      if (error.message && error.message.includes("intent_invalid_state")) {
+        toast.error(
+          "The payment intent is in the wrong state. Please try again."
+        );
         setPaymentIntent(null);
-        setTerminalStatus('Payment needs to be restarted. Please try again.');
+        setTerminalStatus("Payment needs to be restarted. Please try again.");
       }
-      
+
       return false;
     } finally {
       setTerminalLoading(false);
@@ -1233,33 +1535,35 @@ export default function POSPage() {
     const intervalId = setInterval(async () => {
       try {
         const { data: context } = await supabase
-          .from('terminal_payment_context')
-          .select('status')
-          .eq('payment_intent_id', paymentIntentId)
+          .from("terminal_payment_context")
+          .select("status")
+          .eq("payment_intent_id", paymentIntentId)
           .single();
-          
-        if (context?.status === 'processed') {
+
+        if (context?.status === "processed") {
           // Payment was successfully processed
           clearInterval(intervalId);
           handleTerminalPaymentCompletion(true);
-        } else if (context?.status === 'failed') {
+        } else if (context?.status === "failed") {
           // Payment failed
           clearInterval(intervalId);
           handleTerminalPaymentCompletion(false);
         }
         // Otherwise keep polling
       } catch (error) {
-        console.error('Error polling for payment status:', error);
+        console.error("Error polling for payment status:", error);
       }
     }, 3000);
-    
+
     // Stop polling after 2 minutes (timeout)
     setTimeout(() => {
       clearInterval(intervalId);
       // If we're still waiting, show a message
       if (waitingForTerminal) {
         setWaitingForTerminal(false);
-        toast.error("Payment processing timed out. Please check your dashboard.");
+        toast.error(
+          "Payment processing timed out. Please check your dashboard."
+        );
         setIsProcessing(false);
       }
     }, 120000);
@@ -1268,42 +1572,46 @@ export default function POSPage() {
   // Function to handle terminal payment completion
   const handleTerminalPaymentCompletion = async (success: boolean) => {
     setWaitingForTerminal(false);
-    
+
     if (success) {
       // Get the payment intent ID from the context store instead of state
       const { data: context } = await supabase
-        .from('terminal_payment_context')
-        .select('payment_intent_id')
-        .eq('status', 'processed')
-        .order('processed_at', { ascending: false })
+        .from("terminal_payment_context")
+        .select("payment_intent_id")
+        .eq("status", "processed")
+        .order("processed_at", { ascending: false })
         .limit(1)
         .single();
-      
+
       const processedPaymentIntentId = context?.payment_intent_id;
-      console.log("🚀 ~ handleTerminalPaymentCompletion ~ retrieved payment intent:", processedPaymentIntentId);
-      
+      console.log(
+        "🚀 ~ handleTerminalPaymentCompletion ~ retrieved payment intent:",
+        processedPaymentIntentId
+      );
+
       if (processedPaymentIntentId) {
-        toast.success('Payment successful via Stripe Terminal');
-        
+        toast.success("Payment successful via Stripe Terminal");
+
         // Fetch the sale record to show the receipt
         const { data: payment } = await supabase
-          .from('payments')
-          .select('order_id')
-          .eq('payment_id', processedPaymentIntentId)
+          .from("payments")
+          .select("order_id")
+          .eq("payment_id", processedPaymentIntentId)
           .single();
-          
+
         if (payment?.order_id) {
           const { data: sale } = await supabase
-            .from('sales')
-            .select('*')
-            .eq('id', payment.order_id)
+            .from("sales")
+            .select("*")
+            .eq("id", payment.order_id)
             .single();
-            
+
           if (sale) {
             // Get the sale items to show receipt
             const { data: saleItems } = await supabase
-              .from('sale_items')
-              .select(`
+              .from("sale_items")
+              .select(
+                `
                 id,
                 quantity,
                 price,
@@ -1312,33 +1620,37 @@ export default function POSPage() {
                   title,
                   images:item_images(image_url)
                 )
-              `)
-              .eq('sale_id', sale.id);
-              
+              `
+              )
+              .eq("sale_id", sale.id);
+
             // Format the items for the receipt
             const receiptItems = saleItems?.map((item: any) => ({
               id: item.item.id,
               title: item.item.title,
               price: item.price,
               quantity: item.quantity,
-              image_url: item.item.images?.[0]?.image_url || "/placeholder.svg"
+              image_url: item.item.images?.[0]?.image_url || "/placeholder.svg",
             }));
-            
+
             // Show the receipt
             setReceiptData({
               saleData: sale,
-              items: receiptItems,
-              discount: sale.discount_type ? {
-                type: sale.discount_type as "percentage" | "fixed",
-                value: Number(sale.discount_value),
-                savingsAmount: Number(sale.original_amount) - Number(sale.total_amount)
-              } : undefined
+              items: receiptItems ?? [],
+              discount: sale.discount_type
+                ? {
+                    type: sale.discount_type as "percentage" | "fixed",
+                    value: Number(sale.discount_value),
+                    savingsAmount:
+                      Number(sale.original_amount) - Number(sale.total_amount),
+                  }
+                : undefined,
             });
-            
+
             setShowReceipt(true);
           }
         }
-        
+
         // Clear cart and reset amount
         clearCart();
         setAmount("0.00");
@@ -1349,10 +1661,10 @@ export default function POSPage() {
     } else {
       toast.error("Terminal payment failed");
     }
-        
+
     // Reset states
     setPaymentIntent(null);
-    setTerminalStatus('Reader Ready');
+    setTerminalStatus("Reader Ready");
     setIsProcessing(false);
   };
 
@@ -1371,7 +1683,7 @@ export default function POSPage() {
                 </div>
               )}
             </div>
-            
+
             {showTerminalOptions && (
               <div className="flex gap-2 mt-4">
                 {/* <Button 
@@ -1389,7 +1701,7 @@ export default function POSPage() {
                 </Button> */}
               </div>
             )}
-            
+
             <Button
               className="w-full"
               variant="outline"
@@ -1407,28 +1719,31 @@ export default function POSPage() {
   );
 
   // Store all information needed for webhook processing
-  const storeTerminalPaymentContext = async (paymentIntentId: string, finalAmount: number) => {
+  const storeTerminalPaymentContext = async (
+    paymentIntentId: string,
+    finalAmount: number
+  ) => {
     try {
       // 1. Process customer first to get customer ID
       const customerRecord = await processCustomerData(finalAmount);
       if (!customerRecord) {
         throw new Error("Failed to process customer data");
       }
-      
+
       // Calculate important values
       const originalAmount = total;
-      
+
       // 2. Store transaction context in terminal_payment_context table
       const paymentContext = {
         payment_intent_id: paymentIntentId,
         customer_id: customerRecord.id,
         customer_data: customerData,
-        items: items.map(item => ({
+        items: items.map((item) => ({
           id: item.id,
           quantity: item.quantity,
           price: item.price,
           title: item.title,
-          image_url: item.image_url
+          image_url: item.image_url,
         })),
         original_amount: originalAmount,
         final_amount: finalAmount,
@@ -1436,19 +1751,19 @@ export default function POSPage() {
         discount_value: discount.value > 0 ? discount.value : null,
         store_id: user.store_id,
         created_at: new Date().toISOString(),
-        status: "pending"
+        status: "pending",
       };
-      
+
       // Create a record in terminal_payment_context table
       const { error: contextError } = await supabase
         .from("terminal_payment_context")
         .insert(paymentContext);
-        
+
       if (contextError) {
         console.error("Error storing payment context:", contextError);
         throw new Error("Failed to store payment context");
       }
-      
+
       // Create a temporary sale record to get an order_id
       const { data: tempSale, error: tempSaleError } = await supabase
         .from("sales")
@@ -1464,35 +1779,33 @@ export default function POSPage() {
           store_id: user.store_id,
           payment_id: paymentIntentId,
           amount_tendered: finalAmount,
-          change_amount: 0
+          change_amount: 0,
         })
         .select()
         .single();
-        
+
       if (tempSaleError) {
         console.error("Error creating temporary sale:", tempSaleError);
         throw new Error("Failed to create temporary sale");
       }
-      
+
       // Now create the payment record with the temporary sale ID
-      const { error: paymentError } = await supabase
-        .from("payments")
-        .insert({
-          order_id: tempSale.id,
-          payment_id: paymentIntentId,
-          amount: finalAmount,
-          status: "pending",
-          customer_id: customerRecord.id,
-          customer_data: customerData,
-          items: items,
-          store_id: user.store_id
-        });
-        
+      const { error: paymentError } = await supabase.from("payments").insert({
+        order_id: tempSale.id,
+        payment_id: paymentIntentId,
+        amount: finalAmount,
+        status: "pending",
+        customer_id: customerRecord.id,
+        customer_data: customerData,
+        items: items,
+        store_id: user.store_id,
+      });
+
       if (paymentError) {
         console.error("Error storing payment data:", paymentError);
         throw new Error("Failed to store payment data");
       }
-      
+
       console.log("Successfully stored payment context for webhook processing");
       return true;
     } catch (error) {
@@ -1556,7 +1869,7 @@ export default function POSPage() {
         if (createError) throw createError;
         customerRecord = newCustomer;
       }
-      
+
       return customerRecord;
     } catch (error) {
       console.error("Error processing customer data:", error);
@@ -1573,13 +1886,16 @@ export default function POSPage() {
           <h2 className="text-xl font-bold mb-4">Processing Payment</h2>
           <div className="space-y-4">
             <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-              <p className="text-lg text-center mb-4">Payment is being processed on the terminal...</p>
+              <p className="text-lg text-center mb-4">
+                Payment is being processed on the terminal...
+              </p>
               <div className="flex justify-center">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 dark:border-white"></div>
               </div>
             </div>
             <p className="text-sm text-center text-gray-500">
-              Please do not refresh or close this page. The receipt will appear automatically when payment is complete.
+              Please do not refresh or close this page. The receipt will appear
+              automatically when payment is complete.
             </p>
             <Button
               className="w-full"
@@ -1587,7 +1903,7 @@ export default function POSPage() {
               onClick={() => {
                 setWaitingForTerminal(false);
                 setIsProcessing(false);
-                setTerminalStatus('Reader Ready');
+                setTerminalStatus("Reader Ready");
               }}
             >
               Cancel
@@ -1605,6 +1921,42 @@ export default function POSPage() {
       </h1>
       {/* <button onClick={handlePaymentSquere}>Pay Now</button> */}
       {/* <button ref={scanButton} >Scan</button>q */}
+      {reader && (
+        <div className="mb-4 flex items-center">
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-1 flex items-center">
+            <CreditCard className="h-4 w-4 mr-2 text-gray-500" />
+            <span className="text-sm">
+              Reader: {reader.label || reader.id} ({reader.status})
+            </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="ml-2 h-6 w-6 p-0" 
+              onClick={() => setShowReaderManager(true)}
+            >
+              <span className="sr-only">Manage Reader</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+              </svg>
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      {/* Add a Configure Reader button if no reader is set */}
+      {!reader && (
+        <div className="mb-4">
+          <Button 
+            onClick={() => setShowReaderManager(true)} 
+            variant="outline" 
+            className="flex items-center"
+          >
+            <CreditCard className="mr-2 h-4 w-4" />
+            Configure Card Reader
+          </Button>
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Cart Section */}
         <Card className="bg-white dark:bg-gray-800 shadow-lg justify-between">
@@ -1910,7 +2262,7 @@ export default function POSPage() {
                   Standard Card Payment
                 </Button>
               )} */}
-              
+
               <Button
                 className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm 
               font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring 
@@ -2102,7 +2454,7 @@ export default function POSPage() {
                                       parseInt(e.target.value) || 0,
                                       item.quantity
                                     )
-                                 )
+                                  )
                                 }
                                 className="text-center"
                               />
@@ -2198,6 +2550,7 @@ export default function POSPage() {
           </div>
         </div>
       )}
+        {showReaderManager && <ReaderManagerComponent />}
 
       {showDiscountModal && <DiscountModal />}
 

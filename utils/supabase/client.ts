@@ -45,7 +45,11 @@ export const saveTransaction = async (transaction: TransactionData) => {
 };
 
 export const updateTransactionStatus = async (paymentIntentId : any, status : any, error = null) => {
-  const updates = {
+  const updates: { 
+    status: any; 
+    updated_at: string;
+    error?: any;
+  } = {
     status,
     updated_at: new Date().toISOString()
   }

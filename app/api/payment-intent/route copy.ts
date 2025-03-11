@@ -17,13 +17,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // Create payment intent with the correct parameters
+    // Create a payment intent specifically for terminal payments
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount,
       currency: 'gbp',
       payment_method_types: ['card_present'],
       capture_method: 'automatic',
-      // Don't set any additional parameters that might change the state
     });
 
     return NextResponse.json({

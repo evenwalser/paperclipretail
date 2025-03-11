@@ -71,7 +71,7 @@ async function getRawBody(req: Request): Promise<Buffer> {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      if (value) chunks.push(value);
+      if (value) chunks.push(Buffer.from(value));
     }
   }
   
@@ -92,7 +92,11 @@ async function handleReaderSuccess(event: Stripe.Event, supabase: any) {
     console.log(`Processing successful terminal payment for ${paymentIntentId}`);
     
     // Process the terminal payment
-    await processTerminalPayment(paymentIntentId, 'succeeded', supabase);
+    await processTerminalPayment(
+      typeof paymentIntentId === 'string' ? paymentIntentId : paymentIntentId.id,
+      'succeeded',
+      supabase
+    );
     
   } catch (error) {
     console.error('Error handling reader success:', error);
@@ -113,7 +117,11 @@ async function handleReaderFailure(event: Stripe.Event, supabase: any) {
     console.log(`Processing failed terminal payment for ${paymentIntentId}`);
     
     // Process the terminal payment failure
-    await processTerminalPayment(paymentIntentId, 'failed', supabase);
+    await processTerminalPayment(
+      typeof paymentIntentId === 'string' ? paymentIntentId : paymentIntentId.id,
+      'failed',
+      supabase
+    );
     
   } catch (error) {
     console.error('Error handling reader failure:', error);
@@ -208,7 +216,7 @@ async function processTerminalPayment(paymentIntentId: string, status: 'succeede
       .single();
       
     console.log("🚀 ~ processTerminalPayment ~ existingSale:", existingSale)
-    let saleId;
+    let saleId: string;
     
     if (existingSale) {
       // If the sale exists but is in 'pending' status, update it
