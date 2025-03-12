@@ -30,13 +30,13 @@ export async function POST(req: Request) {
 
     // Handle specific Terminal events
     switch (event.type) {
-    //   case 'terminal.reader.action_succeeded':
-    //     await handleReaderSuccess(event, supabase);
-    //     break;
+      case 'terminal.reader.action_succeeded':
+        await handleReaderSuccess(event, supabase);
+        break;
         
-    //   case 'terminal.reader.action_failed':
-    //     await handleReaderFailure(event, supabase);
-    //     break;
+      case 'terminal.reader.action_failed':
+        await handleReaderFailure(event, supabase);
+        break;
         
       case 'payment_intent.succeeded':
         // This is a backup event in case terminal.reader.action_succeeded doesn't fire

@@ -34,7 +34,7 @@ import InventoryHeader from './components/InventoryHeader';
 import InventoryFilters from './components/InventoryFilters';
 import ItemCard from './components/ItemCard';
 import Pagination from './components/Pagination';
-import { filterItems, sortItems } from './utils/inventory-utils';
+import { filterItems, sortItems, handleDelete } from './utils/inventory-utils';
 
 
 interface InventoryItem {
@@ -200,47 +200,6 @@ export default function InventoryPage() {
     // The useEffect will handle the data fetching
   };
 
-  // Add pagination controls
-  const Pagination = () => (
-    <div className="flex justify-center items-center space-x-2 mt-8">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-        disabled={currentPage === 1 || isLoading || isTransitioning}
-      >
-        Previous
-      </Button>
-
-      <div className="flex items-center space-x-2">
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-          <Button
-            key={page}
-            variant={currentPage === page ? "default" : "outline"}
-            size="sm"
-            onClick={() => setCurrentPage(page)}
-            disabled={isLoading}
-            className={cn(
-              "w-8 h-8",
-              currentPage === page && "bg-[#FF3B30] text-white"
-            )}
-          >
-            {page}
-          </Button>
-        ))}
-      </div>
-
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-        disabled={currentPage === totalPages || isLoading}
-      >
-        Next
-      </Button>
-    </div>
-  );
-
   // Add helper function to check permissions
   const canManageItems = () => {
     return role && [ 'store_owner'].includes(role);
@@ -288,14 +247,20 @@ export default function InventoryPage() {
               onDelete={handleDeleteClick}
               onDuplicate={(id) => router.push(`/inventory/add?duplicate=${id}`)}
               isDeleting={deletingItems.has(item.id)}
-              canManageItems={canManageItems()} 
+              canManageItems={canManageItems()}
             />
           ))
         )}
       </div>
 
       {totalPages > 1 && (
-        <Pagination />
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          isLoading={isLoading}
+          isTransitioning={isTransitioning}
+          onPageChange={handlePageChange}
+        />
       )}
 
       <DeleteDialog
