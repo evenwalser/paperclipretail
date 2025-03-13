@@ -34,7 +34,8 @@ export const processCashPayment = async (
   discount: Discount,
   userId: string,
   storeId: string,
-  customerData: any
+  customerData: any,
+  receiptId: string
 ) => {
   try {
     const changeAmount = amountTendered - finalTotal;
@@ -52,6 +53,7 @@ export const processCashPayment = async (
       change_amount: changeAmount,
       customer_id: customerRecord.id,
       store_id: storeId,
+      receipt_id: receiptId,
     };
 
     // Create sale record
@@ -102,7 +104,7 @@ export const processCashPayment = async (
 
     return {
       success: true,
-      saleRecord,
+      saleRecord: { ...saleRecord, receipt_id: receiptId }, // Include receipt_id in the returned saleRecord
       items,
     };
   } catch (error) {
@@ -121,7 +123,8 @@ export const storeTerminalPaymentContext = async (
   total: number,
   discount: Discount,
   userId: string,
-  storeId: string
+  storeId: string,
+  receiptId: string
 ) => {
   try {
     // 1. Process customer first to get customer ID
@@ -180,6 +183,7 @@ export const storeTerminalPaymentContext = async (
         payment_id: paymentIntentId,
         amount_tendered: finalAmount,
         change_amount: 0,
+        receipt_id: receiptId
       })
       .select()
       .single();

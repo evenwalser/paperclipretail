@@ -18,7 +18,6 @@ import { QuickActions } from "@/components/QuickActions";
 import { getRecentSales, RecentSale } from "@/lib/services/recentSales";
 import { RecentSales } from "@/components/RecentSales";
 import { getUser } from "@/lib/services/items";
-import POS from "@/components/POS";
 
 interface OverviewProps {
   currency: string;
@@ -73,7 +72,6 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [storeId, setStoreId] = useState<number | null>(null);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [logs, setLogs] = useState<string[]>([]);
 
   const handleSignIn = () => {
     signIn("google", { prompt: "select_account" });
@@ -186,79 +184,20 @@ export default function DashboardPage() {
     setSelectedCategory(category);
   };
 
-  // Logging function
-  const log = (message: string) => {
-    setLogs(prev => [...prev, message]);
-  };
-
-  // Remove the inline scripts and update the useEffect for browser compatibility
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const chromeVersion = navigator.userAgent.match(/Chrome\/(\d+)/);
-      if (chromeVersion && parseInt(chromeVersion[1]) < 89) {
-        log('Warning! Keep in mind this sample has been tested with Chrome 89.');
-      }
-
-      if (!('NDEFReader' in window)) {
-        log('Web NFC is not available. Use Chrome on Android.');
-      }
-    }
-  }, []);
-
-  // NFC Scan handler
-  const handleScan = async () => {
-    log('User clicked scan button');
-
-    try {
-      const ndef = new (window as any).NDEFReader();
-      await ndef.scan();
-      log('> Scan started');
-
-      ndef.addEventListener('readingerror', () => {
-        log('Argh! Cannot read data from the NFC tag. Try another one?');
-      });
-
-      ndef.addEventListener('reading', ({ message, serialNumber }: any) => {
-        log(`> Serial Number: ${serialNumber}`);
-        log(`> Records: (${message.records.length})`);
-      });
-    } catch (error) {
-      log(`Argh! ${error}`);
-    }
-  };
-
-  // NFC Write handler
-  const handleWrite = async () => {
-    log('User clicked write button');
-
-    try {
-      const ndef = new (window as any).NDEFReader();
-      await ndef.write('Hello world!');
-      log('> Message written');
-    } catch (error) {
-      log(`Argh! ${error}`);
-    }
-  };
-
-  // Make Read-only handler
-  const handleMakeReadOnly = async () => {
-    log('User clicked make read-only button');
-
-    try {
-      const ndef = new (window as any).NDEFReader();
-      await ndef.makeReadOnly();
-      log('> NFC tag has been made permanently read-only');
-    } catch (error) {
-      log(`Argh! ${error}`);
-    }
-  };
-
   if (error) {
     return <div>{error}</div>;
   }
 
   return (
     <div className="flex-1 space-y-8 px-4 py-8">
+      {/* {session ? (
+        <>
+          <p>Welcome!</p>
+          <button onClick={() => signOut()}>Sign out</button>
+        </>
+      ) : (
+        <button onClick={() => signIn("google")}>Sign in with Google</button>
+      )} */}
       <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-1"></div>
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
@@ -267,20 +206,122 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Quick Actions */}
+
+      {/* Category Selector - Now using V2 */}
+      {/* <Card>
+        <CardHeader>
+          <CardTitle>Select Category</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CategorySelectorV2
+            onSelect={handleCategoryChange}
+            selectedCategory={selectedCategory}
+          />
+        </CardContent>
+      </Card> */}
+
+      {/* Category Performance Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="border foreground ">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <PoundSterling className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              £{metrics?.revenue?.total_revenue.toLocaleString() ?? "0"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {metrics?.revenue?.total_sales ?? 0} total sales
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border foreground ">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Inventory</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {metrics?.inventory?.total_items.toLocaleString() ?? "0"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {metrics?.inventory?.low_stock_items ?? 0} items low in stock
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border foreground ">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Customers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {metrics?.customers?.active_customers.toLocaleString() ?? "0"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {metrics?.customers?.new_customers ?? 0} new this month
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* <Card className="border foreground">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Sales Velocity</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              £{metrics?.revenue?.average_sale_amount.toFixed(2) ?? "0"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Average sale amount
+            </p>
+          </CardContent>
+        </Card> */}
+      </div>
+
+      {/* Category Analytics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4 border foreground">
+          <CardHeader>
+            <CardTitle>Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pl-2">
+            <Overview
+              currency="£"
+              storeId={storeId ?? undefined}
+              dateRange={date}
+            />
+          </CardContent>
+        </Card>
+
+        {recentSales && (
+          <Card className="col-span-3 border foreground">
+            <CardHeader>
+              <CardTitle className="text-2xl">Recent Sales</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RecentSales data={recentSales} />
+            </CardContent>
+          </Card>
+        )}
+        {/* <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Top Selling Items</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TopSellingItems categoryId={selectedCategory} dateRange={date} />
+          </CardContent>
+        </Card> */}
+      </div>
+
       <QuickActions />
-
-      {/* <div className="mt-4 p-4 bg-gray-100 rounded">
-        <h2 className="font-bold mb-2">Logs:</h2>
-        {logs.map((log, index) => (
-          <div key={index} className="mb-1">
-            {log}
-          </div>
-        ))}
-      </div> */}
-      <POS/>
     </div>
-
- 
   );
 }
 

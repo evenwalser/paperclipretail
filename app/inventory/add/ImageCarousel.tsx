@@ -24,7 +24,7 @@ export default function ImageCarousel({ images, currentIndex, onNavigate }: Imag
           isImage ? (
             <img src={currentMedia.url} alt={`Photo ${currentIndex + 1}`} className="w-full h-full object-contain" />
           ) : (
-            <video src={currentMedia.url} controls className="w-full h-full object-contain absolute z-10">
+            <video src={currentMedia.url} controls className="w-full h-full object-cover absolute z-10">
               Your browser does not support the video tag.
             </video>
           )

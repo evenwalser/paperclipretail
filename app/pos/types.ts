@@ -90,7 +90,7 @@ export interface SaleItem {
   item_id: string;
   quantity: number;
   price: number;
-  title: string;
+  title: string;  
   image_url?: string;
 }
 

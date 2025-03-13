@@ -35,7 +35,7 @@ export async function analyzeImage(imageData: string | FormData | File): Promise
     }
 
     // Send to our API route
-    const response = await fetch('/api/chat', {
+    const response = await fetch('/api/analyze', {
       method: 'POST',
       body: formData,
     });

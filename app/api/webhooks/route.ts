@@ -206,6 +206,13 @@ async function processTerminalPayment(paymentIntentId: string, status: 'succeede
     console.log(`Payment ${paymentIntentId} was already processed`);
     return;
   }
+
+  const generateNumericReceiptId = (): string => {
+    // Use timestamp and random number to ensure uniqueness
+    const timestamp = Date.now().toString(); // Current time in milliseconds
+    const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0'); // 4-digit random number
+    return `${timestamp}${randomNum}`.slice(-10); // Take last 10 digits for consistency
+  };
   
   try {
     // 3. First, check if there's already a sale record for this payment
@@ -267,6 +274,7 @@ async function processTerminalPayment(paymentIntentId: string, status: 'succeede
         customer_id: context.customer_id,
         store_id: context.store_id,
         payment_id: paymentIntentId,
+        receipt_id: context.receipt_id || generateNumericReceiptId()
       };
       
       const { data: saleRecord, error: saleError } = await supabase

@@ -122,6 +122,7 @@ export default function POSPage() {
   const [terminalStatus, setTerminalStatus] = useState<string>("Stripe Terminal not initialized");
   const [terminalLoading, setTerminalLoading] = useState(false);
   const [waitingForTerminal, setWaitingForTerminal] = useState(false);
+  const [pendingReceiptId, setPendingReceiptId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -208,6 +209,13 @@ export default function POSPage() {
     fetchPOSSettings();
   }, [user, supabase]);
 
+  const generateNumericReceiptId = (): string => {
+    // Use timestamp and random number to ensure uniqueness
+    const timestamp = Date.now().toString(); // Current time in milliseconds
+    const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0'); // 4-digit random number
+    return `${timestamp}${randomNum}`.slice(-10); // Take last 10 digits for consistency
+  };
+
   const handleNumberClick = (num: string) => {
     if (amount === "0.00") {
       setAmount(num);
@@ -229,20 +237,18 @@ export default function POSPage() {
   const handleProcessRefund = () => {
     setShowRefundModal(true);
   };
-
   const handleCompleteSale = async () => {
     if (items.length === 0) {
       toast.error("Cart is empty");
       return;
     }
-
+  
     const finalTotal = calculateFinalTotal(total, discount);
     if (parseFloat(amount) < finalTotal) {
       toast.error("Amount is less than total");
       return;
     }
-
-    // Validate stock quantities for all items before proceeding
+  
     try {
       for (const item of items) {
         const { data: currentItem, error } = await supabase
@@ -250,13 +256,13 @@ export default function POSPage() {
           .select("quantity")
           .eq("id", item.id)
           .single();
-
+  
         if (error) throw error;
         if (!currentItem) {
           toast.error(`Item "${item.title}" not found`);
           return;
         }
-
+  
         if (item.quantity > currentItem.quantity) {
           toast.error(
             `Only ${currentItem.quantity} items available for "${item.title}"`
@@ -265,14 +271,74 @@ export default function POSPage() {
           return;
         }
       }
-
-      // If all validations pass, show the customer form
+  
+      // Generate the numeric receipt ID
+      const receiptId = generateNumericReceiptId();
+      setPendingReceiptId(receiptId);
+      setReceiptData((prev) => ({
+        ...prev,
+        saleData: { ...prev?.saleData, receipt_id: receiptId },
+      }));
+  
       setShowCustomerForm(true);
     } catch (error) {
       toast.error("Failed to validate stock quantities");
       console.error("Stock validation error:", error);
     }
   };
+
+  // const handleCompleteSale = async () => {
+  //   if (items.length === 0) {
+  //     toast.error("Cart is empty");
+  //     return;
+  //   }
+  
+  //   const finalTotal = calculateFinalTotal(total, discount);
+  //   if (parseFloat(amount) < finalTotal) {
+  //     toast.error("Amount is less than total");
+  //     return;
+  //   }
+  
+  //   // Validate stock quantities
+  //   try {
+  //     for (const item of items) {
+  //       const { data: currentItem, error } = await supabase
+  //         .from("items")
+  //         .select("quantity")
+  //         .eq("id", item.id)
+  //         .single();
+  
+  //       if (error) throw error;
+  //       if (!currentItem) {
+  //         toast.error(`Item "${item.title}" not found`);
+  //         return;
+  //       }
+  
+  //       if (item.quantity > currentItem.quantity) {
+  //         toast.error(
+  //           `Only ${currentItem.quantity} items available for "${item.title}"`
+  //         );
+  //         updateQuantity(item.id, currentItem.quantity);
+  //         return;
+  //       }
+  //     }
+  
+  //     // Generate the numeric receipt ID
+  //     const receiptId = generateNumericReceiptId();
+  
+  //     // Store the receipt ID temporarily or pass it to the next step
+  //     setReceiptData((prev) => ({
+  //       ...prev,
+  //       saleData: { ...prev?.saleData, receipt_id: receiptId },
+  //     }));
+  
+  //     // Proceed to customer form
+  //     setShowCustomerForm(true);
+  //   } catch (error) {
+  //     toast.error("Failed to validate stock quantities");
+  //     console.error("Stock validation error:", error);
+  //   }
+  // };
 
   const handleCustomerSubmit = () => {
     if (!validateCustomerData(customerData)) return;
@@ -283,26 +349,24 @@ export default function POSPage() {
 
   const handlePayment = async (method: "card" | "cash" | "terminal") => {
     try {
-      // Validate cart is not empty
       if (items.length === 0) {
         toast.error("Cart is empty");
         return;
       }
-
-      // Validate all items in cart have sufficient stock
+  
       for (const item of items) {
         const { data: currentItem, error } = await supabase
           .from("items")
           .select("quantity")
           .eq("id", item.id)
           .single();
-
+  
         if (error) throw error;
         if (!currentItem) {
           toast.error(`Item "${item.title}" not found`);
           return;
         }
-
+  
         if (item.quantity > currentItem.quantity) {
           toast.error(
             `Only ${currentItem.quantity} items available for "${item.title}"`
@@ -311,81 +375,76 @@ export default function POSPage() {
           return;
         }
       }
-
-      // Handle terminal payment with improved flow
+  
       if (method === "terminal") {
         setPaymentMethod("card");
         setIsProcessing(true);
         setShowPaymentOptions(false);
-
-        // Initialize the reader
+  
         if (!reader) {
-          // No reader configured - show reader manager
           toast.error("No card reader configured. Please set up a reader first.");
           setShowReaderManager(true);
           setIsProcessing(false);
           return;
         }
-
-        // Ensure reader is ready
+  
         const readerStatus = await checkReaderStatus(reader);
         if (!readerStatus.ready) {
           toast.error(`Reader issue: ${readerStatus.message}`);
           setIsProcessing(false);
           return;
         }
-
+  
         const finalTotal = calculateFinalTotal(total, discount);
-
-        // Create payment intent with existing reader
-        const { success: paymentCreated, paymentIntentId } = 
-          await createTerminalPayment(reader, finalTotal);
-          
+        const receiptId = pendingReceiptId;
+        if (!receiptId) {
+          toast.error("Receipt ID not generated");
+          setIsProcessing(false);
+          return;
+        }
+  
+        const { success: paymentCreated, paymentIntentId } = await createTerminalPayment(reader, finalTotal, receiptId);
+  
         if (!paymentCreated || !paymentIntentId) {
           toast.error("Failed to create payment");
           setIsProcessing(false);
           return;
         }
-
-        // Process the payment with existing reader
+  
         await processTerminalPayment(reader, paymentIntentId);
         return;
       }
-
-      // For cash and regular card payments, continue with existing logic
+  
       setPaymentMethod(method);
       setIsProcessing(true);
-
-      // Handle cash payment
+  
       if (method === "cash") {
         const amountTendered = parseFloat(amount);
         const finalTotal = calculateFinalTotal(total, discount);
         const changeAmount = amountTendered - finalTotal;
-
+  
         if (changeAmount < 0) {
           toast.error("Insufficient payment amount");
           setIsProcessing(false);
           return;
         }
-
+  
         setChange(changeAmount);
-
-        // Process customer data
-        const customerRecord = await processCustomerData(
-          customerData, 
-          user.id, 
-          user.store_id, 
-          finalTotal
-        );
-        
+  
+        const customerRecord = await processCustomerData(customerData, user.id, user.store_id, finalTotal);
         if (!customerRecord) {
           setIsProcessing(false);
           return;
         }
-
+  
         const originalAmount = total;
-
-        // Process the cash payment
+        const receiptId = pendingReceiptId;
+        if (!receiptId) {
+          toast.error("Receipt ID not generated");
+          setIsProcessing(false);
+          return;
+        }
+  
         const { success, saleRecord, items: saleItems } = await processCashPayment(
           items,
           amountTendered,
@@ -395,45 +454,193 @@ export default function POSPage() {
           discount,
           user.id,
           user.store_id,
-          customerData
+          customerData,
+          receiptId
         );
-
+  
         if (success && saleRecord) {
-          // Set receipt data
           setReceiptData({
             saleData: saleRecord,
             items: saleItems,
-            discount:
-              discount.value > 0
-                ? {
-                    type: discount.type,
-                    value: discount.value,
-                    savingsAmount: originalAmount - finalTotal,
-                  }
-                : undefined,
+            discount: discount.value > 0 ? {
+              type: discount.type,
+              value: discount.value,
+              savingsAmount: originalAmount - finalTotal,
+            } : undefined,
           });
-
+  
           setShowReceipt(true);
           toast.success("Payment successful via cash");
           clearCart();
           setAmount("0.00");
+          setPendingReceiptId(null); // Clear after use
         }
-      }
-      // Handle regular card payment as before
-      else if (method === "card") {
-        // Your existing card payment logic
+      } else if (method === "card") {
         toast.error("Standard card payment is not implemented yet");
         setIsProcessing(false);
       }
     } catch (error) {
       console.error("Payment processing error:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Payment processing failed"
-      );
+      toast.error(error instanceof Error ? error.message : "Payment processing failed");
       setIsProcessing(false);
       setPaymentMethod(null);
     }
   };
+
+  // const handlePayment = async (method: "card" | "cash" | "terminal") => {
+  //   try {
+  //     // Validate cart is not empty
+  //     if (items.length === 0) {
+  //       toast.error("Cart is empty");
+  //       return;
+  //     }
+
+  //     // Validate all items in cart have sufficient stock
+  //     for (const item of items) {
+  //       const { data: currentItem, error } = await supabase
+  //         .from("items")
+  //         .select("quantity")
+  //         .eq("id", item.id)
+  //         .single();
+
+  //       if (error) throw error;
+  //       if (!currentItem) {
+  //         toast.error(`Item "${item.title}" not found`);
+  //         return;
+  //       }
+
+  //       if (item.quantity > currentItem.quantity) {
+  //         toast.error(
+  //           `Only ${currentItem.quantity} items available for "${item.title}"`
+  //         );
+  //         updateQuantity(item.id, currentItem.quantity);
+  //         return;
+  //       }
+  //     }
+
+  //     // Handle terminal payment with improved flow
+  //     if (method === "terminal") {
+  //       setPaymentMethod("card");
+  //       setIsProcessing(true);
+  //       setShowPaymentOptions(false);
+
+  //       // Initialize the reader
+  //       if (!reader) {
+  //         // No reader configured - show reader manager
+  //         toast.error("No card reader configured. Please set up a reader first.");
+  //         setShowReaderManager(true);
+  //         setIsProcessing(false);
+  //         return;
+  //       }
+
+  //       // Ensure reader is ready
+  //       const readerStatus = await checkReaderStatus(reader);
+  //       if (!readerStatus.ready) {
+  //         toast.error(`Reader issue: ${readerStatus.message}`);
+  //         setIsProcessing(false);
+  //         return;
+  //       }
+
+  //       const finalTotal = calculateFinalTotal(total, discount);
+
+  //       // Create payment intent with existing reader
+  //       const { success: paymentCreated, paymentIntentId } = 
+  //         await createTerminalPayment(reader, finalTotal);
+          
+  //       if (!paymentCreated || !paymentIntentId) {
+  //         toast.error("Failed to create payment");
+  //         setIsProcessing(false);
+  //         return;
+  //       }
+
+  //       // Process the payment with existing reader
+  //       await processTerminalPayment(reader, paymentIntentId);
+  //       return;
+  //     }
+
+  //     // For cash and regular card payments, continue with existing logic
+  //     setPaymentMethod(method);
+  //     setIsProcessing(true);
+
+  //     // Handle cash payment
+  //     if (method === "cash") {
+  //       const amountTendered = parseFloat(amount);
+  //       const finalTotal = calculateFinalTotal(total, discount);
+  //       const changeAmount = amountTendered - finalTotal;
+
+  //       if (changeAmount < 0) {
+  //         toast.error("Insufficient payment amount");
+  //         setIsProcessing(false);
+  //         return;
+  //       }
+
+  //       setChange(changeAmount);
+
+  //       // Process customer data
+  //       const customerRecord = await processCustomerData(
+  //         customerData, 
+  //         user.id, 
+  //         user.store_id, 
+  //         finalTotal
+  //       );
+        
+  //       if (!customerRecord) {
+  //         setIsProcessing(false);
+  //         return;
+  //       }
+
+  //       const originalAmount = total;
+  //       const receiptId = generateNumericReceiptId();
+  //       // Process the cash payment
+  //       const { success, saleRecord, items: saleItems } = await processCashPayment(
+  //         items,
+  //         amountTendered,
+  //         finalTotal,
+  //         originalAmount,
+  //         customerRecord,
+  //         discount,
+  //         user.id,
+  //         user.store_id,
+  //         customerData,
+  //         receiptId
+  //       );
+
+  //       if (success && saleRecord) {
+  //         // Set receipt data
+  //         setReceiptData({
+  //           saleData: saleRecord,
+  //           items: saleItems,
+  //           discount:
+  //             discount.value > 0
+  //               ? {
+  //                   type: discount.type,
+  //                   value: discount.value,
+  //                   savingsAmount: originalAmount - finalTotal,
+  //                 }
+  //               : undefined,
+  //         });
+
+  //         setShowReceipt(true);
+  //         toast.success("Payment successful via cash");
+  //         clearCart();
+  //         setAmount("0.00");
+  //       }
+  //     }
+  //     // Handle regular card payment as before
+  //     else if (method === "card") {
+  //       // Your existing card payment logic
+  //       toast.error("Standard card payment is not implemented yet");
+  //       setIsProcessing(false);
+  //     }
+  //   } catch (error) {
+  //     console.error("Payment processing error:", error);
+  //     toast.error(
+  //       error instanceof Error ? error.message : "Payment processing failed"
+  //     );
+  //     setIsProcessing(false);
+  //     setPaymentMethod(null);
+  //   }
+  // };
 
   // Terminal utility wrapper functions
   const discoverReaders = async () => {
@@ -465,7 +672,8 @@ export default function POSPage() {
         total,
         discount,
         user.id,
-        user.store_id
+        user.store_id,
+        receiptId
       );
     };
 

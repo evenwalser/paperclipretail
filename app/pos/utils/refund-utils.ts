@@ -39,7 +39,7 @@ export const searchSale = async (
         refunds(*)
       `
       )
-      .eq("id", searchSaleId)
+      .eq("receipt_id", searchSaleId)
       .single();
 
     if (saleError) throw saleError;

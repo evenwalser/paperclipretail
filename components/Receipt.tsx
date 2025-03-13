@@ -12,6 +12,7 @@ interface ReceiptProps {
     payment_method: string;
     amount_tendered: number;
     change_amount: number;
+    receipt_id: string;
   };
   items: {
     title: string;
@@ -118,7 +119,7 @@ export function Receipt({ saleData, items, userId, customerDetails, receiptLogo,
 
       {/* Receipt Details */}
       <div className="mb-4 text-sm flex justify-between">
-        <p>Receipt #: <br/> {saleData.id}</p>
+        <p>Receipt #: <br/> {saleData.receipt_id}</p>
         <p className="text-right">Date: <br/> {formatDate(saleData.created_at)}</p>
       </div>
       <div className=" text-center mb-3">
