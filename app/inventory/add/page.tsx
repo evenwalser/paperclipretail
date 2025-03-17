@@ -450,7 +450,7 @@ export default function AddItemPage() {
                 selectedCategories={selectedCategories}
                 onCategoryChange={setSelectedCategories}
                 condition={condition}
-                onConditionChange={setCondition}
+                onConditionChange={(value) => setCondition(value as "New" | "Like New" | "Very Good" | "Good" | "Fair")}
                 size={size}
                 onSizeChange={setSize}
                 availableInStore={availableInStore}

@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 "use client";
 
 import { use, useEffect, useState } from "react";
@@ -242,8 +241,8 @@ export default function InventoryPage() {
   );
 
   // Add helper function to check permissions
-  const canManageItems = () => {
-    return role && [ 'store_owner'].includes(role);
+  const canManageItems = (): boolean => {
+    return !!role && ['store_owner'].includes(role);
   };
 
   return (

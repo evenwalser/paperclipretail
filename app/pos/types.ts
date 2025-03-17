@@ -87,11 +87,13 @@ export interface RefundSale {
 // Sale item interfaces
 export interface SaleItem {
   id: string;
-  item_id: string;
+  item_id?: string;
   quantity: number;
   price: number;
-  title: string;  
+  title: string;
   image_url?: string;
+  category?: string;
+  size?: string;
 }
 
 export interface RefundSaleItem extends SaleItem {
@@ -112,14 +114,15 @@ export interface RefundRecord {
 // Receipt data interfaces
 export interface SaleReceiptData {
   saleData: {
-    id: string;
-    created_at: string;
-    total_amount: number;
-    payment_method: string;
-    amount_tendered: number;
-    change_amount: number;
+    id?: string;
+    created_at?: string;
+    total_amount?: number;
+    payment_method?: string;
+    amount_tendered?: number;
+    change_amount?: number;
+    receipt_id?: string;
   };
-  items: any[];
+  items?: any[];
   discount?: {
     type: "percentage" | "fixed";
     value: number;
@@ -254,4 +257,13 @@ export interface RefundModalProps {
   processRefund: () => Promise<void>;
   formatCurrency: (amount: number) => string;
   isProcessing: boolean;
+}
+
+// Add this interface
+export interface CartItem {
+  id: string;
+  title: string;
+  price: number;
+  quantity: number;
+  image_url?: string;
 } 

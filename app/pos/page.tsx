@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "../contexts/CartContext";
@@ -403,7 +402,11 @@ export default function POSPage() {
           return;
         }
   
-        const { success: paymentCreated, paymentIntentId } = await createTerminalPayment(reader, finalTotal, receiptId);
+        const { success: paymentCreated, paymentIntentId } = await createTerminalPayment(
+          reader, 
+          finalTotal, 
+          pendingReceiptId || ''
+        );
   
         if (!paymentCreated || !paymentIntentId) {
           toast.error("Failed to create payment");
@@ -662,7 +665,7 @@ export default function POSPage() {
     );
   };
 
-  const createTerminalPayment = async (currentReader: Reader, finalAmount: number) => {
+  const createTerminalPayment = async (currentReader: Reader, finalAmount: number, receiptId: string) => {
     const storePaymentContext = async (paymentIntentId: string, finalAmount: number) => {
       return await storeTerminalPaymentContext(
         paymentIntentId,
@@ -673,7 +676,7 @@ export default function POSPage() {
         discount,
         user.id,
         user.store_id,
-        receiptId
+        pendingReceiptId || '',
       );
     };
 
@@ -1038,8 +1041,16 @@ export default function POSPage() {
       {showReceipt && receiptData && (
         <div className="fixed inset-0 bg-[#191e25] bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-scroll">
           <Receipt
-            saleData={receiptData.saleData}
-            items={receiptData.items}
+            saleData={{
+              id: receiptData.saleData.id || '',
+              created_at: receiptData.saleData.created_at || '',
+              total_amount: receiptData.saleData.total_amount || 0,
+              payment_method: receiptData.saleData.payment_method || '',
+              amount_tendered: receiptData.saleData.amount_tendered || 0,
+              change_amount: receiptData.saleData.change_amount || 0,
+              receipt_id: receiptData.saleData.receipt_id || ''
+            }}
+            items={receiptData.items || []}
             userId={user?.id || ""}
             receiptLogo={posSettings.receiptLogo}
             receiptMessage={posSettings.receiptMessage}

@@ -1,6 +1,6 @@
 // EditItemPage.tsx
 "use client";
-
+import { v4 as uuidv4 } from 'uuid';
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
@@ -119,6 +119,7 @@ export default function EditItemPage() {
           const { error } = await supabase.storage.from("item-images").upload(filePath, file);
           if (error) throw error;
           const { data: { publicUrl } } = supabase.storage.from("item-images").getPublicUrl(filePath);
+          console.log("🚀 ~ Array.from ~ publicUrl:", publicUrl)
           return { id: "", image_url: publicUrl, filepath: filePath, file };
         })
       );
@@ -286,7 +287,8 @@ export default function EditItemPage() {
               display_order: index,
             };
           }
-  
+   
+          const newId = uuidv4();
           // If the image doesn't have an ID, it means it's new and needs to be uploaded
           const fileExt = image.image_url.split(".").pop();
           const fileName = `${user.id}/${item.id}/${crypto.randomUUID()}.${fileExt}`;
@@ -308,6 +310,7 @@ export default function EditItemPage() {
           const { data: { publicUrl } } = supabase.storage.from("item-images").getPublicUrl(fileName);
   
           return {
+            id: newId,
             item_id: item.id,
             image_url: publicUrl,
             display_order: index,
@@ -325,7 +328,7 @@ export default function EditItemPage() {
   
       // Insert new images if necessary
       if (imageUploads.length > 0) {
-        const { error: imageError } = await supabase.from("item_images").upsert(imageUploads, { onConflict: ['id'] });
+        const { error: imageError } = await supabase.from("item_images").upsert(imageUploads, { onConflict: 'id' });
         if (imageError) throw imageError;
       }
   
@@ -340,114 +343,7 @@ export default function EditItemPage() {
     }
   };
   
-  
-  // const handleSave = async () => {
-  //   if (!item) return;
-
-  //   setFieldErrors({ name: "", price: "", images: "", category: "" });
-  //   let hasErrors = false;
-  //   const newErrors = { name: "", price: "", images: "", category: "" };
-
-  //   if (!itemDetails.name.trim()) {
-  //     newErrors.name = "Item name is required";
-  //     hasErrors = true;
-  //   }
-  //   if (!itemDetails.price || isNaN(parseFloat(itemDetails.price)) || parseFloat(itemDetails.price) <= 0) {
-  //     newErrors.price = "Valid price is required";
-  //     hasErrors = true;
-  //   }
-  //   const filteredImages = images.filter((image) => /\.(jpg|jpeg|png|gif|webp)$/i.test(image.image_url));
-  //   if (filteredImages.length === 0) {
-  //     newErrors.images = "At least one image is required";
-  //     hasErrors = true;
-  //   }
-  //   if (!selectedCategories.level1) {
-  //     newErrors.category = "Please select a main category";
-  //     hasErrors = true;
-  //   }
-
-  //   if (hasErrors) {
-  //     setFieldErrors(newErrors);
-  //     return;
-  //   }
-
-  //   setIsSaving(true);
-  //   try {
-  //     const { error: itemError } = await supabase
-  //       .from("items")
-  //       .update({
-  //         title: itemDetails.name,
-  //         description: itemDetails.description,
-  //         price: parseFloat(itemDetails.price) || 0,
-  //         quantity: parseInt(itemDetails.quantity) || 0,
-  //         category_id: selectedCategories.level3 || selectedCategories.level2 || selectedCategories.level1,
-  //         condition: itemDetails.condition,
-  //         size: itemDetails.size,
-  //         available_in_store: itemDetails.availableInStore,
-  //         list_on_paperclip: itemDetails.listOnPaperclip,
-  //       })
-  //       .eq("id", item.id);
-
-  //     if (itemError) throw itemError;
-
-  //    const imageUploads = await Promise.all(
-  //     images.map(async (image, index) => {
-  //       if (image.id) {
-  //         // If the image already has an id (i.e., it's already uploaded), we don't need to upload it again
-  //         return {
-  //           id: image.id,
-  //           item_id: item.id,
-  //           image_url: image.image_url,
-  //           display_order: index,
-  //         };
-  //       }
-  //         const fileExt = image.image_url.split(".").pop();
-  //         const fileName = `${user.id}/${item.id}/${crypto.randomUUID()}.${fileExt}`;
-  //         let fileData: Blob;
-      
-  //         if (image.file) {
-  //           fileData = image.file;
-  //         } else {
-  //           const response = await fetch(image.image_url);
-  //           fileData = await response.blob();
-  //         }
-      
-  //         const { error: uploadError } = await supabase.storage
-  //           .from("item-images")
-  //           .upload(fileName, fileData, { cacheControl: "3600", upsert: false });
-  //         if (uploadError) throw uploadError;
-      
-  //         const { data: { publicUrl } } = supabase.storage.from("item-images").getPublicUrl(fileName);
-      
-  //         return {
-  //           item_id: item.id,
-  //           image_url: publicUrl,
-  //           display_order: index,
-  //         };
-  //       })
-  //     );
-      
-  //     if (imageUploads.length > 0) {
-  //       const existingIds = images.filter((img) => img.id).map((img) => img.id);
-  //       await supabase
-  //         .from("item_images")
-  //         .delete()
-  //         .eq("item_id", item.id)
-  //         .not("id", "in", `(${existingIds.join(",")})`);
-  //       const { error: imageError } = await supabase.from("item_images").insert(imageUploads);
-  //       if (imageError) throw imageError;
-  //     }
-
-  //     images.forEach((image) => URL.revokeObjectURL(image.image_url));
-  //     router.push("/inventory");
-  //     toast.success("Item updated successfully");
-  //   } catch (error) {
-  //     console.error("Save error:", error);
-  //     toast.error("Error saving changes");
-  //   } finally {
-  //     setIsSaving(false);
-  //   }
-  // };
+ 
 
   if (isLoading) return <div>Loading...</div>;
 

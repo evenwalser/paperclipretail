@@ -6,7 +6,7 @@ export const isVideo = (url: string) => {
   return url.match(/\.(mp4|webm|ogg|mov)$/i);
 };
 
-export const handleDelete = async (itemId: string, setItems: (items: Item[]) => void) => {
+export const handleDelete = async (itemId: string, setItems: React.Dispatch<React.SetStateAction<Item[]>>) => {
   try {
     const { error } = await supabase
       .from("items")
@@ -15,7 +15,7 @@ export const handleDelete = async (itemId: string, setItems: (items: Item[]) => 
 
     if (error) throw error;
 
-    setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+    setItems((prevItems: Item[]) => prevItems.filter((item: Item) => item.id !== itemId));
     toast.success("Item successfully removed from inventory");
     return true;
   } catch (error) {

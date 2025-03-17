@@ -9,7 +9,7 @@ import { ItemImage } from "./types";
 interface ImageSectionProps {
   images: ItemImage[];
   currentImageIndex: number;
-  setCurrentImageIndex: (index: number) => void;
+  setCurrentImageIndex: (value: number | ((prev: number) => number)) => void;
   onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onDeleteImage: (index: number) => void;
   onReorder: (newOrder: ItemImage[]) => void;
