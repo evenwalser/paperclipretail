@@ -1,10 +1,11 @@
-import { RefundSale, RefundSaleItem } from "../types";
+import { RefundSale, RefundSaleItem, RefundQuantities, RefundRecord } from "../types";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { formatCurrency } from "./payment-utils";
 
 const supabase = createClient();
 
+// Search for a sale by ID for refunding
 export const searchSale = async (
   searchSaleId: string,
   setSelectedSale: (sale: RefundSale | null) => void,
@@ -47,54 +48,59 @@ export const searchSale = async (
       return;
     }
 
+    // Check if sale is already fully refunded
     if (saleData.status === "refunded") {
       toast.error("This sale has already been fully refunded");
       return;
     }
 
+    // Get all refunded quantities for each item
     const { data: existingRefunds, error: refundsError } = await supabase
       .from("refund_items")
-      .select("quantity, sale_item_id")
-      .in("refund_id", saleData.refunds.map((r: { id: string }) => r.id));
+      .select(
+        `
+        quantity,
+        sale_item_id
+      `
+      )
+      .in(
+        "refund_id",
+        saleData.refunds.map((r: { id: string }) => r.id)
+      );
 
     if (refundsError) throw refundsError;
 
+    // Create a map of already refunded quantities
     const refundedQuantities = existingRefunds?.reduce(
-      (acc: { [key: string]: number }, refund: any) => {
-        acc[refund.sale_item_id] = (acc[refund.sale_item_id] || 0) + refund.quantity;
+      (acc: RefundQuantities, refund: RefundRecord) => {
+        acc[refund.sale_item_id] =
+          (acc[refund.sale_item_id] || 0) + refund.quantity;
         return acc;
       },
-      {}
+      {} as RefundQuantities
     );
 
-    const originalAmount = saleData.original_amount || saleData.sale_items.reduce(
-      (sum: number, item: any) => sum + item.price * item.quantity,
-      0
-    );
-    const finalAmount = saleData.total_amount;
-    const discountRatio = originalAmount > 0 ? finalAmount / originalAmount : 1;
-
+    // Format the sale data and subtract already refunded quantities
     const formattedSale: RefundSale = {
       ...saleData,
-      original_amount: originalAmount,
       sale_items: saleData.sale_items
         .map((item: any) => {
           const alreadyRefundedQty = refundedQuantities?.[item.id] || 0;
           const remainingQty = item.quantity - alreadyRefundedQty;
+
           return {
             id: item.id,
             item_id: item.item_id,
-            quantity: remainingQty,
+            quantity: remainingQty, // Only show remaining quantity
             original_quantity: item.quantity,
             refunded_quantity: alreadyRefundedQty,
             price: item.price,
-            effective_price: item.price * discountRatio, // Calculate effective price
             title: item.item.title,
             image_url: item.item.images?.[0]?.image_url || "/placeholder.svg",
             refund_quantity: 0,
           };
         })
-        .filter((item: RefundSaleItem) => item.quantity > 0),
+        .filter((item: RefundSaleItem) => item.quantity > 0), // Only show items with remaining quantity
     };
 
     if (formattedSale.sale_items.length === 0) {
@@ -110,32 +116,7 @@ export const searchSale = async (
   }
 };
 
-export const updateRefundQuantity = (
-  itemId: string,
-  quantity: number,
-  refundItems: RefundSaleItem[],
-  setRefundItems: (items: RefundSaleItem[]) => void
-) => {
-  setRefundItems(
-    refundItems.map((item) =>
-      item.id === itemId
-        ? {
-            ...item,
-            refund_quantity: Math.max(0, Math.min(quantity, item.quantity)),
-          }
-        : item
-    )
-  );
-};
-
-export const calculateRefundTotal = (refundItems: RefundSaleItem[]) => {
-  return refundItems.reduce(
-    (total, item) =>
-      total + (item.effective_price || item.price) * (item.refund_quantity || 0),
-    0
-  );
-};
-
+// Process a refund
 export const processRefund = async (
   selectedSale: RefundSale | null,
   refundItems: RefundSaleItem[],
@@ -161,6 +142,7 @@ export const processRefund = async (
   }
 
   try {
+    // Verify sale status hasn't changed
     const { data: currentSale, error: saleCheckError } = await supabase
       .from("sales")
       .select("status")
@@ -168,13 +150,16 @@ export const processRefund = async (
       .single();
 
     if (saleCheckError) throw saleCheckError;
+
     if (currentSale.status === "refunded") {
       toast.error("This sale has already been fully refunded");
       return;
     }
 
+    // Calculate refund total
     const refundTotal = calculateRefundTotal();
 
+    // Create refund record
     const { data: refund, error: refundError } = await supabase
       .from("refunds")
       .insert({
@@ -191,13 +176,14 @@ export const processRefund = async (
 
     if (refundError) throw refundError;
 
+    // Process refund items
     const refundItemsToProcess = refundItems
       .filter((item) => (item.refund_quantity || 0) > 0)
       .map((item) => ({
         refund_id: refund.id,
         sale_item_id: item.id,
         quantity: item.refund_quantity,
-        refund_amount: (item.effective_price || item.price) * (item.refund_quantity || 0),
+        refund_amount: item.price * (item.refund_quantity || 0),
       }));
 
     const { error: refundItemsError } = await supabase
@@ -206,6 +192,7 @@ export const processRefund = async (
 
     if (refundItemsError) throw refundItemsError;
 
+    // Update inventory quantities
     for (const item of refundItems) {
       if ((item.refund_quantity || 0) > 0) {
         const { error: updateError } = await supabase.rpc(
@@ -215,13 +202,18 @@ export const processRefund = async (
             p_quantity_change: item.refund_quantity,
           }
         );
+
         if (updateError) {
-          console.error(`Error updating quantity for item ${item.item_id}:`, updateError);
+          console.error(
+            `Error updating quantity for item ${item.item_id}:`,
+            updateError
+          );
           toast.error(`Failed to update inventory for ${item.title}`);
         }
       }
     }
 
+    // Update sale status
     const allItemsRefunded = refundItems.every(
       (item) => item.refund_quantity === item.quantity
     );
@@ -235,6 +227,7 @@ export const processRefund = async (
 
     if (saleUpdateError) throw saleUpdateError;
 
+    // Set refund receipt data
     setRefundReceiptData({
       saleData: {
         id: refund.id,
@@ -247,19 +240,49 @@ export const processRefund = async (
         customer: selectedSale.customer,
       },
       items: refundItems
-        .filter((item) => (item.refund_quantity || 0) > 0)
+        .filter((item) => item.refund_quantity || 0)
         .map((item) => ({
           title: item.title,
-          price: item.effective_price || item.price,
+          price: item.price,
           refund_quantity: item.refund_quantity,
         })),
     });
-
+    
     setShowRefundReceipt(true);
     resetRefundState();
     toast.success("Refund processed successfully");
+    
+    return true;
   } catch (error) {
     console.error("Error processing refund:", error);
     toast.error("Error processing refund");
+    return false;
   }
+};
+
+// Update refund quantity
+export const updateRefundQuantity = (
+  itemId: string,
+  quantity: number,
+  refundItems: RefundSaleItem[],
+  setRefundItems: (items: RefundSaleItem[]) => void
+) => {
+  setRefundItems(
+    refundItems.map((item) =>
+      item.id === itemId
+        ? {
+            ...item,
+            refund_quantity: Math.max(0, Math.min(quantity, item.quantity)),
+          }
+        : item
+    )
+  );
+};
+
+// Calculate refund total
+export const calculateRefundTotal = (refundItems: RefundSaleItem[]) => {
+  return refundItems.reduce(
+    (total, item) => total + item.price * (item.refund_quantity || 0),
+    0
+  );
 };

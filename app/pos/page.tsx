@@ -2,12 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "../contexts/CartContext";
-import {
-  ShoppingCart,
-  CreditCard,
-  RotateCcw,
-  Settings,
-} from "lucide-react";
+import { ShoppingCart, CreditCard, RotateCcw, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 import { Receipt } from "@/components/Receipt";
@@ -17,16 +12,16 @@ import { loadStripe } from "@stripe/stripe-js";
 import { toast } from "sonner";
 
 // Import types
-import { 
-  CustomerData, 
-  Discount, 
-  NDEFReadingEvent, 
-  POSSettings, 
-  Reader, 
-  RefundReceiptData, 
-  RefundSale, 
-  RefundSaleItem, 
-  SaleReceiptData 
+import {
+  CustomerData,
+  Discount,
+  NDEFReadingEvent,
+  POSSettings,
+  Reader,
+  RefundReceiptData,
+  RefundSale,
+  RefundSaleItem,
+  SaleReceiptData,
 } from "./types";
 
 // Import components
@@ -41,11 +36,11 @@ import TerminalStatus from "./components/terminal/TerminalStatus";
 import TerminalWaiting from "./components/terminal/TerminalWaiting";
 
 // Import utilities
-import { 
+import {
   formatCurrency,
   calculateFinalTotal,
   processCashPayment,
-  storeTerminalPaymentContext
+  storeTerminalPaymentContext,
 } from "./utils/payment-utils";
 
 import {
@@ -53,19 +48,19 @@ import {
   discoverReaders as discoverReadersUtil,
   selectReader as selectReaderUtil,
   createTerminalPayment as createTerminalPaymentUtil,
-  processTerminalPayment as processTerminalPaymentUtil
+  processTerminalPayment as processTerminalPaymentUtil,
 } from "./utils/terminal-utils";
 
 import {
   processCustomerData,
-  validateCustomerData
+  validateCustomerData,
 } from "./utils/customer-utils";
 
 import {
   searchSale as searchSaleUtil,
   updateRefundQuantity as updateRefundQuantityUtil,
   calculateRefundTotal as calculateRefundTotalUtil,
-  processRefund as processRefundUtil
+  processRefund as processRefundUtil,
 } from "./utils/refund-utils";
 
 // Initialize Stripe
@@ -83,7 +78,9 @@ export default function POSPage() {
   const supabase = createClient();
   const [amount, setAmount] = useState("0.00");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "cash" | null>(
+    null
+  );
   const [change, setChange] = useState(0);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<SaleReceiptData | null>(null);
@@ -106,19 +103,23 @@ export default function POSPage() {
   const [refundReason, setRefundReason] = useState("");
   const [showRefundReceipt, setShowRefundReceipt] = useState(false);
   const [showTerminalOptions, setShowTerminalOptions] = useState(false);
-  const [refundReceiptData, setRefundReceiptData] = useState<RefundReceiptData | null>(null);
+  const [refundReceiptData, setRefundReceiptData] =
+    useState<RefundReceiptData | null>(null);
   const [discount, setDiscount] = useState<Discount>({
     type: "fixed",
     value: 0,
   });
   const [showDiscountModal, setShowDiscountModal] = useState(false);
- 
+  const [isProcessRefund, setIsProcessRefund] = useState(false);
+
   const scanButton = useRef<HTMLButtonElement>(null);
 
   // Terminal states
   const [reader, setReader] = useState<Reader | null>(null);
   const [paymentIntent, setPaymentIntent] = useState<string | null>(null);
-  const [terminalStatus, setTerminalStatus] = useState<string>("Stripe Terminal not initialized");
+  const [terminalStatus, setTerminalStatus] = useState<string>(
+    "Stripe Terminal not initialized"
+  );
   const [terminalLoading, setTerminalLoading] = useState(false);
   const [waitingForTerminal, setWaitingForTerminal] = useState(false);
   const [pendingReceiptId, setPendingReceiptId] = useState<string | null>(null);
@@ -140,35 +141,37 @@ export default function POSPage() {
     const loadSavedReader = async () => {
       try {
         // Try to get reader from local storage first
-        const savedReader = localStorage.getItem('pos_active_reader');
-        
+        const savedReader = localStorage.getItem("pos_active_reader");
+
         if (savedReader) {
           const readerData = JSON.parse(savedReader);
           setReader(readerData);
-          setTerminalStatus(`Reader loaded: ${readerData.label || readerData.id}`);
+          setTerminalStatus(
+            `Reader loaded: ${readerData.label || readerData.id}`
+          );
         } else {
           // Try to get reader from database if user is logged in
           if (user?.store_id) {
             const { data } = await supabase
-              .from('terminal_readers')
-              .select('*')
-              .eq('store_id', user.store_id)
-              .eq('is_active', true)
+              .from("terminal_readers")
+              .select("*")
+              .eq("store_id", user.store_id)
+              .eq("is_active", true)
               .maybeSingle();
-              
+
             if (data) {
               setReader(data);
               // Also save to localStorage for faster access next time
-              localStorage.setItem('pos_active_reader', JSON.stringify(data));
+              localStorage.setItem("pos_active_reader", JSON.stringify(data));
               setTerminalStatus(`Reader loaded: ${data.label || data.id}`);
             }
           }
         }
       } catch (error) {
-        console.error('Error loading saved reader:', error);
+        console.error("Error loading saved reader:", error);
       }
     };
-    
+
     loadSavedReader();
   }, [user?.store_id, supabase]);
 
@@ -187,7 +190,7 @@ export default function POSPage() {
           .select("accept_cash, accept_card, receipt_logo, receipt_message")
           .eq("owner_id", user.id)
           .single();
-        
+
         if (error) throw error;
 
         if (data) {
@@ -211,7 +214,9 @@ export default function POSPage() {
   const generateNumericReceiptId = (): string => {
     // Use timestamp and random number to ensure uniqueness
     const timestamp = Date.now().toString(); // Current time in milliseconds
-    const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0'); // 4-digit random number
+    const randomNum = Math.floor(Math.random() * 10000)
+      .toString()
+      .padStart(4, "0"); // 4-digit random number
     return `${timestamp}${randomNum}`.slice(-10); // Take last 10 digits for consistency
   };
 
@@ -236,69 +241,18 @@ export default function POSPage() {
   const handleProcessRefund = () => {
     setShowRefundModal(true);
   };
-  const handleCompleteSale = async () => {
-    if (items.length === 0) {
-      toast.error("Cart is empty");
-      return;
-    }
-  
-    const finalTotal = calculateFinalTotal(total, discount);
-    if (parseFloat(amount) < finalTotal) {
-      toast.error("Amount is less than total");
-      return;
-    }
-  
-    try {
-      for (const item of items) {
-        const { data: currentItem, error } = await supabase
-          .from("items")
-          .select("quantity")
-          .eq("id", item.id)
-          .single();
-  
-        if (error) throw error;
-        if (!currentItem) {
-          toast.error(`Item "${item.title}" not found`);
-          return;
-        }
-  
-        if (item.quantity > currentItem.quantity) {
-          toast.error(
-            `Only ${currentItem.quantity} items available for "${item.title}"`
-          );
-          updateQuantity(item.id, currentItem.quantity);
-          return;
-        }
-      }
-  
-      // Generate the numeric receipt ID
-      const receiptId = generateNumericReceiptId();
-      setPendingReceiptId(receiptId);
-      setReceiptData((prev) => ({
-        ...prev,
-        saleData: { ...prev?.saleData, receipt_id: receiptId },
-      }));
-  
-      setShowCustomerForm(true);
-    } catch (error) {
-      toast.error("Failed to validate stock quantities");
-      console.error("Stock validation error:", error);
-    }
-  };
-
   // const handleCompleteSale = async () => {
   //   if (items.length === 0) {
   //     toast.error("Cart is empty");
   //     return;
   //   }
-  
+
   //   const finalTotal = calculateFinalTotal(total, discount);
   //   if (parseFloat(amount) < finalTotal) {
   //     toast.error("Amount is less than total");
   //     return;
   //   }
-  
-  //   // Validate stock quantities
+
   //   try {
   //     for (const item of items) {
   //       const { data: currentItem, error } = await supabase
@@ -306,13 +260,13 @@ export default function POSPage() {
   //         .select("quantity")
   //         .eq("id", item.id)
   //         .single();
-  
+
   //       if (error) throw error;
   //       if (!currentItem) {
   //         toast.error(`Item "${item.title}" not found`);
   //         return;
   //       }
-  
+
   //       if (item.quantity > currentItem.quantity) {
   //         toast.error(
   //           `Only ${currentItem.quantity} items available for "${item.title}"`
@@ -321,16 +275,114 @@ export default function POSPage() {
   //         return;
   //       }
   //     }
-  
+
   //     // Generate the numeric receipt ID
   //     const receiptId = generateNumericReceiptId();
-  
+  //     setPendingReceiptId(receiptId);
+  //     setReceiptData((prev) => ({
+  //       ...prev,
+  //       saleData: { ...prev?.saleData, receipt_id: receiptId },
+  //     }));
+
+  //     setShowCustomerForm(true);
+  //   } catch (error) {
+  //     toast.error("Failed to validate stock quantities");
+  //     console.error("Stock validation error:", error);
+  //   }
+  // };
+
+  const handleCompleteSale = async () => {
+    if (items.length === 0) {
+      toast.error("Cart is empty");
+      return;
+    }
+
+    const finalTotal = calculateFinalTotal(total, discount);
+    if (parseFloat(amount) < finalTotal) {
+      toast.error("Amount is less than total");
+      return;
+    }
+
+    try {
+      for (const item of items) {
+        const { data: currentItem, error } = await supabase
+          .from("items")
+          .select("quantity")
+          .eq("id", item.id)
+          .single();
+
+        if (error) throw error;
+        if (!currentItem) {
+          toast.error(`Item "${item.title}" not found`);
+          return;
+        }
+
+        if (item.quantity > currentItem.quantity) {
+          toast.error(
+            `Only ${currentItem.quantity} items available for "${item.title}"`
+          );
+          updateQuantity(item.id, currentItem.quantity);
+          return;
+        }
+      }
+
+      const receiptId = generateNumericReceiptId();
+      setPendingReceiptId(receiptId);
+      setReceiptData((prev) => ({
+        ...prev,
+        saleData: { ...prev?.saleData, receipt_id: receiptId },
+      }));
+      setShowCustomerForm(true);
+    } catch (error) {
+      toast.error("Failed to validate stock quantities");
+      console.error("Stock validation error:", error);
+    }
+  };
+  // const handleCompleteSale = async () => {
+  //   if (items.length === 0) {
+  //     toast.error("Cart is empty");
+  //     return;
+  //   }
+
+  //   const finalTotal = calculateFinalTotal(total, discount);
+  //   if (parseFloat(amount) < finalTotal) {
+  //     toast.error("Amount is less than total");
+  //     return;
+  //   }
+
+  //   // Validate stock quantities
+  //   try {
+  //     for (const item of items) {
+  //       const { data: currentItem, error } = await supabase
+  //         .from("items")
+  //         .select("quantity")
+  //         .eq("id", item.id)
+  //         .single();
+
+  //       if (error) throw error;
+  //       if (!currentItem) {
+  //         toast.error(`Item "${item.title}" not found`);
+  //         return;
+  //       }
+
+  //       if (item.quantity > currentItem.quantity) {
+  //         toast.error(
+  //           `Only ${currentItem.quantity} items available for "${item.title}"`
+  //         );
+  //         updateQuantity(item.id, currentItem.quantity);
+  //         return;
+  //       }
+  //     }
+
+  //     // Generate the numeric receipt ID
+  //     const receiptId = generateNumericReceiptId();
+
   //     // Store the receipt ID temporarily or pass it to the next step
   //     setReceiptData((prev) => ({
   //       ...prev,
   //       saleData: { ...prev?.saleData, receipt_id: receiptId },
   //     }));
-  
+
   //     // Proceed to customer form
   //     setShowCustomerForm(true);
   //   } catch (error) {
@@ -341,7 +393,7 @@ export default function POSPage() {
 
   const handleCustomerSubmit = () => {
     if (!validateCustomerData(customerData)) return;
-    
+
     setShowCustomerForm(false);
     setShowPaymentOptions(true);
   };
@@ -352,20 +404,20 @@ export default function POSPage() {
         toast.error("Cart is empty");
         return;
       }
-  
+
       for (const item of items) {
         const { data: currentItem, error } = await supabase
           .from("items")
           .select("quantity")
           .eq("id", item.id)
           .single();
-  
+
         if (error) throw error;
         if (!currentItem) {
           toast.error(`Item "${item.title}" not found`);
           return;
         }
-  
+
         if (item.quantity > currentItem.quantity) {
           toast.error(
             `Only ${currentItem.quantity} items available for "${item.title}"`
@@ -374,72 +426,76 @@ export default function POSPage() {
           return;
         }
       }
-  
+
       if (method === "terminal") {
         setPaymentMethod("card");
         setIsProcessing(true);
         setShowPaymentOptions(false);
-  
+
         if (!reader) {
-          toast.error("No card reader configured. Please set up a reader first.");
+          toast.error(
+            "No card reader configured. Please set up a reader first."
+          );
           setShowReaderManager(true);
           setIsProcessing(false);
           return;
         }
-  
+
         const readerStatus = await checkReaderStatus(reader);
         if (!readerStatus.ready) {
           toast.error(`Reader issue: ${readerStatus.message}`);
           setIsProcessing(false);
           return;
         }
-  
+
         const finalTotal = calculateFinalTotal(total, discount);
-        const receiptId = pendingReceiptId;
+        const receiptId = pendingReceiptId || generateNumericReceiptId();
         if (!receiptId) {
           toast.error("Receipt ID not generated");
           setIsProcessing(false);
           return;
         }
-  
-        const { success: paymentCreated, paymentIntentId } = await createTerminalPayment(
-          reader, 
-          finalTotal, 
-          pendingReceiptId || ''
-        );
-  
+
+        const { success: paymentCreated, paymentIntentId } =
+          await createTerminalPayment(reader, finalTotal, receiptId);
+
         if (!paymentCreated || !paymentIntentId) {
           toast.error("Failed to create payment");
           setIsProcessing(false);
           return;
         }
-  
+
         await processTerminalPayment(reader, paymentIntentId);
         return;
       }
-  
+
       setPaymentMethod(method);
       setIsProcessing(true);
-  
+
       if (method === "cash") {
         const amountTendered = parseFloat(amount);
         const finalTotal = calculateFinalTotal(total, discount);
         const changeAmount = amountTendered - finalTotal;
-  
+
         if (changeAmount < 0) {
           toast.error("Insufficient payment amount");
           setIsProcessing(false);
           return;
         }
-  
+
         setChange(changeAmount);
-  
-        const customerRecord = await processCustomerData(customerData, user.id, user.store_id, finalTotal);
+
+        const customerRecord = await processCustomerData(
+          customerData,
+          user.id,
+          user.store_id,
+          finalTotal
+        );
         if (!customerRecord) {
           setIsProcessing(false);
           return;
         }
-  
+
         const originalAmount = total;
         const receiptId = pendingReceiptId;
         if (!receiptId) {
@@ -447,8 +503,12 @@ export default function POSPage() {
           setIsProcessing(false);
           return;
         }
-  
-        const { success, saleRecord, items: saleItems } = await processCashPayment(
+
+        const {
+          success,
+          saleRecord,
+          items: saleItems,
+        } = await processCashPayment(
           items,
           amountTendered,
           finalTotal,
@@ -460,18 +520,21 @@ export default function POSPage() {
           customerData,
           receiptId
         );
-  
+
         if (success && saleRecord) {
           setReceiptData({
             saleData: saleRecord,
             items: saleItems,
-            discount: discount.value > 0 ? {
-              type: discount.type,
-              value: discount.value,
-              savingsAmount: originalAmount - finalTotal,
-            } : undefined,
+            discount:
+              discount.value > 0
+                ? {
+                    type: discount.type,
+                    value: discount.value,
+                    savingsAmount: originalAmount - finalTotal,
+                  }
+                : undefined,
           });
-  
+
           setShowReceipt(true);
           toast.success("Payment successful via cash");
           clearCart();
@@ -484,7 +547,9 @@ export default function POSPage() {
       }
     } catch (error) {
       console.error("Payment processing error:", error);
-      toast.error(error instanceof Error ? error.message : "Payment processing failed");
+      toast.error(
+        error instanceof Error ? error.message : "Payment processing failed"
+      );
       setIsProcessing(false);
       setPaymentMethod(null);
     }
@@ -547,9 +612,9 @@ export default function POSPage() {
   //       const finalTotal = calculateFinalTotal(total, discount);
 
   //       // Create payment intent with existing reader
-  //       const { success: paymentCreated, paymentIntentId } = 
+  //       const { success: paymentCreated, paymentIntentId } =
   //         await createTerminalPayment(reader, finalTotal);
-          
+
   //       if (!paymentCreated || !paymentIntentId) {
   //         toast.error("Failed to create payment");
   //         setIsProcessing(false);
@@ -581,12 +646,12 @@ export default function POSPage() {
 
   //       // Process customer data
   //       const customerRecord = await processCustomerData(
-  //         customerData, 
-  //         user.id, 
-  //         user.store_id, 
+  //         customerData,
+  //         user.id,
+  //         user.store_id,
   //         finalTotal
   //       );
-        
+
   //       if (!customerRecord) {
   //         setIsProcessing(false);
   //         return;
@@ -665,8 +730,40 @@ export default function POSPage() {
     );
   };
 
-  const createTerminalPayment = async (currentReader: Reader, finalAmount: number, receiptId: string) => {
-    const storePaymentContext = async (paymentIntentId: string, finalAmount: number) => {
+  // const createTerminalPayment = async (currentReader: Reader, finalAmount: number, receiptId: string) => {
+  //   const storePaymentContext = async (paymentIntentId: string, finalAmount: number) => {
+  //     return await storeTerminalPaymentContext(
+  //       paymentIntentId,
+  //       finalAmount,
+  //       customerData,
+  //       items,
+  //       total,
+  //       discount,
+  //       user.id,
+  //       user.store_id,
+  //       pendingReceiptId || '',
+  //     );
+  //   };
+
+  //   return await createTerminalPaymentUtil(
+  //     currentReader,
+  //     finalAmount,
+  //     setPaymentIntent,
+  //     setTerminalStatus,
+  //     setTerminalLoading,
+  //     storePaymentContext
+  //   );
+  // };
+
+  const createTerminalPayment = async (
+    currentReader: Reader,
+    finalAmount: number,
+    receiptId: string
+  ) => {
+    const storePaymentContext = async (
+      paymentIntentId: string,
+      finalAmount: number
+    ) => {
       return await storeTerminalPaymentContext(
         paymentIntentId,
         finalAmount,
@@ -676,7 +773,7 @@ export default function POSPage() {
         discount,
         user.id,
         user.store_id,
-        pendingReceiptId || '',
+        receiptId
       );
     };
 
@@ -690,7 +787,10 @@ export default function POSPage() {
     );
   };
 
-  const processTerminalPayment = async (currentReader: Reader, currentPaymentIntentId: string) => {
+  const processTerminalPayment = async (
+    currentReader: Reader,
+    currentPaymentIntentId: string
+  ) => {
     return await processTerminalPaymentUtil(
       currentReader,
       currentPaymentIntentId,
@@ -793,6 +893,10 @@ export default function POSPage() {
               `
               )
               .eq("sale_id", sale.id);
+            console.log(
+              "🚀 ~ handleTerminalPaymentCompletion ~ saleItems:",
+              saleItems
+            );
 
             // Format the items for the receipt
             const receiptItems = saleItems?.map((item: any) => ({
@@ -879,20 +983,11 @@ export default function POSPage() {
 
   // Refund utility wrapper functions
   const searchSale = async () => {
-    await searchSaleUtil(
-      searchSaleId,
-      setSelectedSale,
-      setRefundItems
-    );
+    await searchSaleUtil(searchSaleId, setSelectedSale, setRefundItems);
   };
 
   const updateRefundQuantity = (itemId: string, quantity: number) => {
-    updateRefundQuantityUtil(
-      itemId,
-      quantity,
-      refundItems,
-      setRefundItems
-    );
+    updateRefundQuantityUtil(itemId, quantity, refundItems, setRefundItems);
   };
 
   const calculateRefundTotal = () => {
@@ -900,27 +995,37 @@ export default function POSPage() {
   };
 
   const processRefund = async () => {
-    const resetRefundState = () => {
-      setShowRefundModal(false);
-      setSelectedSale(null);
-      setRefundItems([]);
-      setRefundReason("");
-      setSearchSaleId("");
-    };
-
-    await processRefundUtil(
-      selectedSale,
-      refundItems,
-      refundReason,
-      user.store_id,
-      user.id,
-      calculateRefundTotal,
-      setRefundReceiptData,
-      setShowRefundReceipt,
-      resetRefundState
-    );
+    // Prevent multiple refund processes from starting
+    if (isProcessRefund) return;
+  
+    setIsProcessRefund(true); // Indicate that processing has started
+    try {
+      const resetRefundState = () => {
+        setShowRefundModal(false);
+        setSelectedSale(null);
+        setRefundItems([]);
+        setRefundReason("");
+        setSearchSaleId("");
+      };
+  
+      await processRefundUtil(
+        selectedSale,
+        refundItems,
+        refundReason,
+        user.store_id,
+        user.id,
+        calculateRefundTotal,
+        setRefundReceiptData,
+        setShowRefundReceipt,
+        resetRefundState
+      );
+    } catch (error) {
+      console.error("Refund processing error:", error);
+      toast.error("Failed to process refund");
+    } finally {
+      setIsProcessRefund(false);
+    }
   };
-
   // Helper for final total calculation
   const calculateFinalTotalWithDiscount = () => {
     return calculateFinalTotal(total, discount);
@@ -931,7 +1036,7 @@ export default function POSPage() {
       <h1 className="text-3xl font-bold mb-8 text-gray-800 dark:text-gray-100">
         Point of Sale
       </h1>
-      
+
       {reader && (
         <div className="mb-4 flex items-center">
           <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-1 flex items-center">
@@ -939,14 +1044,19 @@ export default function POSPage() {
             <span className="text-sm">
               Reader: {reader.label || reader.id} ({reader.status})
             </span>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="ml-2 h-6 w-6 p-0" 
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-2 h-6 w-6 p-0"
               onClick={() => setShowReaderManager(true)}
             >
               <span className="sr-only">Manage Reader</span>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="w-4 h-4"
+              >
                 <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
                 <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
               </svg>
@@ -954,13 +1064,13 @@ export default function POSPage() {
           </div>
         </div>
       )}
-      
+
       {/* Add a Configure Reader button if no reader is set */}
       {!reader && (
         <div className="mb-4">
-          <Button 
-            onClick={() => setShowReaderManager(true)} 
-            variant="outline" 
+          <Button
+            onClick={() => setShowReaderManager(true)}
+            variant="outline"
             className="flex items-center"
           >
             <CreditCard className="mr-2 h-4 w-4" />
@@ -971,7 +1081,7 @@ export default function POSPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Cart Section */}
-        <CartSection 
+        <CartSection
           items={items}
           updateQuantity={updateQuantity}
           removeItem={removeItem}
@@ -984,7 +1094,7 @@ export default function POSPage() {
         />
 
         {/* Payment Section */}
-        <PaymentSection 
+        <PaymentSection
           amount={amount}
           setAmount={setAmount}
           change={change}
@@ -1022,7 +1132,7 @@ export default function POSPage() {
 
       {/* Modals and Overlays */}
       {showCustomerForm && (
-        <CustomerForm 
+        <CustomerForm
           customerData={customerData}
           setCustomerData={setCustomerData}
           handleCustomerSubmit={handleCustomerSubmit}
@@ -1031,7 +1141,7 @@ export default function POSPage() {
       )}
 
       {showPaymentOptions && (
-        <PaymentOptionsModal 
+        <PaymentOptionsModal
           posSettings={posSettings}
           handlePayment={handlePayment}
           setShowPaymentOptions={setShowPaymentOptions}
@@ -1042,13 +1152,13 @@ export default function POSPage() {
         <div className="fixed inset-0 bg-[#191e25] bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-scroll">
           <Receipt
             saleData={{
-              id: receiptData.saleData.id || '',
-              created_at: receiptData.saleData.created_at || '',
+              id: receiptData.saleData.id || "",
+              created_at: receiptData.saleData.created_at || "",
               total_amount: receiptData.saleData.total_amount || 0,
-              payment_method: receiptData.saleData.payment_method || '',
+              payment_method: receiptData.saleData.payment_method || "",
               amount_tendered: receiptData.saleData.amount_tendered || 0,
               change_amount: receiptData.saleData.change_amount || 0,
-              receipt_id: receiptData.saleData.receipt_id || ''
+              receipt_id: receiptData.saleData.receipt_id || "",
             }}
             items={receiptData.items || []}
             userId={user?.id || ""}
@@ -1079,7 +1189,7 @@ export default function POSPage() {
       )}
 
       {showRefundModal && (
-        <RefundModal 
+        <RefundModal
           showRefundModal={showRefundModal}
           selectedSale={selectedSale}
           refundItems={refundItems}
@@ -1096,11 +1206,12 @@ export default function POSPage() {
           processRefund={processRefund}
           formatCurrency={formatCurrency}
           isProcessing={isProcessing}
+          isProcessRefund={isProcessRefund}
         />
       )}
 
       {showReaderManager && (
-        <ReaderManager 
+        <ReaderManager
           reader={reader}
           availableReaders={availableReaders}
           terminalLoading={terminalLoading}
@@ -1112,7 +1223,7 @@ export default function POSPage() {
       )}
 
       {showDiscountModal && (
-        <DiscountModal 
+        <DiscountModal
           discount={discount}
           setDiscount={setDiscount}
           setShowDiscountModal={setShowDiscountModal}
@@ -1122,7 +1233,7 @@ export default function POSPage() {
       )}
 
       {(terminalLoading || showTerminalOptions) && (
-        <TerminalStatus 
+        <TerminalStatus
           terminalStatus={terminalStatus}
           terminalLoading={terminalLoading}
           showTerminalOptions={showTerminalOptions}
@@ -1132,7 +1243,7 @@ export default function POSPage() {
       )}
 
       {waitingForTerminal && (
-        <TerminalWaiting 
+        <TerminalWaiting
           setWaitingForTerminal={setWaitingForTerminal}
           setIsProcessing={setIsProcessing}
           setTerminalStatus={setTerminalStatus}

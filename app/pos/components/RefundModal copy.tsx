@@ -20,8 +20,7 @@ const RefundModal: React.FC<RefundModalProps> = ({
   calculateRefundTotal,
   processRefund,
   formatCurrency,
-  isProcessing,
-  isProcessRefund
+  isProcessing
 }) => {
   const resetState = () => {
     setShowRefundModal(false);
@@ -46,7 +45,7 @@ const RefundModal: React.FC<RefundModalProps> = ({
                 <Input
                   value={searchSaleId}
                   onChange={(e) => setSearchSaleId(e.target.value)}
-                  placeholder="Enter Receipt ID"
+                  placeholder="Enter Sale ID"
                   className="flex-1"
                 />
                 <Button onClick={searchSale}>Search Sale</Button>
@@ -64,9 +63,14 @@ const RefundModal: React.FC<RefundModalProps> = ({
                 <div>
                   <h3 className="font-semibold mb-2">Sale Details</h3>
                   <p>Sale ID: {selectedSale.id}</p>
-                  <p>Date: {new Date(selectedSale.created_at).toLocaleDateString()}</p>
-                  <p>Original Amount: {formatCurrency(selectedSale.original_amount)}</p>
-                  <p>Final Amount: {formatCurrency(selectedSale.total_amount)}</p>
+                  <p>
+                    Date:{" "}
+                    {new Date(selectedSale.created_at).toLocaleDateString()}
+                  </p>
+                  <p>
+                    Original Amount:{" "}
+                    {formatCurrency(selectedSale.total_amount)}
+                  </p>
                   <p>Payment Method: {selectedSale.payment_method}</p>
                 </div>
               </div>
@@ -89,13 +93,10 @@ const RefundModal: React.FC<RefundModalProps> = ({
                       <div className="flex-grow">
                         <h4 className="font-medium">{item.title}</h4>
                         <p className="text-sm text-gray-500">
-                          Original Price: {formatCurrency(item.price)}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Effective Price: {formatCurrency(item.effective_price || item.price)}
+                          Price: {formatCurrency(item.price)}
                         </p>
                         <div className="text-sm text-gray-500">
-                          <span>Available Qty: {item.quantity}</span>
+                          <span>Original Qty: {item.original_quantity}</span>
                           {item.refunded_quantity > 0 && (
                             <span className="ml-2">
                               (Previously Refunded: {item.refunded_quantity})
@@ -148,7 +149,7 @@ const RefundModal: React.FC<RefundModalProps> = ({
                       </div>
                       <div className="w-32 text-right">
                         <p className="font-medium">
-                          {formatCurrency((item.refund_quantity || 0) * (item.effective_price || item.price))}
+                          {formatCurrency((item.refund_quantity || 0) * item.price)}
                         </p>
                       </div>
                     </div>
@@ -175,17 +176,24 @@ const RefundModal: React.FC<RefundModalProps> = ({
                   </div>
                   <div className="space-x-2">
                     <Button
+                      className="inline-flex items-center justify-center whitespace-nowrap text-sm 
+                      font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
+                      disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-2 py-2 min-w-[100px]
+                       bg-[#fff] text-[#333] rounded-[8px] border-[1px] border-[#fff] hover:text-[#fff]"
                       variant="outline"
                       onClick={resetState}
                     >
                       Cancel
                     </Button>
                     <Button
+                      className="inline-flex items-center justify-center whitespace-nowrap text-sm 
+                      font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none 
+                      disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 shadow hover:bg-primary/90 h-11 px-2 py-2 min-w-[100px] 
+                      bg-[#dc2626] text-[#fff] rounded-[8px] border-[1px] border-[#dc2626] hover:text-[#dc2626]"
                       onClick={processRefund}
                       disabled={
-                        isProcessRefund ||
                         isProcessing ||
-                        !refundItems.some((item) => (item.refund_quantity || 0) > 0) ||
+                        !refundItems.some((item) => (item.refund_quantity || 0) > 0) || 
                         !refundReason.trim()
                       }
                     >
@@ -202,4 +210,4 @@ const RefundModal: React.FC<RefundModalProps> = ({
   );
 };
 
-export default RefundModal;
+export default RefundModal; 

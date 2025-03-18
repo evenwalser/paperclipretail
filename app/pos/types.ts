@@ -77,6 +77,7 @@ export interface RefundSale {
   payment_method: string;
   customer_id: string;
   sale_items: RefundSaleItem[];
+ original_amount?: any; 
   customer: {
     name: string;
     email: string;
@@ -100,6 +101,7 @@ export interface RefundSaleItem extends SaleItem {
   original_quantity: number;
   refunded_quantity: number;
   refund_quantity?: number;
+  effective_price?: number;
 }
 
 export interface RefundQuantities {
@@ -257,6 +259,7 @@ export interface RefundModalProps {
   processRefund: () => Promise<void>;
   formatCurrency: (amount: number) => string;
   isProcessing: boolean;
+  isProcessRefund: boolean;
 }
 
 // Add this interface

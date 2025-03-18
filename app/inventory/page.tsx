@@ -146,12 +146,14 @@ export default function InventoryPage() {
         image_url: item.item_images?.[0]?.image_url, // or adjust based on your logic
         category: item.categories?.[0]?.name || item.category_id, // use first category name or fallback
         size: item.size,
-        quantity: item.quantity,
+        // quantity: item.quantity,
       }));
-
+    
     addItems(selectedItemsData);
+    console.log("🚀 ~ sendSelectedToPOS ~ selectedItemsData:", selectedItemsData)
     router.push("/pos");
   };
+ 
 
   const isVideo = (url: string) => {
     return url.match(/\.(mp4|webm|ogg|mov)$/i);
