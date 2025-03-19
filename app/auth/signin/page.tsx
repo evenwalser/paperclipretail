@@ -49,7 +49,7 @@ export default function SignInPage() {
       >
         Sign in with Google
       </button>
-
+      
       <form onSubmit={handleEmailSignIn} className="w-full max-w-sm space-y-6">
         <div className="space-y-2">
           <label className="block text-sm font-medium">Email</label>

@@ -197,19 +197,18 @@ export default function AddItemPage() {
     try {
       const formData = new FormData();
       for (const image of images) {
-        if (!/\.(jpg|jpeg|png|gif|webp)$/i.test(image.url)) continue;
-        const filePath = image.filepath || `temp/${Date.now()}-${image.url.split("/").pop()}`;
-        if (image.file) {
-          const { error } = await supabase.storage.from("item-images").upload(filePath, image.file, { cacheControl: "3600", upsert: true });
-          if (error) throw error;
-        }
+        if (!isImageFile(image.url)) continue;
+        const filePath = `temp/${Date.now()}-${crypto.randomUUID()}.jpg`;
+        const fileData = image.file || await (await fetch(image.url)).blob();
+        const { error } = await supabase.storage.from("item-images").upload(filePath, fileData, { cacheControl: "3600", upsert: true });
+        if (error) throw error;
         const { data: { publicUrl } } = supabase.storage.from("item-images").getPublicUrl(filePath);
         formData.append("image", publicUrl);
       }
-
+  
       const result = await analyzeImage(formData);
       const dataObject = extractJson(result?.data?.choices?.[0]?.message?.content) || {};
-
+  
       setItemDetails((prev) => ({
         ...prev,
         name: dataObject.title || prev.name,
@@ -217,7 +216,7 @@ export default function AddItemPage() {
         price: dataObject.price_avg?.toString() || prev.price,
       }));
       setCondition(dataObject.condition || "New");
-
+  
       if (dataObject.category_id) {
         const categoryNames = dataObject.category_id.split(" > ");
         const level1 = categories.find((cat) => cat.name === categoryNames[0]);
@@ -238,31 +237,86 @@ export default function AddItemPage() {
     }
   };
 
+  const isImageFile = (url: string) => {
+    if (url.startsWith('data:')) {
+      return url.includes('image/');
+    }
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+  };
+  // const handleAIAnalysis = async () => {
+  //   if (!images.length) {
+  //     toast.error("Please add at least one image to analyze");
+  //     return;
+  //   }
+  //   setIsAnalyzing(true);
+  //   try {
+  //     const formData = new FormData();
+  //     for (const image of images) {
+  //       if (!/\.(jpg|jpeg|png|gif|webp)$/i.test(image.url)) continue;
+  //       const filePath = image.filepath || `temp/${Date.now()}-${image.url.split("/").pop()}`;
+  //       if (image.file) {
+  //         const { error } = await supabase.storage.from("item-images").upload(filePath, image.file, { cacheControl: "3600", upsert: true });
+  //         if (error) throw error;
+  //       }
+  //       const { data: { publicUrl } } = supabase.storage.from("item-images").getPublicUrl(filePath);
+  //       formData.append("image", publicUrl);
+  //     }
+
+  //     const result = await analyzeImage(formData);
+  //     const dataObject = extractJson(result?.data?.choices?.[0]?.message?.content) || {};
+
+  //     setItemDetails((prev) => ({
+  //       ...prev,
+  //       name: dataObject.title || prev.name,
+  //       description: dataObject.description || prev.description,
+  //       price: dataObject.price_avg?.toString() || prev.price,
+  //     }));
+  //     setCondition(dataObject.condition || "New");
+
+  //     if (dataObject.category_id) {
+  //       const categoryNames = dataObject.category_id.split(" > ");
+  //       const level1 = categories.find((cat) => cat.name === categoryNames[0]);
+  //       const level2 = categories.find((cat) => cat.name === categoryNames[1] && cat.parent_id === level1?.id);
+  //       const level3 = categories.find((cat) => cat.name === categoryNames[2] && cat.parent_id === level2?.id);
+  //       setIsPrePopulated(true);
+  //       setSelectedCategories({
+  //         level1: level1?.id || "",
+  //         level2: level2?.id || "",
+  //         level3: level3?.id || "",
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error("AI analysis failed:", error);
+  //     toast.error("Failed to analyze image. Please try again.");
+  //   } finally {
+  //     setIsAnalyzing(false);
+  //   }
+  // };
+
   const handleSubmit = async () => {
     setFieldErrors({ name: "", price: "", images: "", category: "", quantity: "" });
     let hasErrors = false;
     const newErrors = { name: "", price: "", images: "", category: "", quantity: "" };
-
+  
     if (!itemDetails.name.trim()) { newErrors.name = "Item name is required"; hasErrors = true; }
     const priceNum = parseFloat(itemDetails.price);
     if (!itemDetails.price || isNaN(priceNum) || priceNum <= 0) { newErrors.price = "Valid price is required"; hasErrors = true; }
     const quantityNum = parseInt(itemDetails.quantity);
     if (!itemDetails.quantity || isNaN(quantityNum) || quantityNum < 1) { newErrors.quantity = "Quantity must be at least 1"; hasErrors = true; }
-    const filteredImages = images.filter((img) => /\.(jpg|jpeg|png|gif|webp)$/i.test(img.url));
+    const filteredImages = images.filter((img) => isImageFile(img.url));
     if (filteredImages.length === 0) { newErrors.images = "At least one image is required"; hasErrors = true; }
     if (!selectedCategories.level1 || !selectedCategories.level2 || !selectedCategories.level3) {
-      newErrors.category = "Please select all category levels"; hasErrors = true;
-    }
-
+      newErrors.category = "Please select all category levels"; hasErrors = true; }
+    
     if (hasErrors) {
       setFieldErrors(newErrors);
       return;
     }
-
+  
     setIsSaving(true);
     try {
       if (!user?.store_id) throw new Error("No store associated with this account");
-
+  
       const category_id = selectedCategories.level3 || selectedCategories.level2 || selectedCategories.level1;
       const { data: item, error: itemError } = await supabase.from("items").insert({
         title: itemDetails.name.trim(),
@@ -278,26 +332,46 @@ export default function AddItemPage() {
         quantity: quantityNum,
         duplicated_from: isDuplicating ? new URLSearchParams(window.location.search).get("duplicate") : null,
       }).select().single();
-
+  
       if (itemError) throw itemError;
-
+  
       const imageUploads = await Promise.all(
         images.map(async (image, index) => {
-          const fileExt = image.url.split(".").pop();
+          let fileExt;
+          if (image.url.startsWith('data:')) {
+            const mimeType = image.url.split(';')[0].split(':')[1];
+            switch (mimeType) {
+              case 'image/jpeg':
+                fileExt = 'jpg';
+                break;
+              case 'image/png':
+                fileExt = 'png';
+                break;
+              default:
+                fileExt = 'jpg'; // Default to jpg
+            }
+          } else {
+            fileExt = image.url.split(".").pop() || 'jpg';
+          }
           const fileName = `${user.id}/${item.id}/${crypto.randomUUID()}.${fileExt}`;
           const fileData = image.file || await (await fetch(image.url)).blob();
-          const { error } = await supabase.storage.from("item-images").upload(fileName, fileData, { cacheControl: "3600", upsert: false });
+          const contentType = image.file ? image.file.type : (image.url.startsWith('data:') ? image.url.split(';')[0].split(':')[1] : 'image/jpeg');
+          const { error } = await supabase.storage.from("item-images").upload(fileName, fileData, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: contentType,
+          });
           if (error) throw error;
           const { data: { publicUrl } } = supabase.storage.from("item-images").getPublicUrl(fileName);
           return { item_id: item.id, image_url: publicUrl, display_order: index };
         })
       );
-
+  
       if (imageUploads.length > 0) {
         const { error } = await supabase.from("item_images").insert(imageUploads);
         if (error) throw error;
       }
-
+  
       images.forEach((image) => URL.revokeObjectURL(image.url));
       toast.success("Item added successfully!");
       router.push("/inventory");
@@ -308,6 +382,76 @@ export default function AddItemPage() {
       setIsSaving(false);
     }
   };
+  // const handleSubmit = async () => {
+  //   setFieldErrors({ name: "", price: "", images: "", category: "", quantity: "" });
+  //   let hasErrors = false;
+  //   const newErrors = { name: "", price: "", images: "", category: "", quantity: "" };
+
+  //   if (!itemDetails.name.trim()) { newErrors.name = "Item name is required"; hasErrors = true; }
+  //   const priceNum = parseFloat(itemDetails.price);
+  //   if (!itemDetails.price || isNaN(priceNum) || priceNum <= 0) { newErrors.price = "Valid price is required"; hasErrors = true; }
+  //   const quantityNum = parseInt(itemDetails.quantity);
+  //   if (!itemDetails.quantity || isNaN(quantityNum) || quantityNum < 1) { newErrors.quantity = "Quantity must be at least 1"; hasErrors = true; }
+  //   const filteredImages = images.filter((img) => /\.(jpg|jpeg|png|gif|webp)$/i.test(img.url));
+  //   if (filteredImages.length === 0) { newErrors.images = "At least one image is required"; hasErrors = true; }
+  //   if (!selectedCategories.level1 || !selectedCategories.level2 || !selectedCategories.level3) {
+  //     newErrors.category = "Please select all category levels"; hasErrors = true;
+  //   }
+
+  //   if (hasErrors) {
+  //     setFieldErrors(newErrors);
+  //     return;
+  //   }
+
+  //   setIsSaving(true);
+  //   try {
+  //     if (!user?.store_id) throw new Error("No store associated with this account");
+
+  //     const category_id = selectedCategories.level3 || selectedCategories.level2 || selectedCategories.level1;
+  //     const { data: item, error: itemError } = await supabase.from("items").insert({
+  //       title: itemDetails.name.trim(),
+  //       description: itemDetails.description.trim(),
+  //       price: priceNum,
+  //       category_id,
+  //       condition,
+  //       size,
+  //       available_in_store: availableInStore,
+  //       list_on_paperclip: listOnPaperclip,
+  //       store_id: user.store_id,
+  //       created_by: user.id,
+  //       quantity: quantityNum,
+  //       duplicated_from: isDuplicating ? new URLSearchParams(window.location.search).get("duplicate") : null,
+  //     }).select().single();
+
+  //     if (itemError) throw itemError;
+
+  //     const imageUploads = await Promise.all(
+  //       images.map(async (image, index) => {
+  //         const fileExt = image.url.split(".").pop();
+  //         const fileName = `${user.id}/${item.id}/${crypto.randomUUID()}.${fileExt}`;
+  //         const fileData = image.file || await (await fetch(image.url)).blob();
+  //         const { error } = await supabase.storage.from("item-images").upload(fileName, fileData, { cacheControl: "3600", upsert: false });
+  //         if (error) throw error;
+  //         const { data: { publicUrl } } = supabase.storage.from("item-images").getPublicUrl(fileName);
+  //         return { item_id: item.id, image_url: publicUrl, display_order: index };
+  //       })
+  //     );
+
+  //     if (imageUploads.length > 0) {
+  //       const { error } = await supabase.from("item_images").insert(imageUploads);
+  //       if (error) throw error;
+  //     }
+
+  //     images.forEach((image) => URL.revokeObjectURL(image.url));
+  //     toast.success("Item added successfully!");
+  //     router.push("/inventory");
+  //   } catch (error) {
+  //     console.error("Error saving item:", error);
+  //     toast.error("Failed to save item. Please try again.");
+  //   } finally {
+  //     setIsSaving(false);
+  //   }
+  // };
 
   const fetchItemDetails = async (itemId: string) => {
     try {
