@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { fetchLevel1Categories, getItems, getUser } from "@/lib/services/items";
+import { use, useEffect, useMemo, useState } from "react";
+import { fetchLevel1Categories, getItems } from "@/lib/services/items";
 import { Item } from "@/types/supabase";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -31,9 +31,11 @@ import { RoleGuard } from "@/components/RoleGuard";
 import { useRole } from "@/hooks/useRole";
 import InventoryHeader from './components/InventoryHeader';
 import InventoryFilters from './components/InventoryFilters';
+import debounce from "lodash.debounce";
 import ItemCard from './components/ItemCard';
 import Pagination from './components/Pagination';
 import { filterItems, sortItems } from './utils/inventory-utils';
+import { useUser } from "../contexts/UserContext";
 
 
 interface InventoryItem {
@@ -52,13 +54,13 @@ interface Category {
 
 export default function InventoryPage() {
   const [items, setItems] = useState<Item[]>([]);
-  const [user, setuser] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [categories, setCategories] = useState<Category[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  // const debouncedSetSearchQuery = useMemo(() => debounce(setSearchQuery, 300), []);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const { addItems } = useCart();
   const router = useRouter();
@@ -70,33 +72,64 @@ export default function InventoryPage() {
     defaultSorting: 'newest',
   });
   const { role, isLoading: roleLoading } = useRole();
+  const user = useUser();
 
   useEffect(() => {
+    const initialize = async () => {
+      try {
+        if (user) {
+          const categoryData = await fetchLevel1Categories();
+          setCategories(categoryData);
+        }
+      } catch (error) {
+        console.error("Failed to load initial data:", error);
+      }
+    };
+    initialize();
+  }, []);
+  
+  useEffect(() => {
     const loadItems = async () => {
+      if (!user) return;
       try {
         setIsLoading(true);
-        const user = await getUser();
-        console.log('here is user', user);
-        setuser(user);
-        if (user) {
-          const { items, totalPages } = await getItems(currentPage, 9, user);
-          const categoryData = await fetchLevel1Categories();
-          console.log("here is my categories data ", categoryData);
-          console.log("here is items", items);
-          setCategories(categoryData);
-          setItems(items.filter(item => !item.deleted_at));
-          console.log("here is my items ", items);
-          setTotalPages(totalPages);
-        }
+        const { items, totalPages } = await getItems(currentPage, 9, user);
+        setItems(items.filter(item => !item.deleted_at));
+        setTotalPages(totalPages);
       } catch (error) {
         console.error("Failed to load items:", error);
       } finally {
         setIsLoading(false);
       }
     };
-
     loadItems();
-  }, [currentPage]);
+  }, [currentPage, user]);
+  // useEffect(() => {
+  //   const loadItems = async () => {
+  //     try {
+  //       setIsLoading(true);
+  //       const user = await getUser();
+  //       console.log('here is user', user);
+  //       setuser(user);
+  //       if (user) {
+  //         const { items, totalPages } = await getItems(currentPage, 9, user);
+  //         const categoryData = await fetchLevel1Categories();
+  //         console.log("here is my categories data ", categoryData);
+  //         console.log("here is items", items);
+  //         setCategories(categoryData);
+  //         setItems(items.filter(item => !item.deleted_at));
+  //         console.log("here is my items ", items);
+  //         setTotalPages(totalPages);
+  //       }
+  //     } catch (error) {
+  //       console.error("Failed to load items:", error);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   loadItems();
+  // }, [currentPage]);
 
   useEffect(() => {
     const fetchStoreSettings = async () => {
@@ -131,12 +164,17 @@ export default function InventoryPage() {
     console.log("Selected category:", newValue);
   };
 
+  // const handleSearchChange = (e: any) => {
+  //   debouncedSetSearchQuery(e);
+  // };
+
   const toggleItemSelection = (id: string) => {
     setSelectedItems((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
   const sendSelectedToPOS = () => {
+    console.log('sendSelectedToPOS called at:', new Date().toISOString());
     const selectedItemsData = items
       .filter((item) => selectedItems.includes(item.id))
       .map((item) => ({
@@ -146,7 +184,7 @@ export default function InventoryPage() {
         image_url: item.item_images?.[0]?.image_url, // or adjust based on your logic
         category: item.categories?.[0]?.name || item.category_id, // use first category name or fallback
         size: item.size,
-        // quantity: item.quantity,
+        quantity: item.quantity,
       }));
     
     addItems(selectedItemsData);
@@ -242,6 +280,24 @@ export default function InventoryPage() {
     </div>
   );
 
+  const ItemSkeleton = () => (
+    <Card className="animate-pulse">
+      <CardContent className="p-4">
+        <div className="mb-4 aspect-[4/2] rounded-lg bg-gray-200 dark:bg-gray-700" />
+        <div className="h-6 w-3/4 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+        <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
+        <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+        <div className="h-3 w-5/6 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+        <div className="flex space-x-2 mt-4">
+          <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+          <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+  
+
   // Add helper function to check permissions
   const canManageItems = (): boolean => {
     return !!role && ['store_owner'].includes(role);
@@ -266,11 +322,7 @@ export default function InventoryPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
-          Array.from({ length: 9 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-4"></CardContent>
-            </Card>
-          ))
+            Array.from({ length: 9 }).map((_, i) => <ItemSkeleton key={i} />)
         ) : sortedItems.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-12">
             <p className="text-xl text-gray-500 mb-4">No items found</p>

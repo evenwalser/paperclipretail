@@ -19,7 +19,7 @@ interface ImageFile {
   image_url: string;
 }
 export interface Item {
-  available_in_store: boolean;
+  available_in_store?: boolean;
   categories: CategoryItem[];
   category_id: string;
   condition: string;

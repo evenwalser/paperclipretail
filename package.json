@@ -40,6 +40,7 @@
     "cors": "^2.8.5",
     "date-fns": "^3.6.0",
     "framer-motion": "^11.13.1",
+    "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.468.0",
     "micro": "^10.0.1",
     "next": "14.2.16",
@@ -66,6 +67,7 @@
   },
   "devDependencies": {
     "@shadcn/ui": "^0.0.4",
+    "@types/lodash.debounce": "^4.0.9",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

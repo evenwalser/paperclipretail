@@ -174,6 +174,7 @@ export interface POSSettings {
 // Component prop interfaces
 export interface CartSectionProps {
   items: SaleItem[];
+  isloading: boolean;
   updateQuantity: (id: string, quantity: number) => void;
   removeItem: (id: string) => void;
   total: number;

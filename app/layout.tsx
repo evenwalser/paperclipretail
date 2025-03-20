@@ -7,6 +7,8 @@ import AuthProviders from './providers/authProviders';
 import ClientLayout from './clientLayout '; // Import the ClientLayout
 const inter = Inter({ subsets: ['latin'] });
 import { Toaster } from '@/components/ui/toast'
+import { RoleProvider } from './contexts/RoleContext';
+import { UserProvider } from './contexts/UserContext';
 
 export const metadata = {
   title: 'Paperclip Consign MVP',
@@ -24,11 +26,15 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProviders session={session}>
+        <UserProvider>
+        <RoleProvider>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
             <CartProvider>
               <ClientLayout>{children}<Toaster /></ClientLayout>
             </CartProvider>
           </ThemeProvider>
+          </RoleProvider>
+          </UserProvider>
         </AuthProviders>
       </body>
     </html>

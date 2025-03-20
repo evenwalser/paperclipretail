@@ -71,7 +71,7 @@ const stripePromise = loadStripe(
 export default function POSPage() {
   const [availableReaders, setAvailableReaders] = useState<Reader[]>([]);
   const [showReaderManager, setShowReaderManager] = useState(false);
-  const { items, updateQuantity, removeItem, total, clearCart } = useCart();
+  const { items, updateQuantity, removeItem, total, clearCart, isLoading } = useCart();
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
@@ -1083,6 +1083,7 @@ export default function POSPage() {
         {/* Cart Section */}
         <CartSection
           items={items}
+          isloading={isLoading}
           updateQuantity={updateQuantity}
           removeItem={removeItem}
           total={total}

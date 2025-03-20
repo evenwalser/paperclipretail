@@ -1,11 +1,12 @@
-import React from 'react';
+import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import { Pencil, Trash2, Copy } from "lucide-react";
-import { ItemCardProps } from '../types';
-import { isVideo } from '../utils/inventory-utils';
+import { ItemCardProps } from "../types";
+import { isVideo } from "../utils/inventory-utils";
+import Image from "next/image";
 
 const ItemCard: React.FC<ItemCardProps> = ({
   item,
@@ -15,7 +16,7 @@ const ItemCard: React.FC<ItemCardProps> = ({
   onDelete,
   onDuplicate,
   isDeleting,
-  canManageItems
+  canManageItems,
 }) => {
   return (
     <Card
@@ -42,13 +43,11 @@ const ItemCard: React.FC<ItemCardProps> = ({
                         controls
                         className="w-full h-48 object-cover rounded-lg"
                       >
-                        <source
-                          src={media.image_url}
-                          type="video/mp4"
-                        />
+                        <source src={media.image_url} type="video/mp4" />
                         Your browser does not support the video tag.
                       </video>
                     ) : (
+
                       <img
                         src={media.image_url}
                         alt={`${item.title} - ${index + 1}`}
@@ -74,7 +73,7 @@ const ItemCard: React.FC<ItemCardProps> = ({
             </div>
           )}
         </div>
-        
+
         {/* Item Details */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 space-y-2 sm:space-y-0 gap-2">
           <div>
@@ -107,8 +106,8 @@ const ItemCard: React.FC<ItemCardProps> = ({
         {/* Item Metadata */}
         <p className="text-sm text-gray-600 mb-4">
           Category:{" "}
-          {item.categories.find((category) => category.level === 1)
-            ?.name || "N/A"}
+          {item.categories.find((category) => category.level === 1)?.name ||
+            "N/A"}
         </p>
         <p className="text-sm text-gray-600 mb-4">
           Quantity: {item.quantity || 0}
@@ -117,9 +116,7 @@ const ItemCard: React.FC<ItemCardProps> = ({
           {item.condition && (
             <p className="mb-1">Condition: {item.condition}</p>
           )}
-          {item.size && (
-            <p>Size: {item.size}</p>
-          )}
+          {item.size && <p>Size: {item.size}</p>}
         </div>
 
         {/* Action Buttons */}
@@ -166,7 +163,7 @@ const ItemCard: React.FC<ItemCardProps> = ({
           <Button
             variant="outline"
             size="sm"
-            disabled={item?.status === 'out_of_stock'}
+            disabled={item?.status === "out_of_stock"}
             className={`w-full leading-[normal] ${
               isSelected
                 ? "bg-[#FF3B30] text-white hover:bg-[#E6352B]"
@@ -182,4 +179,4 @@ const ItemCard: React.FC<ItemCardProps> = ({
   );
 };
 
-export default ItemCard; 
+export default ItemCard;
