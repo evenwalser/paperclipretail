@@ -91,7 +91,7 @@ export default function DashboardPage() {
     }
 
     fetchUserStore();
-  }, [session]);
+  }, [session, user]);
 
   useEffect(() => {
     async function fetchRecentSales() {
@@ -159,7 +159,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboardMetrics();
-  }, [storeId, date]);
+  }, [storeId, date, supabase]);
 
   // useEffect(() => {
   //   async function fetchStats() {

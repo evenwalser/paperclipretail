@@ -278,6 +278,7 @@ export async function POST(request: Request) {
 "length" - Determine the approximate length of the item as float value in cm
 "width" - Determine the approximate width of the item as float value in cm
 "height" - Determine the approximate height of the item as float value in cm
+"tags" - Generate a list of relevant tags that describe the item, such as 'Vintage', 'Designer', 'Handmade', 'Eco-friendly', 'Limited Edition', etc. Base these tags on the item's characteristics, condition, brand, and category.
 i want response in json string which i can parse`,
             },
             // Map through each image URL and create the necessary structure

@@ -31,6 +31,9 @@ export interface Item {
   list_on_paperclip: boolean;
   price: number;
   size: string;
+  brand: string;
+  age: string;
+  color: string;
   status: string;
   store_id: number;
   title: string;

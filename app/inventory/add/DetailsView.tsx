@@ -5,6 +5,9 @@ import CategorySelector from "./CategorySelector";
 import ConditionSelector from "./ConditionSelector";
 import SizeSelector from "./SizeSelector";
 import AvailabilityToggles from "./AvailabilityToggles";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { X } from "lucide-react";
 
 interface ImageFile {
   url: string;
@@ -26,24 +29,58 @@ interface DetailsViewProps {
   images: ImageFile[];
   currentImageIndex: number;
   onNavigate: (index: number) => void;
-  itemDetails: { name: string; description: string; price: string; condition: string; quantity: string };
-  onItemDetailsChange: (details: { name: string; description: string; price: string; condition: string; quantity: string }) => void;
+  itemDetails: {
+    name: string;
+    description: string;
+    price: string;
+    condition: string;
+    quantity: string;
+  };
+  onItemDetailsChange: (details: {
+    name: string;
+    description: string;
+    price: string;
+    condition: string;
+    quantity: string;
+  }) => void;
   categories: Category[];
   selectedCategories: { level1: string; level2: string; level3: string };
-  onCategoryChange: (categories: { level1: string; level2: string; level3: string }) => void;
+  onCategoryChange: (categories: {
+    level1: string;
+    level2: string;
+    level3: string;
+  }) => void;
   condition: string;
   onConditionChange: (condition: string) => void;
   size: string;
   onSizeChange: (size: string) => void;
+  brand: string;
+  onBrandChange: (brand: string) => void;
+  age: string;
+  onAgeChange: (age: string) => void;
+  color: string;
+  onColorChange: (color: string) => void;
   availableInStore: boolean;
   onAvailableInStoreChange: (value: boolean) => void;
   listOnPaperclip: boolean;
   onListOnPaperclipChange: (value: boolean) => void;
   onSubmit: () => void;
   isSaving: boolean;
-  fieldErrors: { name: string; price: string; images: string; category: string; quantity: string };
+  fieldErrors: {
+    name: string;
+    price: string;
+    images: string;
+    category: string;
+    quantity: string;
+  };
   isAnalyzing: boolean;
   onAIAnalysis: () => void;
+  logoUrl: string;
+  brandSuggestions: any[];
+  showSuggestions: boolean;
+  onBrandSelect: (brand: any) => void;
+  selectedTags: string[];
+  setSelectedTags:any ;
 }
 
 export default function DetailsView({
@@ -59,6 +96,12 @@ export default function DetailsView({
   onConditionChange,
   size,
   onSizeChange,
+  brand,
+  onBrandChange,
+  age,
+  onAgeChange,
+  color,
+  onColorChange,
   availableInStore,
   onAvailableInStoreChange,
   listOnPaperclip,
@@ -68,11 +111,22 @@ export default function DetailsView({
   fieldErrors,
   isAnalyzing,
   onAIAnalysis,
+  logoUrl,
+  brandSuggestions,
+  showSuggestions,
+  onBrandSelect,
+  selectedTags,
+  setSelectedTags,
+
 }: DetailsViewProps) {
   return (
     <div className="space-y-6">
       <div className="h-[300px] bg-black rounded-2xl overflow-hidden">
-        <ImageCarousel images={images} currentIndex={currentImageIndex} onNavigate={onNavigate} />
+        <ImageCarousel
+          images={images}
+          currentIndex={currentImageIndex}
+          onNavigate={onNavigate}
+        />
       </div>
       <Button
         onClick={onAIAnalysis}
@@ -91,21 +145,178 @@ export default function DetailsView({
           </>
         )}
       </Button>
-      <BasicInfoForm itemDetails={itemDetails} onChange={onItemDetailsChange} fieldErrors={fieldErrors} />
-      <CategorySelector categories={categories} selected={selectedCategories} onChange={onCategoryChange} fieldErrors={fieldErrors} />
+      <BasicInfoForm
+        itemDetails={itemDetails}
+        onChange={onItemDetailsChange}
+        fieldErrors={fieldErrors}
+      />
+      <CategorySelector
+        categories={categories}
+        selected={selectedCategories}
+        onChange={onCategoryChange}
+        fieldErrors={fieldErrors}
+      />
       <ConditionSelector condition={condition} onChange={onConditionChange} />
       <SizeSelector size={size} onChange={onSizeChange} />
+      <div className="space-y-2">
+          <Label>Tags</Label>
+          <div className="flex flex-wrap gap-2">
+            {selectedTags.map((tag, index) => (
+              <div
+                key={index}
+                className="bg-blue-100 text-blue-800 px-2 py-1 rounded flex items-center"
+              >
+                {tag}
+                <button
+                  onClick={() =>
+                    setSelectedTags((prev) =>
+                      prev.filter((_, i) => i !== index)
+                    )
+                  }
+                  className="ml-1 text-red-500 hover:text-red-700"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+          {/* <Input
+            placeholder="Add a tag and press Enter"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                setSelectedTags((prev) => [
+                  ...prev,
+                  e.currentTarget.value.trim(),
+                ]);
+                e.currentTarget.value = "";
+              }
+            }}
+          /> */}
+        </div>
+      <div className="relative">
+        <Label htmlFor="brand">Brand</Label>
+        <div className="relative flex items-center">
+          {logoUrl && (
+            <img
+              src={logoUrl}
+              alt="Brand Logo"
+              className="absolute right-2 h-6 w-6 object-contain"
+              onError={(e) =>
+                ((e.target as HTMLImageElement).style.display = "none")
+              }
+            />
+          )}
+          <Input
+            id="brand"
+            value={brand}
+            onChange={(e) => onBrandChange(e.target.value)}
+            placeholder="Enter brand"
+            className={`pl-${logoUrl ? "10" : "3"}`} // Add left padding if logo exists
+          />
+        </div>
+ 
+        {showSuggestions && brandSuggestions.length > 0 && (
+          <ul className="absolute z-10 w-full bg-[#060d19] border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            {brandSuggestions.map((suggestion, index) => (
+              <li
+                key={index}
+                className="px-4 py-2 hover:bg-[#101e34] cursor-pointer flex items-center"
+                onClick={() => onBrandSelect(suggestion)}
+              >
+                {suggestion.logo_url && (
+                  <img
+                    src={suggestion.logo_url}
+                    alt={suggestion.name}
+                    className="h-6 w-6 mr-2"
+                    onError={(e) =>
+                      ((e.target as HTMLImageElement).style.display = "none")
+                    }
+                  />
+                )}
+                <span>{suggestion.name}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {/* <div className="relative">
+        <Label htmlFor="brand">Brand</Label>
+        <Input
+          id="brand"
+          value={brand}
+          onChange={(e) => onBrandChange(e.target.value)}
+          placeholder="Enter brand"
+        />
+        {showSuggestions && brandSuggestions.length > 0 && (
+          <ul className="absolute z-10 w-full bg-[#060d19] border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            {brandSuggestions.map((suggestion, index) => (
+              <li
+                key={index}
+                className="px-4 py-2 hover:bg-[#101e34]cursor-pointer flex items-center"
+                onClick={() => onBrandSelect(suggestion)}
+              >
+                {suggestion.logo_url && (
+                  <img
+                    src={suggestion.logo_url}
+                    alt={suggestion.name}
+                    className="h-6 w-6 mr-2"
+                    onError={(e) =>
+                      ((e.target as HTMLImageElement).style.display = "none")
+                    }
+                  />
+                )}
+                <span>{suggestion.name}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {logoUrl && (
+          <img
+            src={logoUrl}
+            alt="Brand Logo"
+            className="mt-2 h-16 w-16 object-contain"
+            onError={(e) =>
+              ((e.target as HTMLImageElement).style.display = "none")
+            }
+          />
+        )}
+      </div> */}
+      {/* <div>
+      <Label htmlFor="age">Age</Label>
+      <Input
+        id="age"
+        value={age}
+        onChange={(e) => onAgeChange(e.target.value)}
+        placeholder="Enter age (e.g., 2 years)"
+      />
+    </div> */}
+      <div>
+        <Label htmlFor="color">Color</Label>
+        <Input
+          id="color"
+          value={color}
+          onChange={(e) => onColorChange(e.target.value)}
+          placeholder="Enter color"
+        />
+      </div>
       <AvailabilityToggles
         availableInStore={availableInStore}
         onAvailableInStoreChange={onAvailableInStoreChange}
         listOnPaperclip={listOnPaperclip}
         onListOnPaperclipChange={onListOnPaperclipChange}
       />
-      {fieldErrors.images && <p className="text-sm text-red-500 mt-1">{fieldErrors.images}</p>}
+      {fieldErrors.images && (
+        <p className="text-sm text-red-500 mt-1">{fieldErrors.images}</p>
+      )}
       <Button
         size="lg"
         onClick={onSubmit}
-        disabled={isSaving || !itemDetails.name || !itemDetails.price || images.length === 0}
+        disabled={
+          isSaving ||
+          !itemDetails.name ||
+          !itemDetails.price ||
+          images.length === 0
+        }
         className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 text-lg py-6"
       >
         {isSaving ? (

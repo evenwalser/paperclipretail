@@ -243,7 +243,7 @@ export default function InventoryPage() {
             <button
               key={brandObj.brand}
               onClick={() => handleBrandFilter(brandObj.brand)}
-              className={`flex flex-col items-center space-y-2 p-2 border rounded hover:bg-[#afb8c7] ${
+              className={`flex flex-col items-center space-y-2 p-2 border rounded hover:bg-gray-100 ${
                 filters.brands.includes(brandObj.brand) ? "bg-blue-100" : ""
               }`}
             >
@@ -258,7 +258,7 @@ export default function InventoryPage() {
                   <span className="text-gray-500 text-sm">No Logo</span>
                 </div>
               )}
-              <span className={`${filters.brands.includes(brandObj.brand) ? "text-[#000]" : ""}`}>{brandObj.brand}</span>
+              <span>{brandObj.brand}</span>
             </button>
           ))}
         </div>

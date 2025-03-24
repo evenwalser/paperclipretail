@@ -1,6 +1,6 @@
 // EditItemPage.tsx
 "use client";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
@@ -44,6 +44,9 @@ export default function EditItemPage() {
     quantity: "1",
     condition: "New",
     size: "",
+    brand: "",
+    age: "",
+    color: "",
     availableInStore: true,
     listOnPaperclip: true,
   });
@@ -53,6 +56,12 @@ export default function EditItemPage() {
     images: "",
     category: "",
   });
+
+  const [brandSuggestions, setBrandSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // Fetch initial data
   useEffect(() => {
@@ -82,22 +91,33 @@ export default function EditItemPage() {
           quantity: itemData.quantity?.toString() || "1",
           condition: itemData.condition,
           size: itemData.size || "",
+          brand: itemData.brand || "",
+          age: itemData.age || "",
+          color: itemData.color || "",
           availableInStore: itemData.available_in_store,
           listOnPaperclip: itemData.list_on_paperclip,
         });
+        setLogoUrl(itemData.logo_url || "");
+        setSelectedTags(itemData.tags || []);
 
         const categoryId = itemData.category_id;
         const category = categoriesData?.find((c) => c.id === categoryId);
         if (category) {
-          const parent = categoriesData?.find((c) => c.id === category.parent_id);
+          const parent = categoriesData?.find(
+            (c) => c.id === category.parent_id
+          );
           const grandParent = parent
             ? categoriesData?.find((c) => c.id === parent.parent_id)
             : null;
 
           setSelectedCategories({
-            level1: grandParent?.id || (parent?.id || categoryId),
-            level2: parent?.id || (categoryId !== grandParent?.id ? categoryId : ""),
-            level3: categoryId !== parent?.id && categoryId !== grandParent?.id ? categoryId : "",
+            level1: grandParent?.id || parent?.id || categoryId,
+            level2:
+              parent?.id || (categoryId !== grandParent?.id ? categoryId : ""),
+            level3:
+              categoryId !== parent?.id && categoryId !== grandParent?.id
+                ? categoryId
+                : "",
           });
         }
       }
@@ -107,8 +127,38 @@ export default function EditItemPage() {
     fetchData();
   }, [id, supabase]);
 
+  const handleBrandChange = async (value: string) => {
+    setItemDetails((prev) => ({ ...prev, brand: value }));
+    if (value.length > 2) {
+      try {
+        const response = await fetch(
+          `/api/logo-search?q=${encodeURIComponent(value)}`
+        );
+        if (!response.ok) throw new Error("Failed to fetch brand suggestions");
+        const data = await response.json();
+        setBrandSuggestions(data);
+        setShowSuggestions(true);
+      } catch (error) {
+        console.error("Error fetching brand suggestions:", error);
+        setBrandSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } else {
+      setBrandSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleBrandSelect = (selectedBrand: any) => {
+    setItemDetails((prev) => ({ ...prev, brand: selectedBrand.name }));
+    setLogoUrl(selectedBrand.logo_url || "");
+    setShowSuggestions(false);
+  };
+
   // Handlers
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = event.target.files;
     if (!files?.length) return;
 
@@ -116,10 +166,14 @@ export default function EditItemPage() {
       const newImages = await Promise.all(
         Array.from(files).map(async (file) => {
           const filePath = `items/${id}/${Date.now()}-${file.name}`;
-          const { error } = await supabase.storage.from("item-images").upload(filePath, file);
+          const { error } = await supabase.storage
+            .from("item-images")
+            .upload(filePath, file);
           if (error) throw error;
-          const { data: { publicUrl } } = supabase.storage.from("item-images").getPublicUrl(filePath);
-          console.log("🚀 ~ Array.from ~ publicUrl:", publicUrl)
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("item-images").getPublicUrl(filePath);
+          console.log("🚀 ~ Array.from ~ publicUrl:", publicUrl);
           return { id: "", image_url: publicUrl, filepath: filePath, file };
         })
       );
@@ -135,10 +189,14 @@ export default function EditItemPage() {
 
     try {
       if (imageToDelete.id) {
-        await supabase.storage.from("item-images").remove([imageToDelete.filepath]);
+        await supabase.storage
+          .from("item-images")
+          .remove([imageToDelete.filepath]);
         await supabase.from("item_images").delete().eq("id", imageToDelete.id);
       } else {
-        await supabase.storage.from("item-images").remove([imageToDelete.filepath]);
+        await supabase.storage
+          .from("item-images")
+          .remove([imageToDelete.filepath]);
       }
       setImages((prev) => prev.filter((_, i) => i !== index));
       setCurrentImageIndex((prev) => Math.min(prev, images.length - 2));
@@ -155,7 +213,10 @@ export default function EditItemPage() {
     setItemDetails((prev) => ({ ...prev, ...updates }));
   };
 
-  const handleCategoryChange = (level: "level1" | "level2" | "level3", value: string) => {
+  const handleCategoryChange = (
+    level: "level1" | "level2" | "level3",
+    value: string
+  ) => {
     if (level === "level1") {
       setSelectedCategories({ level1: value, level2: "", level3: "" });
     } else if (level === "level2") {
@@ -169,10 +230,12 @@ export default function EditItemPage() {
     try {
       const jsonStart = response.indexOf("{");
       const jsonEnd = response.lastIndexOf("}") + 1;
-      if (jsonStart === -1 || jsonEnd === -1) throw new Error("No valid JSON found");
+      if (jsonStart === -1 || jsonEnd === -1)
+        throw new Error("No valid JSON found");
       const jsonString = response.substring(jsonStart, jsonEnd).trim();
       const jsonObject = JSON.parse(jsonString);
-      if (typeof jsonObject !== "object" || jsonObject === null) throw new Error("Not a valid JSON object");
+      if (typeof jsonObject !== "object" || jsonObject === null)
+        throw new Error("Not a valid JSON object");
       return jsonObject;
     } catch (error) {
       console.error("Error extracting JSON:", error);
@@ -196,7 +259,8 @@ export default function EditItemPage() {
       });
 
       const result = await analyzeImage(formData);
-      const dataObject = extractJson(result?.data?.choices?.[0]?.message?.content) || {};
+      const dataObject =
+        extractJson(result?.data?.choices?.[0]?.message?.content) || {};
 
       setItemDetails((prev) => ({
         ...prev,
@@ -205,13 +269,24 @@ export default function EditItemPage() {
         price: dataObject.price_avg?.toString() || prev.price,
         condition: dataObject.condition || prev.condition,
         size: dataObject.size || prev.size,
+        brand: dataObject.brand || prev.brand,
+        age: dataObject.age || prev.age,
+        color: dataObject.color || prev.color,
       }));
+      setSuggestedTags(dataObject.tags || []); // Set AI-suggested tags
+      setSelectedTags((prev) => [
+        ...new Set([...prev, ...(dataObject.tags || [])]),
+      ]);
 
       if (dataObject.category_id) {
         const categoryNames = dataObject.category_id.split(" > ");
         const level1 = categories.find((cat) => cat.name === categoryNames[0]);
-        const level2 = categories.find((cat) => cat.name === categoryNames[1] && cat.parent_id === level1?.id);
-        const level3 = categories.find((cat) => cat.name === categoryNames[2] && cat.parent_id === level2?.id);
+        const level2 = categories.find(
+          (cat) => cat.name === categoryNames[1] && cat.parent_id === level1?.id
+        );
+        const level3 = categories.find(
+          (cat) => cat.name === categoryNames[2] && cat.parent_id === level2?.id
+        );
 
         setSelectedCategories({
           level1: level1?.id || "",
@@ -228,20 +303,26 @@ export default function EditItemPage() {
   };
   const handleSave = async () => {
     if (!item) return;
-  
+
     setFieldErrors({ name: "", price: "", images: "", category: "" });
     let hasErrors = false;
     const newErrors = { name: "", price: "", images: "", category: "" };
-  
+
     if (!itemDetails.name.trim()) {
       newErrors.name = "Item name is required";
       hasErrors = true;
     }
-    if (!itemDetails.price || isNaN(parseFloat(itemDetails.price)) || parseFloat(itemDetails.price) <= 0) {
+    if (
+      !itemDetails.price ||
+      isNaN(parseFloat(itemDetails.price)) ||
+      parseFloat(itemDetails.price) <= 0
+    ) {
       newErrors.price = "Valid price is required";
       hasErrors = true;
     }
-    const filteredImages = images.filter((image) => /\.(jpg|jpeg|png|gif|webp)$/i.test(image.image_url));
+    const filteredImages = images.filter((image) =>
+      /\.(jpg|jpeg|png|gif|webp)$/i.test(image.image_url)
+    );
     if (filteredImages.length === 0) {
       newErrors.images = "At least one image is required";
       hasErrors = true;
@@ -250,12 +331,12 @@ export default function EditItemPage() {
       newErrors.category = "Please select a main category";
       hasErrors = true;
     }
-  
+
     if (hasErrors) {
       setFieldErrors(newErrors);
       return;
     }
-  
+
     setIsSaving(true);
     try {
       // Update the item details in the database
@@ -266,16 +347,24 @@ export default function EditItemPage() {
           description: itemDetails.description,
           price: parseFloat(itemDetails.price) || 0,
           quantity: parseInt(itemDetails.quantity) || 0,
-          category_id: selectedCategories.level3 || selectedCategories.level2 || selectedCategories.level1,
+          category_id:
+            selectedCategories.level3 ||
+            selectedCategories.level2 ||
+            selectedCategories.level1,
           condition: itemDetails.condition,
           size: itemDetails.size,
+          brand: itemDetails.brand,
+          logo_url: logoUrl,
+          age: itemDetails.age,
+          color: itemDetails.color,
           available_in_store: itemDetails.availableInStore,
           list_on_paperclip: itemDetails.listOnPaperclip,
+          tags: selectedTags,
         })
         .eq("id", item.id);
-  
+
       if (itemError) throw itemError;
-  
+
       const imageUploads = await Promise.all(
         images.map(async (image, index) => {
           if (image.id) {
@@ -287,28 +376,35 @@ export default function EditItemPage() {
               display_order: index,
             };
           }
-   
+
           const newId = uuidv4();
           // If the image doesn't have an ID, it means it's new and needs to be uploaded
           const fileExt = image.image_url.split(".").pop();
-          const fileName = `${user.id}/${item.id}/${crypto.randomUUID()}.${fileExt}`;
+          const fileName = `${user.id}/${
+            item.id
+          }/${crypto.randomUUID()}.${fileExt}`;
           let fileData: Blob;
-  
+
           if (image.file) {
             fileData = image.file;
           } else {
             const response = await fetch(image.image_url);
             fileData = await response.blob();
           }
-  
+
           // Upload the new image
           const { error: uploadError } = await supabase.storage
             .from("item-images")
-            .upload(fileName, fileData, { cacheControl: "3600", upsert: false });
+            .upload(fileName, fileData, {
+              cacheControl: "3600",
+              upsert: false,
+            });
           if (uploadError) throw uploadError;
-  
-          const { data: { publicUrl } } = supabase.storage.from("item-images").getPublicUrl(fileName);
-  
+
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("item-images").getPublicUrl(fileName);
+
           return {
             id: newId,
             item_id: item.id,
@@ -317,7 +413,7 @@ export default function EditItemPage() {
           };
         })
       );
-  
+
       // Delete old images that are no longer associated with this item
       const existingIds = images.filter((img) => img.id).map((img) => img.id);
       await supabase
@@ -325,13 +421,15 @@ export default function EditItemPage() {
         .delete()
         .eq("item_id", item.id)
         .not("id", "in", `(${existingIds.join(",")})`);
-  
+
       // Insert new images if necessary
       if (imageUploads.length > 0) {
-        const { error: imageError } = await supabase.from("item_images").upsert(imageUploads, { onConflict: 'id' });
+        const { error: imageError } = await supabase
+          .from("item_images")
+          .upsert(imageUploads, { onConflict: "id" });
         if (imageError) throw imageError;
       }
-  
+
       images.forEach((image) => URL.revokeObjectURL(image.image_url));
       router.push("/inventory");
       toast.success("Item updated successfully");
@@ -342,8 +440,6 @@ export default function EditItemPage() {
       setIsSaving(false);
     }
   };
-  
- 
 
   if (isLoading) return <div>Loading...</div>;
 
@@ -371,8 +467,18 @@ export default function EditItemPage() {
               description={itemDetails.description}
               price={itemDetails.price}
               quantity={itemDetails.quantity}
+              brand={itemDetails.brand}
+              age={itemDetails.age}
+              color={itemDetails.color}
               onChange={handleItemDetailsChange}
               fieldErrors={{ name: fieldErrors.name, price: fieldErrors.price }}
+              onBrandChange={handleBrandChange}
+              brandSuggestions={brandSuggestions}
+              showSuggestions={showSuggestions}
+              onBrandSelect={handleBrandSelect}
+              logoUrl={logoUrl}
+              selectedTags={selectedTags} // Add this
+              onTagsChange={setSelectedTags} // Add this
             />
             <CategorySelector
               categories={categories}
@@ -390,11 +496,19 @@ export default function EditItemPage() {
             />
             <AvailabilityToggles
               availableInStore={itemDetails.availableInStore}
-              onChange={(availableInStore) => handleItemDetailsChange({ availableInStore })}
+              onChange={(availableInStore) =>
+                handleItemDetailsChange({ availableInStore })
+              }
             />
-            {fieldErrors.images && <p className="text-sm text-red-500 mt-1">{fieldErrors.images}</p>}
+            {fieldErrors.images && (
+              <p className="text-sm text-red-500 mt-1">{fieldErrors.images}</p>
+            )}
             <div className="flex gap-4">
-              <Button onClick={handleAIAnalysis} disabled={isAnalyzing} className="flex-1">
+              <Button
+                onClick={handleAIAnalysis}
+                disabled={isAnalyzing}
+                className="flex-1"
+              >
                 {isAnalyzing ? (
                   "Analyzing..."
                 ) : (

@@ -112,6 +112,15 @@ const ItemCard: React.FC<ItemCardProps> = ({
         <p className="text-sm text-gray-600 mb-4">
           Quantity: {item.quantity || 0}
         </p>
+        <p className="text-sm text-gray-600 mb-4">
+          Brand: {item.brand || ""}
+        </p>
+        <p className="text-sm text-gray-600 mb-4">
+          color: {item.color || ""}
+        </p>
+        {/* <p className="text-sm text-gray-600 mb-4">
+          Age: {item.age || 0}
+        </p> */}
         <div className="text-sm text-gray-600 mb-4">
           {item.condition && (
             <p className="mb-1">Condition: {item.condition}</p>

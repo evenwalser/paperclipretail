@@ -63,7 +63,7 @@ export const fetchLevel1Categories = async () => {
     console.error("Error fetching categories:", error);
     return [];
   }
-
+  console.log("🚀 ~ fetchLevel1Categories ~ data:", data)
   return data;
 };
 
@@ -94,9 +94,12 @@ export const getUser = async () => {
   }
 };
 
-export async function getItems(page: number = 1,
+export async function getItems(
+  page: number = 1,
   itemsPerPage: number = 9,
-  user: any) {
+  user: any,
+  filters: any
+) {
   if (!user || !user.store_id) {
     throw new Error("User is not authenticated or missing store ID.");
   }
@@ -104,33 +107,50 @@ export async function getItems(page: number = 1,
   const startIndex = (page - 1) * itemsPerPage;
   const supabase = createClient();
 
-  const [countResponse, itemsResponse] = await Promise.all([
-    supabase
-      .from("items")
-      .select("id", { count: "exact", head: true })
-      .eq("store_id", user.store_id),
-    supabase
-      .from("items")
-      .select(
-                `
-                *,
-                item_images!inner (
-                  image_url,
-                  display_order
-                )
-              `
-              )
-      .eq("store_id", user.store_id)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .range(startIndex, startIndex + itemsPerPage - 1),
-  ]);
+  let query = supabase
+    .from("items")
+    .select(
+      `
+      *,
+      item_images!inner (
+        image_url,
+        display_order
+      )
+      `,
+      { count: "exact" }
+    )
+    .eq("store_id", user.store_id)
+    .is("deleted_at", null);
 
-  if (countResponse.error) throw countResponse.error;
-  if (itemsResponse.error) throw itemsResponse.error;
+  // Apply filters
+  if (filters.category && filters.category !== "all") {
+    query = query.eq("category_id", filters.category);
+  }
+  if (filters.search) {
+    query = query.ilike("title", `%${filters.search}%`);
+  }
+  if (filters.sizes?.length) {
+    query = query.in("size", filters.sizes);
+  }
+  if (filters.brands?.length) {
+    query = query.in("brand", filters.brands);
+  }
+  if (filters.ages?.length) {
+    query = query.in("age", filters.ages);
+  }
+  if (filters.colors?.length) {
+    query = query.in("color", filters.colors);
+  }
+
+  // Apply sorting and pagination
+  const { data, count, error } = await query
+    .order("created_at", { ascending: false })
+    .range(startIndex, startIndex + itemsPerPage - 1);
+
+  if (error) throw error;
 
   const itemsWithCategories = await Promise.all(
-    itemsResponse.data.map(async (item) => {
+    data.map(async (item) => {
       const { data: categoryHierarchy, error } = await supabase.rpc(
         "get_category_hierarchy",
         { category_id: item.category_id }
@@ -141,40 +161,37 @@ export async function getItems(page: number = 1,
 
   return {
     items: itemsWithCategories,
-    totalItems: countResponse.count || 0,
-    totalPages: Math.ceil((countResponse.count || 0) / itemsPerPage),
+    totalItems: count || 0,
+    totalPages: Math.ceil((count || 0) / itemsPerPage),
   };
 }
 
-// export async function getItems(
-//   page: number = 1,
+// export async function getItems(page: number = 1,
 //   itemsPerPage: number = 9,
-//   user: any
-// ) {
+//   user: any) {
 //   if (!user || !user.store_id) {
 //     throw new Error("User is not authenticated or missing store ID.");
 //   }
 
 //   const startIndex = (page - 1) * itemsPerPage;
+//   const supabase = createClient();
 
-//   // Fetch count and items in parallel
 //   const [countResponse, itemsResponse] = await Promise.all([
 //     supabase
 //       .from("items")
-//       .select("*", { count: "exact", head: true })
-//       .eq("store_id", user.store_id), // Count query filtered by store ID
-
+//       .select("id", { count: "exact", head: true })
+//       .eq("store_id", user.store_id),
 //     supabase
 //       .from("items")
 //       .select(
-//         `
-//         *,
-//         item_images!inner (
-//           image_url,
-//           display_order
-//         )
-//       `
-//       )
+//                 `
+//                 *,
+//                 item_images!inner (
+//                   image_url,
+//                   display_order
+//                 )
+//               `
+//               )
 //       .eq("store_id", user.store_id)
 //       .is("deleted_at", null)
 //       .order("created_at", { ascending: false })
@@ -184,20 +201,13 @@ export async function getItems(page: number = 1,
 //   if (countResponse.error) throw countResponse.error;
 //   if (itemsResponse.error) throw itemsResponse.error;
 
-//   // Fetch categories for each item
 //   const itemsWithCategories = await Promise.all(
 //     itemsResponse.data.map(async (item) => {
-//       const { data: categoryHierarchy, error: categoryError } =
-//         await supabase.rpc("get_category_hierarchy", {
-//           category_id: item.category_id,
-//         });
-
-//       if (categoryError) {
-//         console.error("Error fetching category hierarchy:", categoryError);
-//         return { ...item, categories: [] };
-//       }
-
-//       return { ...item, categories: categoryHierarchy };
+//       const { data: categoryHierarchy, error } = await supabase.rpc(
+//         "get_category_hierarchy",
+//         { category_id: item.category_id }
+//       );
+//       return { ...item, categories: error ? [] : categoryHierarchy };
 //     })
 //   );
 
