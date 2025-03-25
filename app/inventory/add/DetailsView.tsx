@@ -198,7 +198,7 @@ export default function DetailsView({
         <div className="relative flex items-center">
           {logoUrl && (
             <img
-              src={logoUrl}
+              src={logoUrl} 
               alt="Brand Logo"
               className="absolute right-2 h-6 w-6 object-contain"
               onError={(e) =>

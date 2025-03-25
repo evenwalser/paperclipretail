@@ -22,6 +22,7 @@ export interface StoreSettings {
 export interface ItemCardProps {
   item: Item;
   isSelected: boolean;
+  brandLogoMap: Record<string, string | null>;
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;

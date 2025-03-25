@@ -309,6 +309,8 @@ export default function AddItemPage() {
         price: dataObject.price_avg?.toString() || prev.price,
       }));
       setCondition(dataObject.condition || "New");
+      setBrand(dataObject.brand || ""); // Added to set brand from AI response
+      setColor(dataObject.color || "");
       setSuggestedTags(dataObject.tags || []);
       setSelectedTags(dataObject.tags || []);
 

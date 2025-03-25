@@ -24,7 +24,7 @@
 // // Add a NotificationBadge component
 // const NotificationBadge = ({ count }: { count: number }) => {
 //   if (count === 0) return null;
-  
+
 //   return (
 //     <div className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
 //       {count > 99 ? '99+' : count}
@@ -92,9 +92,9 @@
 //     { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ['store_owner','user'] },
 //     { name: "Inventory", href: "/inventory", icon: Package, roles: ['store_owner','sales_associate','user'] },
 //     { name: "POS", href: "/pos", icon: PoundSterling, roles: ['store_owner','sales_associate','user'] },
-//     { 
-//       name: "Notifications", 
-//       href: "/notifications", 
+//     {
+//       name: "Notifications",
+//       href: "/notifications",
 //       icon: Bell,
 //       badge: unreadCount > 0 ? unreadCount : null,
 //       roles: ['store_owner','user']
@@ -128,8 +128,8 @@
 //       <ScrollArea className="flex-1">
 //         <nav className="space-y-2 p-4">
 //           {allSidebarItems.map((item) => (
-//             <Link 
-//               key={item.name} 
+//             <Link
+//               key={item.name}
 //               href={item.href}
 //               onClick={(e) => handleItemClick(e, item)}
 //               className={cn(
@@ -203,7 +203,7 @@ export function Sidebar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const { role, isLoading } = useRoleContext();
   const user = useUser();
-  const userStoreId = user?.store_id
+  const userStoreId = user?.store_id;
   useEffect(() => {
     fetchUnreadCount();
 
@@ -231,7 +231,7 @@ export function Sidebar() {
       const { count, error } = await supabase
         .from("notifications")
         .select("*", { count: "exact", head: true })
-        .eq('store_id', userStoreId)
+        .eq("store_id", userStoreId)
         .eq("read", false)
         .is("deleted_at", null);
       if (error) throw error;
@@ -242,9 +242,24 @@ export function Sidebar() {
   };
 
   const allSidebarItems = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard, roles: ["store_owner", "user"] },
-    { name: "Inventory", href: "/inventory", icon: Package, roles: ["store_owner", "sales_associate", "user"] },
-    { name: "POS", href: "/pos", icon: PoundSterling, roles: ["store_owner", "sales_associate", "user"] },
+    {
+      name: "Dashboard",
+      href: "/",
+      icon: LayoutDashboard,
+      roles: ["store_owner", "user"],
+    },
+    {
+      name: "Inventory",
+      href: "/inventory",
+      icon: Package,
+      roles: ["store_owner", "sales_associate", "user"],
+    },
+    {
+      name: "POS",
+      href: "/pos",
+      icon: PoundSterling,
+      roles: ["store_owner", "sales_associate", "user"],
+    },
     {
       name: "Notifications",
       href: "/notifications",
@@ -252,10 +267,18 @@ export function Sidebar() {
       badge: unreadCount > 0 ? unreadCount : null,
       roles: ["store_owner", "user"],
     },
-    { name: "Settings", href: "/settings", icon: Settings, roles: ["admin", "store_owner", "user"] },
+    {
+      name: "Settings",
+      href: "/settings",
+      icon: Settings,
+      roles: ["admin", "store_owner", "user"],
+    },
   ];
 
-  const handleItemClick = (e: React.MouseEvent, item: typeof allSidebarItems[0]) => {
+  const handleItemClick = (
+    e: React.MouseEvent,
+    item: (typeof allSidebarItems)[0]
+  ) => {
     if (role === "sales_associate" && !item.roles.includes("sales_associate")) {
       e.preventDefault();
       toast.error("You don't have permission to access this feature");
@@ -305,18 +328,25 @@ export function Sidebar() {
               href={item.href}
               onClick={(e) => handleItemClick(e, item)}
               className={cn(
-                role === "sales_associate" && !item.roles.includes("sales_associate") && "opacity-50 cursor-not-allowed"
+                role === "sales_associate" &&
+                  !item.roles.includes("sales_associate") &&
+                  "opacity-50 cursor-not-allowed"
               )}
             >
               <Button
                 variant="ghost"
-                disabled={role === "sales_associate" && !item.roles.includes("sales_associate")}
+                disabled={
+                  role === "sales_associate" &&
+                  !item.roles.includes("sales_associate")
+                }
                 className={cn(
                   "w-full justify-start rounded-[8px] relative",
                   pathname === item.href
                     ? "bg-gray-100 dark:bg-gray-800 text-[#dc2626]"
                     : "hover:bg-gray-800 hover:text-[#fff]",
-                  role === "sales_associate" && !item.roles.includes("sales_associate") && "opacity-50 cursor-not-allowed"
+                  role === "sales_associate" &&
+                    !item.roles.includes("sales_associate") &&
+                    "opacity-50 cursor-not-allowed"
                 )}
               >
                 <item.icon className="mr-2 h-4 w-4" />
@@ -328,6 +358,13 @@ export function Sidebar() {
         </nav>
       </ScrollArea>
       <div className="p-4 border-t border-gray-800">
+        <Button
+          onClick={() =>
+            (window.location.href = `/api/shopify/auth?shop=paperclip-test-development.myshopify.com`)
+          }
+        >
+          Connect Shopify
+        </Button>
         <form action={logout}>
           <Button
             variant="ghost"

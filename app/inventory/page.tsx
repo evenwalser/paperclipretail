@@ -16,6 +16,7 @@ import InventoryFilters from "./components/InventoryFilters";
 import ItemCard from "./components/ItemCard";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { sortItems } from "./utils/inventory-utils";
+import { useMemo } from "react";
 
 interface Category {
   id: string;
@@ -132,6 +133,13 @@ export default function InventoryPage() {
     };
     if (user) fetchStoreSettings();
   }, [user]);
+
+  const brandLogoMap = useMemo(() => {
+    return filterOptions.brands.reduce((acc, { brand, logo_url }) => {
+      acc[brand] = logo_url;
+      return acc;
+    }, {} as Record<string, string | null>);
+  }, [filterOptions.brands]);
 
   const sortedItems = sortItems(items, storeSettings.defaultSorting);
 
@@ -276,6 +284,7 @@ export default function InventoryPage() {
             <ItemCard
               key={item.id}
               item={item}
+              brandLogoMap={brandLogoMap} // Add this prop
               isSelected={selectedItems.includes(item.id)}
               onSelect={toggleItemSelection}
               onEdit={(id) => router.push(`/inventory/edit/${id}`)}

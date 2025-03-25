@@ -10,6 +10,7 @@ import Image from "next/image";
 
 const ItemCard: React.FC<ItemCardProps> = ({
   item,
+  brandLogoMap,
   isSelected,
   onSelect,
   onEdit,
@@ -112,8 +113,16 @@ const ItemCard: React.FC<ItemCardProps> = ({
         <p className="text-sm text-gray-600 mb-4">
           Quantity: {item.quantity || 0}
         </p>
-        <p className="text-sm text-gray-600 mb-4">
-          Brand: {item.brand || ""}
+        <p className="text-sm text-gray-600 mb-4 flex items-center space-x-2">
+          <span>Brand:</span>
+          {item.brand && brandLogoMap[item.brand] && (
+            <img
+              src={brandLogoMap[item.brand] || ''}
+              alt={item.brand}
+              className="h-4 w-4 object-contain"
+            />
+          )}
+          <span>{item.brand || "N/A"}</span>
         </p>
         <p className="text-sm text-gray-600 mb-4">
           color: {item.color || ""}
