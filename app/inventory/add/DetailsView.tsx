@@ -81,6 +81,7 @@ interface DetailsViewProps {
   onBrandSelect: (brand: any) => void;
   selectedTags: string[];
   setSelectedTags:any ;
+  setListOnShopify: any;
 }
 
 export default function DetailsView({
@@ -117,7 +118,7 @@ export default function DetailsView({
   onBrandSelect,
   selectedTags,
   setSelectedTags,
-
+  setListOnShopify,
 }: DetailsViewProps) {
   return (
     <div className="space-y-6">
@@ -304,6 +305,7 @@ export default function DetailsView({
         onAvailableInStoreChange={onAvailableInStoreChange}
         listOnPaperclip={listOnPaperclip}
         onListOnPaperclipChange={onListOnPaperclipChange}
+        onListOnShopifyChange={setListOnShopify}
       />
       {fieldErrors.images && (
         <p className="text-sm text-red-500 mt-1">{fieldErrors.images}</p>

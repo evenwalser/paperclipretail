@@ -16,6 +16,7 @@ import InventoryFilters from "./components/InventoryFilters";
 import ItemCard from "./components/ItemCard";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { sortItems } from "./utils/inventory-utils";
+import { useMemo } from "react";
 
 interface Category {
   id: string;
@@ -68,10 +69,10 @@ export default function InventoryPage() {
         const [categoryData, sizesData, brandsData, agesData, colorsData] =
           await Promise.all([
             fetchLevel1Categories(),
-            supabase.rpc("get_distinct_sizes"),
-            supabase.rpc("get_distinct_brands_with_logo"),
-            supabase.rpc("get_distinct_ages"),
-            supabase.rpc("get_distinct_colors"),
+            supabase.rpc("get_distinct_sizes",  { p_store_id: user.store_id }),
+            supabase.rpc("get_distinct_brands_with_logo", { p_store_id: user.store_id }),
+            supabase.rpc("get_distinct_ages", { p_store_id: user.store_id }),
+            supabase.rpc("get_distinct_colors", { p_store_id: user.store_id }),
           ]);
         setCategories(categoryData);
         setFilterOptions({
@@ -132,6 +133,13 @@ export default function InventoryPage() {
     };
     if (user) fetchStoreSettings();
   }, [user]);
+
+  const brandLogoMap = useMemo(() => {
+    return filterOptions.brands.reduce((acc, { brand, logo_url }) => {
+      acc[brand] = logo_url;
+      return acc;
+    }, {} as Record<string, string | null>);
+  }, [filterOptions.brands]);
 
   const sortedItems = sortItems(items, storeSettings.defaultSorting);
 
@@ -243,7 +251,7 @@ export default function InventoryPage() {
             <button
               key={brandObj.brand}
               onClick={() => handleBrandFilter(brandObj.brand)}
-              className={`flex flex-col items-center space-y-2 p-2 border rounded hover:bg-gray-100 ${
+              className={`flex flex-col items-center space-y-2 p-2 border rounded hover:bg-[#afb8c7] ${
                 filters.brands.includes(brandObj.brand) ? "bg-blue-100" : ""
               }`}
             >
@@ -258,7 +266,7 @@ export default function InventoryPage() {
                   <span className="text-gray-500 text-sm">No Logo</span>
                 </div>
               )}
-              <span>{brandObj.brand}</span>
+              <span className={`${filters.brands.includes(brandObj.brand) ? "text-[#000]" : ""}`}>{brandObj.brand}</span>
             </button>
           ))}
         </div>
@@ -276,6 +284,7 @@ export default function InventoryPage() {
             <ItemCard
               key={item.id}
               item={item}
+              brandLogoMap={brandLogoMap} // Add this prop
               isSelected={selectedItems.includes(item.id)}
               onSelect={toggleItemSelection}
               onEdit={(id) => router.push(`/inventory/edit/${id}`)}

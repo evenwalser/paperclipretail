@@ -6,6 +6,6 @@ export async function GET(req: Request) {
   if (!shop) {
     return NextResponse.json({ error: 'Shop parameter is required' }, { status: 400 });
   }
-  const authUrl = `https://paperclip-test-development.myshopify.com/admin/oauth/authorize?client_id=${process.env.SHOPIFY_API_KEY}&scope=read_products,write_products&redirect_uri=${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/callback`;
+  const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${process.env.SHOPIFY_API_KEY}&scope=read_products,write_products,write_publications&redirect_uri=${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/callback`;
   return NextResponse.redirect(authUrl);
 }

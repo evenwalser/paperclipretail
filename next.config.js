@@ -5,7 +5,9 @@ const nextConfig = {
     domains: [
       'xsjwxulfsdljhneitlwl.supabase.co',
       'localhost',
-      'hebbkx1anhila5yf.public.blob.vercel-storage.com'
+      'hebbkx1anhila5yf.public.blob.vercel-storage.com',
+      'www.citypng.com',
+      'media-hosting.imagekit.io'
     ],
     remotePatterns: [
       {

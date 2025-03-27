@@ -6,6 +6,7 @@ interface AvailabilityTogglesProps {
   onAvailableInStoreChange: (value: boolean) => void;
   listOnPaperclip: boolean;
   onListOnPaperclipChange: (value: boolean) => void;
+  onListOnShopifyChange: (value: boolean) => void;
 }
 
 export default function AvailabilityToggles({
@@ -13,6 +14,7 @@ export default function AvailabilityToggles({
   onAvailableInStoreChange,
   listOnPaperclip,
   onListOnPaperclipChange,
+  onListOnShopifyChange,
 }: AvailabilityTogglesProps) {
   return (
     <div className="space-y-4 bg-gray-100 dark:bg-gray-800 rounded-lg p-4">

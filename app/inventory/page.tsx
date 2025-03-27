@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchLevel1Categories, getItems } from "@/lib/services/items";
+import { fetchLevel1Categories } from "@/lib/services/items";
 import { Item } from "@/types/supabase";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -28,12 +28,10 @@ type Brand = {
   logo_url: string;
 };
 
-
 export default function InventoryPage() {
   const [items, setItems] = useState<Item[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [nextToken, setNextToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState({
     category: "all",
@@ -50,6 +48,7 @@ export default function InventoryPage() {
     colors: [] as string[],
   });
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+   const [categories, setCategories] = useState<Category[]>([]);
   const { addItems } = useCart();
   const router = useRouter();
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
@@ -69,10 +68,10 @@ export default function InventoryPage() {
         const [categoryData, sizesData, brandsData, agesData, colorsData] =
           await Promise.all([
             fetchLevel1Categories(),
-            supabase.rpc("get_distinct_sizes"),
-            supabase.rpc("get_distinct_brands_with_logo"),
-            supabase.rpc("get_distinct_ages"),
-            supabase.rpc("get_distinct_colors"),
+            supabase.rpc("get_distinct_sizes", { p_store_id: user.store_id }),
+            supabase.rpc("get_distinct_brands_with_logo", { p_store_id: user.store_id }),
+            supabase.rpc("get_distinct_ages", { p_store_id: user.store_id }),
+            supabase.rpc("get_distinct_colors", { p_store_id: user.store_id }),
           ]);
         setCategories(categoryData);
         setFilterOptions({
@@ -88,28 +87,35 @@ export default function InventoryPage() {
     initialize();
   }, [user]);
 
-  // Fetch items based on filters and page
+  // Fetch items from API route
+  const fetchItems = async (token: string | null = null) => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/shopify/products?storeId=${user.store_id}&nextToken=${token || ''}&filters=${encodeURIComponent(JSON.stringify(filters))}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch items");
+      const { items: newItems, hasMore, nextToken } = await response.json();
+      // Filter out deleted items (relevant for Supabase items)
+      const filteredItems = newItems.filter((item: Item) => !item.deleted_at);
+      setItems((prev) => (token ? [...prev, ...filteredItems] : filteredItems));
+      setHasMore(hasMore);
+      setNextToken(nextToken);
+    } catch (error) {
+      console.error("Failed to fetch items:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadItems = async () => {
-      if (!user) return;
-      try {
-        setIsLoading(true);
-        const { items, totalPages } = await getItems(
-          currentPage,
-          9,
-          user,
-          filters
-        );
-        setItems(items.filter((item) => !item.deleted_at));
-        setTotalPages(totalPages);
-      } catch (error) {
-        console.error("Failed to load items:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadItems();
-  }, [currentPage, user, filters]);
+    fetchItems(); // Initial fetch
+  }, [user, filters]);
+
+  const handleLoadMore = () => {
+    fetchItems(nextToken);
+  };
 
   // Fetch store settings
   useEffect(() => {
@@ -145,7 +151,8 @@ export default function InventoryPage() {
 
   const handleFilterChange = (key: keyof typeof filters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
-    setCurrentPage(1); // Reset to page 1 on filter change
+    setItems([]); // Reset items on filter change
+    setNextToken(null); // Reset pagination
   };
 
   const toggleItemSelection = (id: string) => {
@@ -161,8 +168,8 @@ export default function InventoryPage() {
         id: item.id,
         title: item.title,
         price: item.price,
-        image_url: item.item_images?.[0]?.image_url,
-        category: item.categories?.[0]?.name || item.category_id,
+        image_url: item.item_images?.[0]?.image_url || item.image_url,
+        category: item.categories?.[0]?.name || item.category || item.category_id,
         size: item.size,
         quantity: item.quantity,
       }));
@@ -171,6 +178,10 @@ export default function InventoryPage() {
   };
 
   const handleDelete = async (itemId: string) => {
+    if (itemId.startsWith("gid://shopify/")) {
+      toast.error("Cannot delete Shopify items from here.");
+      return;
+    }
     setDeletingItems((prev) => new Set(prev).add(itemId));
     try {
       const { error } = await supabase
@@ -196,18 +207,19 @@ export default function InventoryPage() {
   const handleBrandFilter = (brand: string) => {
     setFilters((prev) => {
       const currentBrands = prev.brands;
-      if (currentBrands.includes(brand)) {
-        return { ...prev, brands: currentBrands.filter((b) => b !== brand) };
-      } else {
-        return { ...prev, brands: [...currentBrands, brand] };
-      }
+      return {
+        ...prev,
+        brands: currentBrands.includes(brand)
+          ? currentBrands.filter((b) => b !== brand)
+          : [...currentBrands, brand],
+      };
     });
-    setCurrentPage(1); // Reset to page 1 when filters change
+    setItems([]);
+    setNextToken(null);
   };
 
   const handleDeleteClick = (itemId: string) => setItemToDelete(itemId);
   const handleDeleteConfirm = () => itemToDelete && handleDelete(itemToDelete);
-  const handlePageChange = (newPage: number) => setCurrentPage(newPage);
 
   const canManageItems = () => !!role && ["store_owner"].includes(role);
 
@@ -245,7 +257,7 @@ export default function InventoryPage() {
         onFilterChange={handleFilterChange}
       />
 
-      {filterOptions.brands.length > 0 && (
+      {/* {filterOptions.brands.length > 0 && (
         <div className="flex flex-wrap gap-4 mb-6">
           {filterOptions.brands.map((brandObj) => (
             <button
@@ -266,11 +278,13 @@ export default function InventoryPage() {
                   <span className="text-gray-500 text-sm">No Logo</span>
                 </div>
               )}
-              <span className={`${filters.brands.includes(brandObj.brand) ? "text-[#000]" : ""}`}>{brandObj.brand}</span>
+              <span className={filters.brands.includes(brandObj.brand) ? "text-[#000]" : ""}>
+                {brandObj.brand}
+              </span>
             </button>
           ))}
         </div>
-      )}
+      )} */}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
@@ -284,14 +298,12 @@ export default function InventoryPage() {
             <ItemCard
               key={item.id}
               item={item}
-              brandLogoMap={brandLogoMap} // Add this prop
+              brandLogoMap={brandLogoMap}
               isSelected={selectedItems.includes(item.id)}
               onSelect={toggleItemSelection}
               onEdit={(id) => router.push(`/inventory/edit/${id}`)}
               onDelete={handleDeleteClick}
-              onDuplicate={(id) =>
-                router.push(`/inventory/add?duplicate=${id}`)
-              }
+              onDuplicate={(id) => router.push(`/inventory/add?duplicate=${id}`)}
               isDeleting={deletingItems.has(item.id)}
               canManageItems={canManageItems()}
             />
@@ -299,40 +311,10 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 mt-8">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1 || isLoading}
-          >
-            Previous
-          </Button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <Button
-              key={page}
-              variant={currentPage === page ? "default" : "outline"}
-              size="sm"
-              onClick={() => handlePageChange(page)}
-              disabled={isLoading}
-              className={cn(
-                "w-8 h-8",
-                currentPage === page && "bg-[#FF3B30] text-white"
-              )}
-            >
-              {page}
-            </Button>
-          ))}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              handlePageChange(Math.min(totalPages, currentPage + 1))
-            }
-            disabled={currentPage === totalPages || isLoading}
-          >
-            Next
+      {hasMore && (
+        <div className="flex justify-center mt-8">
+          <Button onClick={handleLoadMore} disabled={isLoading}>
+            {isLoading ? "Loading..." : "Load More"}
           </Button>
         </div>
       )}

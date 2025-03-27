@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/client';
+import { createClient } from "@/utils/supabase/server";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -10,13 +10,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Missing code or shop' }, { status: 400 });
   }
 
-//   const supabase = createClient();
-//   const {
-//     data: { user },
-//   } = await supabase.auth.getUser();
-//   if (!user) {
-//     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-//   }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   // Exchange code for access token
   const response = await fetch(`https://${shop}/admin/oauth/access_token`, {
@@ -31,13 +31,13 @@ export async function GET(req: Request) {
 
   const { access_token } = await response.json();
 
-//   await supabase
-//     .from('stores')
-//     .update({
-//       shopify_access_token: access_token,
-//       shopify_shop_name: shop,
-//     })
-//     .eq('owner_id', user.id);
+  await supabase
+    .from('stores')
+    .update({
+      shopify_access_token: access_token,
+      shopify_shop_name: shop,
+    })
+    .eq('owner_id', user.id);
 
 const redirectURL = new URL('/inventory', process.env.NEXT_PUBLIC_APP_URL);
 console.log('access_token',access_token,shop)

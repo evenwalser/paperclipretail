@@ -19,14 +19,7 @@ const ItemCard: React.FC<ItemCardProps> = ({
   isDeleting,
   canManageItems,
 }) => {
-  console.log("here is my item ", item);
-
-  // Calculate status based on quantity if not provided
-  const status = item.status || 
-    (item.quantity > 10 ? "available" : 
-     item.quantity > 0 ? "low_stock" : 
-     "out_of_stock");
-
+  console.log('here is my item ', item)
   return (
     <Card
       className={`overflow-hidden transition-shadow duration-300 ${
@@ -34,7 +27,6 @@ const ItemCard: React.FC<ItemCardProps> = ({
       }`}
     >
       <CardContent className="p-4 relative">
-        {/* Image Section */}
         <div className="relative mb-4 aspect-[4/2]">
           <div className="relative mb-4">
             {item.item_images?.length > 0 ? (
@@ -57,6 +49,7 @@ const ItemCard: React.FC<ItemCardProps> = ({
                         Your browser does not support the video tag.
                       </video>
                     ) : (
+
                       <img
                         src={media.image_url}
                         alt={`${item.title} - ${index + 1}`}
@@ -66,8 +59,8 @@ const ItemCard: React.FC<ItemCardProps> = ({
                   </SwiperSlide>
                 ))}
               </Swiper>
-            ) : item.image_url ? (
-              <Swiper
+            ) : (
+              (item.image_url ? <> <Swiper
                 modules={[Navigation, Pagination]}
                 navigation
                 pagination={{ clickable: true }}
@@ -75,20 +68,28 @@ const ItemCard: React.FC<ItemCardProps> = ({
                 slidesPerView={1}
                 className="w-full rounded-lg swiper-inventory"
               >
-                <SwiperSlide>
-                  <img
-                    src={item.image_url}
-                    alt={`${item.title}`}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                </SwiperSlide>
-              </Swiper>
-            ) : (
-              <div className="w-full h-48 flex items-center justify-center bg-gray-200 rounded-lg">
+               
+                  <SwiperSlide >
+                    
+
+                      <img
+                        src={item.image_url}
+                        alt={`${item.title}`}
+                        className="w-full h-48 object-cover rounded-lg"
+                      />
+                   
+                  </SwiperSlide>
+              
+              </Swiper></> : <><div className="w-full h-48 flex items-center justify-center bg-gray-200 rounded-lg">
                 <span className="text-gray-500 text-sm">
                   No Media Available
                 </span>
-              </div>
+              </div></>)
+              // <div className="w-full h-48 flex items-center justify-center bg-gray-200 rounded-lg">
+              //   <span className="text-gray-500 text-sm">
+              //     No Media Available
+              //   </span>
+              // </div>
             )}
           </div>
           {isSelected && (
@@ -111,17 +112,17 @@ const ItemCard: React.FC<ItemCardProps> = ({
             </p>
           </div>
           <div className="flex items-center min-w-[68px]">
-            {status === "available" && (
+            {item.status === "available" && (
               <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 In Stock
               </span>
             )}
-            {status === "low_stock" && (
+            {item.status === "low_stock" && (
               <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                 Low Stock
               </span>
             )}
-            {status === "out_of_stock" && (
+            {item.status === "out_of_stock" && (
               <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                 Out of Stock
               </span>
@@ -133,36 +134,33 @@ const ItemCard: React.FC<ItemCardProps> = ({
         <p className="text-sm text-gray-600 mb-4">
           Category:{" "}
           {item?.categories?.find((category) => category.level === 1)?.name ||
-            item?.categories?.[0]?.name ||
             "N/A"}
         </p>
         <p className="text-sm text-gray-600 mb-4">
           Quantity: {item.quantity || 0}
         </p>
-        {/* <p className="text-sm text-gray-600 mb-4 flex items-center space-x-2">
+        <p className="text-sm text-gray-600 mb-4 flex items-center space-x-2">
           <span>Brand:</span>
           {item.brand && brandLogoMap[item.brand] && (
             <img
-              src={brandLogoMap[item.brand] || ""}
+              src={brandLogoMap[item.brand] || ''}
               alt={item.brand}
               className="h-4 w-4 object-contain"
             />
           )}
           <span>{item.brand || "N/A"}</span>
+        </p>
+        <p className="text-sm text-gray-600 mb-4">
+          color: {item.color || ""}
+        </p>
+        {/* <p className="text-sm text-gray-600 mb-4">
+          Age: {item.age || 0}
         </p> */}
-        {item.available_options && item.available_options.length > 0 && (
-          <div className="text-sm text-gray-600 mb-4">
-            {item.available_options.map((option, index) => (
-              <p key={index}>
-                {option.name}: {option.values.join(", ")}
-              </p>
-            ))}
-          </div>
-        )}
         <div className="text-sm text-gray-600 mb-4">
           {item.condition && (
             <p className="mb-1">Condition: {item.condition}</p>
           )}
+          {item.size && <p>Size: {item.size}</p>}
         </div>
 
         {/* Action Buttons */}
@@ -209,7 +207,7 @@ const ItemCard: React.FC<ItemCardProps> = ({
           <Button
             variant="outline"
             size="sm"
-            disabled={status === "out_of_stock"}
+            disabled={item?.status === "out_of_stock"}
             className={`w-full leading-[normal] ${
               isSelected
                 ? "bg-[#FF3B30] text-white hover:bg-[#E6352B]"

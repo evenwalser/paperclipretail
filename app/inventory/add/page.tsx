@@ -10,6 +10,8 @@ import CameraView from "./CameraView";
 import ReviewView from "./ReviewView";
 import DetailsView from "./DetailsView";
 import { analyzeImage } from "@/lib/together";
+import { createShopifyProduct } from "@/lib/shopify";
+import { Button } from "react-day-picker";
 
 type ViewState = "initial" | "camera" | "review" | "details";
 
@@ -54,6 +56,7 @@ export default function AddItemPage() {
   const [logoUrl, setLogoUrl] = useState("");
   const [brandSuggestions, setBrandSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [listOnShopify, setListOnShopify] = useState(true);
   const [inputMethod, setInputMethod] = useState<"camera" | "fileSelect">(
     "camera"
   );
@@ -432,7 +435,6 @@ export default function AddItemPage() {
         .single();
       console.log("🚀 ~ handleSubmit ~ logoUrl:", logoUrl);
       if (itemError) throw itemError;
-
       const imageUploads = await Promise.all(
         images.map(async (image, index) => {
           let fileExt;
@@ -480,6 +482,37 @@ export default function AddItemPage() {
         })
       );
 
+      if (listOnShopify) {
+        try {
+          const response = await fetch('/api/shopify/create-product', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ storeId: user.store_id, itemId: item.id }),
+          });
+  
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to create Shopify product');
+          }
+  
+          const shopifyProduct = await response.json();
+          await supabase
+            .from('items')
+            .update({
+              shopify_product_id: shopifyProduct.product.id,
+              shopify_variant_id: shopifyProduct.product.variants.edges[0].node.id,
+              list_on_shopify: true,
+            })
+            .eq('id', item.id);
+        } catch (error) {
+          console.error('Shopify sync error:', error);
+          toast.error('Failed to sync with Shopify');
+        }
+      }
+       
+
+   
+ 
       if (imageUploads.length > 0) {
         const { error } = await supabase
           .from("item_images")
@@ -595,6 +628,29 @@ export default function AddItemPage() {
       setIsDuplicating(false);
     }
   };
+  const demoAdd =async () => {
+    try {
+      const response = await fetch('/api/shopify/create-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId: user.store_id, itemId: '1234' }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create Shopify product');
+      }
+      const shopifyProduct = await response.json();
+      console.log("🚀 ~ demoAdd ~ shopifyProduct:", shopifyProduct)
+      // await supabase.from('items').update({
+      //   shopify_product_id: shopifyProduct.product.id,
+      //   shopify_variant_id: shopifyProduct.product.variants[0].id,
+      //   list_on_shopify: true,
+      // }).eq('id', item.id);
+    } catch (error) {
+      console.error('Shopify sync error:', error);
+      toast.error('Failed to sync with Shopify');
+    }
+  }
 
   const extractJson = (response: string) => {
     try {
@@ -621,6 +677,7 @@ export default function AddItemPage() {
         </CardHeader>
         <CardContent>
           <div className="w-full max-w-2xl mx-auto">
+          <button onClick={demoAdd}>Add shopify demo</button>
             {currentView === "initial" && (
               <InitialView
                 onCameraClick={() => {
@@ -698,6 +755,7 @@ export default function AddItemPage() {
                 onBrandSelect={handleBrandSelect}
                 selectedTags={selectedTags}
                 setSelectedTags={setSelectedTags}
+                setListOnShopify={setListOnShopify}
               />
             )}
             <input

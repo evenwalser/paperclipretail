@@ -26,7 +26,7 @@ export const handleDelete = async (itemId: string, setItems: React.Dispatch<Reac
 };
 
 export const sortItems = (items: Item[], sortingMethod: string) => {
-  return items.slice().sort((a, b) => {
+  return items?.slice().sort((a, b) => {
     switch (sortingMethod) {
       case "newest":
         return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
