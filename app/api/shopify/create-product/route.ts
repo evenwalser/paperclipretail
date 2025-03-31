@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
     // Create Shopify product
     const product = await createShopifyProduct(shopName, accessToken, item, images, categoryHierarchy);
-    await publishProduct(product.id, shopName, accessToken);
+    await publishProduct(product.productId, shopName, accessToken);
 
     return NextResponse.json({ product });
   } catch (error) {
@@ -70,33 +70,82 @@ export async function POST(req: Request) {
 }
 
 async function createShopifyProduct(shopName, accessToken, item, images, categoryHierarchy) {
-  // Fetch location ID for inventory
+  // Fetch location ID for inventory (assuming this exists in your original code)
   const locationQuery = `
-    query {
-      locations(first: 1) {
-        edges {
-          node {
-            id
+      query {
+        locations(first: 1) {
+          edges {
+            node {
+              id
+            }
           }
         }
       }
+    `;
+    const locationResponse = await fetch(`https://${shopName}/admin/api/2023-10/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'X-Shopify-Access-Token': accessToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: locationQuery }),
+    });
+    const locationData = await locationResponse.json();
+    if (locationData.errors) {
+      throw new Error(JSON.stringify(locationData.errors));
     }
-  `;
-  const locationResponse = await fetch(`https://${shopName}/admin/api/2023-10/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'X-Shopify-Access-Token': accessToken,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query: locationQuery }),
-  });
-  const locationData = await locationResponse.json();
-  if (locationData.errors) {
-    throw new Error(JSON.stringify(locationData.errors));
-  }
-  const locationId = locationData.data.locations.edges[0].node.id;
+    const locationId = locationData.data.locations.edges[0].node.id;
 
-  // Product creation mutation
+    async function getCollectionIdByTitle(shopName, accessToken, title) {
+      const query = `
+        query {
+          collections(first: 1, query: "title:'${title}'") {
+            edges {
+              node {
+                id
+              }
+            }
+          }
+        }
+      `;
+      const response = await fetch(`https://${shopName}/admin/api/2023-10/graphql.json`, {
+        method: 'POST',
+        headers: {
+          'X-Shopify-Access-Token': accessToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
+      const result = await response.json();
+      if (result.errors) {
+        throw new Error(JSON.stringify(result.errors));
+      }
+      const collections = result.data.collections.edges;
+      return collections.length > 0 ? collections[0].node.id : null;
+    }
+
+  // Construct collection title from category hierarchy
+  const collectionTitle = categoryHierarchy.join(' > ');
+  const collectionId = await getCollectionIdByTitle(shopName, accessToken, collectionTitle);
+
+  // Build product options and variant options dynamically
+  const productOptions = [];
+  const variantOptions = [];
+
+  if (item.size) {
+    productOptions.push({ name: "Size", values: [{ name: item.size }] });
+    variantOptions.push(item.size);
+  }
+  if (item.color) {
+    productOptions.push({ name: "Color", values: [{ name: item.color }] });
+    variantOptions.push(item.color);
+  }
+  if (item.condition) {
+    productOptions.push({ name: "Condition", values: [{ name: item.condition }] });
+    variantOptions.push(item.condition);
+  }
+
+  // Define the product creation mutation
   const mutation = `
     mutation CreateProduct($input: ProductInput!, $media: [CreateMediaInput!]) {
       productCreate(input: $input, media: $media) {
@@ -118,41 +167,48 @@ async function createShopifyProduct(shopName, accessToken, item, images, categor
     }
   `;
 
+  // Prepare variables for the mutation
   const variables = {
     input: {
       title: item.title,
       descriptionHtml: item.description || '',
-      vendor: 'paperclip_test', // Replace with actual vendor
+      vendor: item.brand || 'Default Vendor',
       productType: categoryHierarchy.join(' > '),
       tags: item.tags || [],
+      status: 'ACTIVE',
+      collectionsToJoin: collectionId ? [collectionId] : [],
+      productOptions: productOptions,
       variants: [
         {
+          options: variantOptions,
           price: item.price.toString(),
           inventoryManagement: 'SHOPIFY',
           inventoryQuantities: [
             {
-              locationId,
+              locationId: locationId,
               availableQuantity: item.quantity,
             },
           ],
         },
       ],
     },
+    // media: images.map((img, index) => ({
+    //   mediaContentType: 'IMAGE',
+    //   // originalSource: img.image_url,
+    //   originalSource: 'https://icravvnxexuvxoehhfsa.supabase.co/storage/v1/object/public/item-images/3743c1fc-0582-422c-a06f-f72baa005937/7644e5c8-42ab-4679-9cce-4dcc46758b74/6a33ecf7-f17f-4df5-9477-f4c34e37c25a.webp',
+    //   alt: `${item.title} - Image ${index + 1}`,
+    // })),
     media: [
       {
         mediaContentType: "IMAGE", // or the appropriate type
         originalSource:
-          "https://img.freepik.com/free-photo/japan-background-digital-art_23-2151546131.jpg?ga=GA1.1.1517070874.1743053066",
+          "https://icravvnxexuvxoehhfsa.supabase.co/storage/v1/object/public/item-images/3743c1fc-0582-422c-a06f-f72baa005937/7644e5c8-42ab-4679-9cce-4dcc46758b74/6a33ecf7-f17f-4df5-9477-f4c34e37c25a.webp",
         alt: "Background image", // optional alt text
       },
     ],
-    // media: images.map((img, index) => ({
-    //   mediaContentType: 'IMAGE',
-    //   originalSource: img.image_url,
-    //   alt: `${item.title} - Image ${index + 1}`,
-    // })),
   };
 
+  // Execute the mutation
   const response = await fetch(`https://${shopName}/admin/api/2023-10/graphql.json`, {
     method: 'POST',
     headers: {
@@ -167,8 +223,142 @@ async function createShopifyProduct(shopName, accessToken, item, images, categor
     throw new Error(JSON.stringify(result.errors || result.data.productCreate.userErrors));
   }
 
-  return result.data.productCreate.product;
+  const productId = result.data.productCreate.product.id;
+  const variantId = result.data.productCreate.product.variants.edges[0].node.id;
+
+  return { productId, variantId };
 }
+
+// async function createShopifyProduct(shopName, accessToken, item, images, categoryHierarchy) {
+//   // Fetch location ID for inventory
+//   const locationQuery = `
+//     query {
+//       locations(first: 1) {
+//         edges {
+//           node {
+//             id
+//           }
+//         }
+//       }
+//     }
+//   `;
+//   const locationResponse = await fetch(`https://${shopName}/admin/api/2023-10/graphql.json`, {
+//     method: 'POST',
+//     headers: {
+//       'X-Shopify-Access-Token': accessToken,
+//       'Content-Type': 'application/json',
+//     },
+//     body: JSON.stringify({ query: locationQuery }),
+//   });
+//   const locationData = await locationResponse.json();
+//   if (locationData.errors) {
+//     throw new Error(JSON.stringify(locationData.errors));
+//   }
+//   const locationId = locationData.data.locations.edges[0].node.id;
+
+//   // Prepare metafields for additional item attributes
+//   const metafields = [];
+//   if (item.condition) {
+//     metafields.push({
+//       namespace: 'custom',
+//       key: 'condition',
+//       value: item.condition,
+//       type: 'single_line_text_field',
+//     });
+//   }
+//   if (item.size) {
+//     metafields.push({
+//       namespace: 'custom',
+//       key: 'size',
+//       value: item.size,
+//       type: 'single_line_text_field',
+//     });
+//   }
+//   if (item.age) {
+//     metafields.push({
+//       namespace: 'custom',
+//       key: 'age',
+//       value: item.age,
+//       type: 'single_line_text_field',
+//     });
+//   }
+//   if (item.color) {
+//     metafields.push({
+//       namespace: 'custom',
+//       key: 'color',
+//       value: item.color,
+//       type: 'single_line_text_field',
+//     });
+//   }
+//   // Add more metafields as needed (e.g., logo_url)
+
+//   // Product creation mutation
+//   const mutation = `
+//     mutation CreateProduct($input: ProductInput!, $media: [CreateMediaInput!]) {
+//       productCreate(input: $input, media: $media) {
+//         product {
+//           id
+//           variants(first: 1) {
+//             edges {
+//               node {
+//                 id
+//               }
+//             }
+//           }
+//         }
+//         userErrors {
+//           field
+//           message
+//         }
+//       }
+//     }
+//   `;
+
+//   const variables = {
+//     input: {
+//       title: item.title,
+//       descriptionHtml: item.description || '',
+//       vendor: item.brand || 'Default Vendor', // Use brand if available
+//       productType: categoryHierarchy.join(' > '),
+//       tags: item.tags || [],
+//       status: 'ACTIVE', // Explicitly set to ACTIVE
+//       metafields: metafields,
+//       variants: [
+//         {
+//           price: item.price.toString(),
+//           inventoryManagement: 'SHOPIFY',
+//           inventoryQuantities: [
+//             {
+//               locationId,
+//               availableQuantity: item.quantity,
+//             },
+//           ],
+//         },
+//       ],
+//     },
+//     media: images.map((img, index) => ({
+//       mediaContentType: 'IMAGE',
+//       originalSource: img.image_url,
+//       alt: `${item.title} - Image ${index + 1}`,
+//     })),
+//   };
+
+//   const response = await fetch(`https://${shopName}/admin/api/2023-10/graphql.json`, {
+//     method: 'POST',
+//     headers: {
+//       'X-Shopify-Access-Token': accessToken,
+//       'Content-Type': 'application/json',
+//     },
+//     body: JSON.stringify({ query: mutation, variables }),
+//   });
+
+//   const result = await response.json();
+//   if (result.errors || result.data.productCreate.userErrors.length > 0) {
+//     throw new Error(JSON.stringify(result.errors || result.data.productCreate.userErrors));
+//   }
+
+//   return result.data.productCreate.product;
+// }
 
 async function getOnlineStorePublicationId(shopName, accessToken) {
   
@@ -211,37 +401,36 @@ async function getOnlineStorePublicationId(shopName, accessToken) {
 async function publishProduct(productId, shopName, accessToken) {
   const publicationId = await getOnlineStorePublicationId(shopName, accessToken);
   const publishMutation = `
-  mutation publishablePublish($id: ID!, $input: [PublicationInput!]!) {
-    publishablePublish(id: $id, input: $input) {
-      userErrors {
-        field
-        message
+    mutation publishablePublish($id: ID!, $input: [PublicationInput!]!) {
+      publishablePublish(id: $id, input: $input) {
+        userErrors {
+          field
+          message
+        }
       }
     }
-  }
-`;
-const publishVariables = {
-  id: productId,
-  input: [
-    {
-      publicationId, // Use the fetched ID
-      publishDate: new Date().toISOString(),
+  `;
+  const publishVariables = {
+    id: productId,
+    input: [
+      {
+        publicationId, // Publish to Online Store immediately
+      },
+    ],
+  };
+  const publishResponse = await fetch(`https://${shopName}/admin/api/2023-10/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'X-Shopify-Access-Token': accessToken,
+      'Content-Type': 'application/json',
     },
-  ],
-};
-const publishResponse = await fetch(`https://${shopName}/admin/api/2023-10/graphql.json`, {
-  method: 'POST',
-  headers: {
-    'X-Shopify-Access-Token': accessToken,  
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({ query: publishMutation, variables: publishVariables }),
-});
-const publishResult = await publishResponse.json();
+    body: JSON.stringify({ query: publishMutation, variables: publishVariables }),
+  });
+  const publishResult = await publishResponse.json();
   if (publishResult.errors || publishResult.data.publishablePublish.userErrors.length > 0) {
     throw new Error(JSON.stringify(publishResult.errors || publishResult.data.publishablePublish.userErrors));
   }
-  return publishResult.data.publishablePublish.product;
+  // No return needed; product is returned from createShopifyProduct
 }
 
 async function getCategoryHierarchy(categoryId, supabase) {

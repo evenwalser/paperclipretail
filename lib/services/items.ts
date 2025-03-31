@@ -123,9 +123,9 @@ export async function getItems(
     .is("deleted_at", null);
 
   // Apply filters
-  if (filters.category && filters.category !== "all") {
-    query = query.eq("category_id", filters.category);
-  }
+  // if (filters.category && filters.category !== "all") {
+  //   query = query.eq("category_id", filters.category);
+  // }
   if (filters.search) {
     query = query.ilike("title", `%${filters.search}%`);
   }

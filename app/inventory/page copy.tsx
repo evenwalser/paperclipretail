@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { fetchLevel1Categories, getItems } from "@/lib/services/items";
 import { Item } from "@/types/supabase";
 import { toast } from "sonner";
@@ -16,7 +16,27 @@ import InventoryFilters from "./components/InventoryFilters";
 import ItemCard from "./components/ItemCard";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { sortItems } from "./utils/inventory-utils";
-import { useMemo } from "react";
+
+// Define Shopify types
+interface ShopifyProduct {
+  id: string;
+  title: string;
+  vendor: string;
+  product_type: string;
+  variants: ShopifyVariant[];
+  images: { id: string; src: string }[];
+  created_at: string;
+}
+
+interface ShopifyVariant {
+  id: string;
+  title: string;
+  price: string;
+  inventory_quantity: number;
+  option1: string | null;
+  option2: string | null;
+  option3: string | null;
+}
 
 interface Category {
   id: string;
@@ -28,11 +48,65 @@ type Brand = {
   logo_url: string;
 };
 
+// Function to fetch all Shopify products with pagination
+async function fetchAllShopifyProducts(accessToken: string, shopDomain: string): Promise<ShopifyProduct[]> {
+  // Call the Next.js API route instead of the Shopify API directly
+  const response = await fetch(`/api/shopify/shopify-products?accessToken=${encodeURIComponent(accessToken)}&shopDomain=${encodeURIComponent(shopDomain)}`);
+  
+  if (!response.ok) {
+    throw new Error("Failed to fetch Shopify products");
+  }
+  
+  const data = await response.json();
+  return data.products;
+}
+
+// Function to map Shopify variant to Supabase Item type
+function shopifyVariantToItem(product: ShopifyProduct, variant: ShopifyVariant): Item {
+  return {
+    id: `shopify-${variant.id}`,
+    title: variant.title === "Default Title" ? product.title : `${product.title} - ${variant.title}`,
+    price: parseFloat(variant.price),
+    quantity: variant.inventory_quantity,
+    item_images: product.images.map((image) => ({ image_url: image.src })),
+    categories: [{ name: product.product_type }],
+    brand: product.vendor,
+    created_at: product.created_at, // For sorting
+    // Add other fields as needed, setting defaults for optional fields
+    status: variant.inventory_quantity > 0 ? "available" : "out_of_stock",
+  };
+}
+
+// Function to filter Shopify products client-side
+function filterShopifyProducts(products: ShopifyProduct[], filters: any): Item[] {
+  return products.flatMap((product) => {
+    const matchingVariants = product.variants.filter((variant) => {
+      // Category filter
+      if (filters.category !== "all" && product.product_type !== filters.category) return false;
+      // Search filter
+      if (
+        filters.search &&
+        !product.title.toLowerCase().includes(filters.search.toLowerCase()) &&
+        !variant.title.toLowerCase().includes(filters.search.toLowerCase())
+      ) return false;
+      // Brands filter
+      if (filters.brands.length > 0 && !filters.brands.includes(product.vendor)) return false;
+      // Sizes and colors filter (assuming option1=size, option2=color, adjust as needed)
+      const variantOptions = [variant.option1, variant.option2, variant.option3].filter(Boolean);
+      if (filters.sizes.length > 0 && !variantOptions.some((opt) => filters.sizes.includes(opt))) return false;
+      if (filters.colors.length > 0 && !variantOptions.some((opt) => filters.colors.includes(opt))) return false;
+      return true;
+    });
+    return matchingVariants.map((variant) => shopifyVariantToItem(product, variant));
+  });
+}
 
 export default function InventoryPage() {
-  const [items, setItems] = useState<Item[]>([]);
+  const [supabaseItems, setSupabaseItems] = useState<Item[]>([]);
+  const [shopifyProducts, setShopifyProducts] = useState<ShopifyProduct[]>([]);
+  const [allItems, setAllItems] = useState<Item[]>([]);
+  const [categories, setCategories] = useState()
   const [currentPage, setCurrentPage] = useState(1);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -61,19 +135,21 @@ export default function InventoryPage() {
   const { role } = useRole();
   const user = useUser();
 
-  // Fetch categories and filter options
+  // Fetch initial data: categories, filter options, and Shopify products
   useEffect(() => {
     const initialize = async () => {
       if (!user) return;
       try {
-        const [categoryData, sizesData, brandsData, agesData, colorsData] =
-          await Promise.all([
-            fetchLevel1Categories(),
-            supabase.rpc("get_distinct_sizes",  { p_store_id: user.store_id }),
-            supabase.rpc("get_distinct_brands_with_logo", { p_store_id: user.store_id }),
-            supabase.rpc("get_distinct_ages", { p_store_id: user.store_id }),
-            supabase.rpc("get_distinct_colors", { p_store_id: user.store_id }),
-          ]);
+        setIsLoading(true);
+        const [categoryData, sizesData, brandsData, agesData, colorsData, storeData] = await Promise.all([
+          fetchLevel1Categories(),
+          supabase.rpc("get_distinct_sizes", { p_store_id: user.store_id }),
+          supabase.rpc("get_distinct_brands_with_logo", { p_store_id: user.store_id }),
+          supabase.rpc("get_distinct_ages", { p_store_id: user.store_id }),
+          supabase.rpc("get_distinct_colors", { p_store_id: user.store_id }),
+          supabase.from("stores").select("shopify_access_token").eq("id", user.store_id).single(),
+        ]);
+
         setCategories(categoryData);
         setFilterOptions({
           sizes: sizesData.data || [],
@@ -81,35 +157,67 @@ export default function InventoryPage() {
           ages: agesData.data || [],
           colors: colorsData.data || [],
         });
+
+        // Fetch Shopify products if access token exists
+        const accessToken = storeData.data?.shopify_access_token;
+        const shopDomain = 'paperclip-test-development.myshopify.com'; // Replace with actual domain
+        if (accessToken) {
+          const products = await fetchAllShopifyProducts(accessToken, shopDomain);
+          setShopifyProducts(products);
+        }
       } catch (error) {
         console.error("Failed to load initial data:", error);
+        toast.error("Failed to initialize inventory data.");
+      } finally {
+        setIsLoading(false);
       }
     };
     initialize();
   }, [user]);
 
-  // Fetch items based on filters and page
+  // Fetch all filtered Supabase items when filters change
   useEffect(() => {
-    const loadItems = async () => {
+    const loadSupabaseItems = async () => {
       if (!user) return;
       try {
         setIsLoading(true);
-        const { items, totalPages } = await getItems(
-          currentPage,
-          9,
-          user,
-          filters
-        );
-        setItems(items.filter((item) => !item.deleted_at));
-        setTotalPages(totalPages);
+        // Fetch all items without pagination (modify getItems accordingly)
+        const { items } = await getItems(1, 9, user, filters);
+        setSupabaseItems(items.filter((item) => !item.deleted_at));
       } catch (error) {
-        console.error("Failed to load items:", error);
+        console.error("Failed to load Supabase items:", error);
+        toast.error("Failed to load Supabase items.");
       } finally {
         setIsLoading(false);
       }
     };
-    loadItems();
-  }, [currentPage, user, filters]);
+    loadSupabaseItems();
+  }, [filters, user]);
+
+
+//   useEffect(() => {
+//   const supabaseItemsNotSynced = supabaseItems.filter(item => !item.shopify_product_id);
+//   const filteredShopifyItems = filterShopifyProducts(shopifyProducts, filters);
+//   const combinedItems = [...supabaseItemsNotSynced, ...filteredShopifyItems];
+//   const sortedItems = sortItems(combinedItems, storeSettings.defaultSorting);
+//   setAllItems(sortedItems);
+//   setTotalPages(Math.ceil(sortedItems.length / 9));
+// }, [supabaseItems, shopifyProducts, filters, storeSettings.defaultSorting]);
+  // Combine and sort items when supabaseItems or shopifyProducts change
+  useEffect(() => {
+    const filteredShopifyItems = filterShopifyProducts(shopifyProducts, filters);
+    const combinedItems = [...supabaseItems, ...filteredShopifyItems];
+    const sortedItems = sortItems(combinedItems, storeSettings.defaultSorting);
+    setAllItems(sortedItems);
+    setTotalPages(Math.ceil(sortedItems.length / 9));
+  }, [supabaseItems, shopifyProducts, filters, storeSettings.defaultSorting]);
+
+  // Compute items for the current page
+  const items = useMemo(() => {
+    const start = (currentPage - 1) * 9;
+    const end = start + 9;
+    return allItems.slice(start, end);
+  }, [allItems, currentPage]);
 
   // Fetch store settings
   useEffect(() => {
@@ -141,8 +249,6 @@ export default function InventoryPage() {
     }, {} as Record<string, string | null>);
   }, [filterOptions.brands]);
 
-  const sortedItems = sortItems(items, storeSettings.defaultSorting);
-
   const handleFilterChange = (key: keyof typeof filters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     setCurrentPage(1); // Reset to page 1 on filter change
@@ -155,7 +261,7 @@ export default function InventoryPage() {
   };
 
   const sendSelectedToPOS = () => {
-    const selectedItemsData = items
+    const selectedItemsData = allItems
       .filter((item) => selectedItems.includes(item.id))
       .map((item) => ({
         id: item.id,
@@ -171,6 +277,11 @@ export default function InventoryPage() {
   };
 
   const handleDelete = async (itemId: string) => {
+    if (itemId.startsWith("shopify-")) {
+      toast.error("Cannot delete Shopify items from this interface.");
+      setItemToDelete(null);
+      return;
+    }
     setDeletingItems((prev) => new Set(prev).add(itemId));
     try {
       const { error } = await supabase
@@ -178,7 +289,7 @@ export default function InventoryPage() {
         .update({ deleted_at: new Date().toISOString() })
         .eq("id", itemId);
       if (error) throw error;
-      setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+      setSupabaseItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
       setItemToDelete(null);
       toast.success("Item successfully removed from inventory");
     } catch (error) {
@@ -202,7 +313,7 @@ export default function InventoryPage() {
         return { ...prev, brands: [...currentBrands, brand] };
       }
     });
-    setCurrentPage(1); // Reset to page 1 when filters change
+    setCurrentPage(1);
   };
 
   const handleDeleteClick = (itemId: string) => setItemToDelete(itemId);
@@ -238,7 +349,7 @@ export default function InventoryPage() {
       <InventoryFilters
         searchQuery={filters.search}
         onSearchChange={(value) => handleFilterChange("search", value)}
-        categories={categories}
+        categories={categories || []}
         onCategoryChange={(value) => handleFilterChange("category", value)}
         filterOptions={filterOptions}
         selectedFilters={filters}
@@ -266,7 +377,9 @@ export default function InventoryPage() {
                   <span className="text-gray-500 text-sm">No Logo</span>
                 </div>
               )}
-              <span className={`${filters.brands.includes(brandObj.brand) ? "text-[#000]" : ""}`}>{brandObj.brand}</span>
+              <span className={`${filters.brands.includes(brandObj.brand) ? "text-[#000]" : ""}`}>
+                {brandObj.brand}
+              </span>
             </button>
           ))}
         </div>
@@ -275,25 +388,23 @@ export default function InventoryPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
           Array.from({ length: 9 }).map((_, i) => <ItemSkeleton key={i} />)
-        ) : sortedItems.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-12">
             <p className="text-xl text-gray-500 mb-4">No items found</p>
           </div>
         ) : (
-          sortedItems.map((item) => (
+          items.map((item) => (
             <ItemCard
               key={item.id}
               item={item}
-              brandLogoMap={brandLogoMap} // Add this prop
+              brandLogoMap={brandLogoMap}
               isSelected={selectedItems.includes(item.id)}
               onSelect={toggleItemSelection}
-              onEdit={(id) => router.push(`/inventory/edit/${id}`)}
+              onEdit={(id) => !id.startsWith("shopify-") && router.push(`/inventory/edit/${id}`)}
               onDelete={handleDeleteClick}
-              onDuplicate={(id) =>
-                router.push(`/inventory/add?duplicate=${id}`)
-              }
+              onDuplicate={(id) => !id.startsWith("shopify-") && router.push(`/inventory/add?duplicate=${id}`)}
               isDeleting={deletingItems.has(item.id)}
-              canManageItems={canManageItems()}
+              canManageItems={canManageItems() && !item.id.startsWith("shopify-")}
             />
           ))
         )}
@@ -327,9 +438,7 @@ export default function InventoryPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              handlePageChange(Math.min(totalPages, currentPage + 1))
-            }
+            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages || isLoading}
           >
             Next

@@ -78,7 +78,7 @@ export function IntegrationSettings() {
               </Button>
             </div>
           )}
-        </div>
+        </div>  
       </CardContent>
     </Card>
   )

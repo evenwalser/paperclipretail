@@ -20,7 +20,7 @@ interface ImageFile {
   file: File | null;
   filepath: string | null;
 }
-
+  
 interface Category {
   id: string;
   name: string;
@@ -506,7 +506,7 @@ export default function AddItemPage() {
             .eq('id', item.id);
         } catch (error) {
           console.error('Shopify sync error:', error);
-          toast.error('Failed to sync with Shopify');
+          // toast.error('Failed to sync with Shopify');
         }
       }
        
@@ -648,7 +648,7 @@ export default function AddItemPage() {
       // }).eq('id', item.id);
     } catch (error) {
       console.error('Shopify sync error:', error);
-      toast.error('Failed to sync with Shopify');
+      // toast.error('Failed to sync with Shopify');
     }
   }
 
@@ -677,7 +677,7 @@ export default function AddItemPage() {
         </CardHeader>
         <CardContent>
           <div className="w-full max-w-2xl mx-auto">
-          <button onClick={demoAdd}>Add shopify demo</button>
+          {/* <button onClick={demoAdd}>Add shopify demo</button> */}
             {currentView === "initial" && (
               <InitialView
                 onCameraClick={() => {
