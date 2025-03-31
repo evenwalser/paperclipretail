@@ -409,6 +409,7 @@
 import Stripe from 'stripe';
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/client";
+import { getShopifyCredentials } from '@/lib/shopify';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia',
@@ -834,12 +835,68 @@ async function processTerminalPayment(paymentIntentId: string, status: 'succeede
         quantity: item.quantity,
         price: item.price,
       }));
+      
       console.log("🚀 ~ saleItems ~ saleItems:", saleItems)
       const { error: saleItemsError } = await supabase
         .from('sale_items')
         .insert(saleItems);
       if (saleItemsError) throw saleItemsError;
+
+
+      const updates = items.map((item: any) => ({
+        itemId: item.id,
+        quantityDelta: -item.quantity,
+      }));
+  
+      const { accessToken, shopName } = await getShopifyCredentials(context.store_id);
+      if (accessToken && shopName) {
+        const itemIds = updates.map(u => u.itemId);
+        const { data: itemsData } = await supabase
+          .from('items')
+          .select('id, shopify_inventory_level_id')
+          .in('id', itemIds);
+  
+        const itemMap = new Map(itemsData.map(item => [item.id, item.shopify_inventory_level_id]));
+  
+        for (const update of updates) {
+          const inventoryLevelId = itemMap.get(update.itemId);
+          if (inventoryLevelId) {
+            const mutation = `
+              mutation {
+                inventoryAdjustQuantity(input: {
+                  inventoryLevelId: "${inventoryLevelId}",
+                  availableDelta: ${update.quantityDelta}
+                }) {
+                  inventoryLevel {
+                    id
+                    available
+                  }
+                  userErrors {
+                    field
+                    message
+                  }
+                }
+              }
+            `;
+  
+            const response = await fetch(`https://${shopName}/admin/api/2023-10/graphql.json`, {
+              method: 'POST',
+              headers: {
+                'X-Shopify-Access-Token': accessToken,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ query: mutation }),
+            });
+  
+            const result = await response.json();
+            if (result.errors || result.data.inventoryAdjustQuantity.userErrors.length > 0) {
+              console.error('Error updating Shopify inventory:', result.errors || result.data.inventoryAdjustQuantity.userErrors);
+            }
+          }
+        }
+      }
     }
+
 
     // 8. Inventory update removed - assume trigger handles it
 

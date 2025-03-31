@@ -87,6 +87,25 @@ export const processCashPayment = async (
       .update({ inventory_updated: true })
       .eq("id", saleRecord.id);
 
+
+      const updates = items.map(item => ({
+        itemId: item.id,
+        quantityDelta: -item.quantity, // Decrease inventory
+      }));
+  
+      const shopifyResponse = await fetch('/api/shopify/update-inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId, updates }),
+      });
+      console.log("🚀 ~ shopifyResponse:", shopifyResponse)
+  
+      if (!shopifyResponse.ok) {
+        console.error('Failed to update Shopify inventory:', await shopifyResponse.json());
+        // Optionally, notify the user but don't fail the sale
+        toast.error('Sale recorded, but Shopify inventory update failed');
+      }
+
     // Create payment record
     const { error: paymentError } = await supabase.from("payments").insert({
       order_id: saleRecord.id,

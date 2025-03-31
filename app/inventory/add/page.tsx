@@ -433,6 +433,7 @@ export default function AddItemPage() {
 
         .select()
         .single();
+        console.log("Inserted item ID:", item.id);
       console.log("🚀 ~ handleSubmit ~ logoUrl:", logoUrl);
       if (itemError) throw itemError;
       const imageUploads = await Promise.all(
@@ -482,47 +483,56 @@ export default function AddItemPage() {
         })
       );
 
+      if (imageUploads.length > 0) {
+        const { error } = await supabase.from("item_images").insert(imageUploads);
+        if (error) throw error;
+        const { data: insertedImages, error: fetchError } = await supabase
+          .from("item_images")
+          .select("*")
+          .eq("item_id", item.id);
+        console.log("Inserted images:", insertedImages);
+        if (fetchError) console.error("Fetch error:", fetchError);
+      }
+      images.forEach((image) => URL.revokeObjectURL(image.url));
       if (listOnShopify) {
         try {
+          console.log("Sending itemId to API:", item.id);
           const response = await fetch('/api/shopify/create-product', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ storeId: user.store_id, itemId: item.id }),
           });
   
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to create Shopify product');
-          }
+          // if (!response.ok) {
+          //   const errorData = await response.json();
+          //   throw new Error(errorData.error || 'Failed to create Shopify product');
+          // }
   
           const shopifyProduct = await response.json();
+          console.log("🚀 ~ handleSubmit ~ shopifyProduct:", shopifyProduct)
           await supabase
             .from('items')
             .update({
-              shopify_product_id: shopifyProduct.product.id,
-              shopify_variant_id: shopifyProduct.product.variants.edges[0].node.id,
+              shopify_product_id: shopifyProduct?.product?.productId,
+              shopify_variant_id: shopifyProduct?.product?.variantId,
+              shopify_inventory_item_id: shopifyProduct?.product?.inventoryItemId,
+              shopify_location_id: shopifyProduct?.product?.locationId,
               list_on_shopify: true,
             })
             .eq('id', item.id);
+            console.log("🚀 ~ handleSubmit ~ shopify_product_id:", shopifyProduct?.product?.productId);
+            console.log("🚀 ~ handleSubmit ~ shopify_variant_id:", shopifyProduct?.product?.variantId);
+            console.log("🚀 ~ handleSubmit ~ shopify_inventory_item_id:", shopifyProduct?.product?.inventoryItemId);
+            console.log("🚀 ~ handleSubmit ~ shopify_location_id:", shopifyProduct?.product?.locationId);
         } catch (error) {
           console.error('Shopify sync error:', error);
           // toast.error('Failed to sync with Shopify');
         }
       }
        
-
-   
- 
-      if (imageUploads.length > 0) {
-        const { error } = await supabase
-          .from("item_images")
-          .insert(imageUploads);
-        if (error) throw error;
-      }
-
-      images.forEach((image) => URL.revokeObjectURL(image.url));
+      
       toast.success("Item added successfully!");
-      router.push("/inventory");
+      // router.push("/inventory");
     } catch (error) {
       console.error("Error saving item:", error);
       toast.error("Failed to save item. Please try again.");
