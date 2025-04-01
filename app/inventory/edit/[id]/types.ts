@@ -5,6 +5,7 @@ export interface ItemImage {
     filepath: string;
     file?: File;
     url?: string;
+    shopify_media_id?: string
   }
   
   export interface Category {
@@ -16,6 +17,7 @@ export interface ItemImage {
   }
   
   export interface ItemType {
+    shopify_product_id?: any;
     id: string;
     title: string;
     description: string;

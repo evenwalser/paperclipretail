@@ -301,7 +301,9 @@ export default function EditItemPage() {
       setIsAnalyzing(false);
     }
   };
-  const handleSave = async () => {
+
+
+    const handleSave = async () => {
     if (!item) return;
 
     setFieldErrors({ name: "", price: "", images: "", category: "" });
@@ -374,6 +376,7 @@ export default function EditItemPage() {
               item_id: item.id,
               image_url: image.image_url,
               display_order: index,
+              shopify_media_id: image.shopify_media_id,
             };
           }
 
@@ -430,6 +433,30 @@ export default function EditItemPage() {
         if (imageError) throw imageError;
       }
 
+      // const updatedData = {
+      //   title: itemDetails.name,
+      //   description: itemDetails.description,
+      //   price: parseFloat(itemDetails.price) || 0,
+      //   quantity: parseInt(itemDetails.quantity) || 0,
+      // };
+      const updatedQuantity =  parseInt(itemDetails.quantity) || 0
+      if (item.shopify_product_id) {
+      try {
+        const response = await fetch('/api/shopify/update-product', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storeId: user.store_id, itemId: item.id , updatedQuantity}),
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to update Shopify product');
+        }
+      } catch (error) {
+        console.error('Shopify update error:', error);
+        toast.error('Failed to sync with Shopify, but local changes saved');
+      }
+    }
+
       images.forEach((image) => URL.revokeObjectURL(image.image_url));
       router.push("/inventory");
       toast.success("Item updated successfully");
@@ -440,6 +467,147 @@ export default function EditItemPage() {
       setIsSaving(false);
     }
   };
+
+  
+  // const handleSave = async () => {
+  //   if (!item) return;
+
+  //   setFieldErrors({ name: "", price: "", images: "", category: "" });
+  //   let hasErrors = false;
+  //   const newErrors = { name: "", price: "", images: "", category: "" };
+
+  //   if (!itemDetails.name.trim()) {
+  //     newErrors.name = "Item name is required";
+  //     hasErrors = true;
+  //   }
+  //   if (
+  //     !itemDetails.price ||
+  //     isNaN(parseFloat(itemDetails.price)) ||
+  //     parseFloat(itemDetails.price) <= 0
+  //   ) {
+  //     newErrors.price = "Valid price is required";
+  //     hasErrors = true;
+  //   }
+  //   const filteredImages = images.filter((image) =>
+  //     /\.(jpg|jpeg|png|gif|webp)$/i.test(image.image_url)
+  //   );
+  //   if (filteredImages.length === 0) {
+  //     newErrors.images = "At least one image is required";
+  //     hasErrors = true;
+  //   }
+  //   if (!selectedCategories.level1) {
+  //     newErrors.category = "Please select a main category";
+  //     hasErrors = true;
+  //   }
+
+  //   if (hasErrors) {
+  //     setFieldErrors(newErrors);
+  //     return;
+  //   }
+
+  //   setIsSaving(true);
+  //   try {
+  //     // Update the item details in the database
+  //     const { error: itemError } = await supabase
+  //       .from("items")
+  //       .update({
+  //         title: itemDetails.name,
+  //         description: itemDetails.description,
+  //         price: parseFloat(itemDetails.price) || 0,
+  //         quantity: parseInt(itemDetails.quantity) || 0,
+  //         category_id:
+  //           selectedCategories.level3 ||
+  //           selectedCategories.level2 ||
+  //           selectedCategories.level1,
+  //         condition: itemDetails.condition,
+  //         size: itemDetails.size,
+  //         brand: itemDetails.brand,
+  //         logo_url: logoUrl,
+  //         age: itemDetails.age,
+  //         color: itemDetails.color,
+  //         available_in_store: itemDetails.availableInStore,
+  //         list_on_paperclip: itemDetails.listOnPaperclip,
+  //         tags: selectedTags,
+  //       })
+  //       .eq("id", item.id);
+
+  //     if (itemError) throw itemError;
+
+  //     const imageUploads = await Promise.all(
+  //       images.map(async (image, index) => {
+  //         if (image.id) {
+  //           // If the image already has an ID, we simply update the database record (no need to upload again)
+  //           return {
+  //             id: image.id,
+  //             item_id: item.id,
+  //             image_url: image.image_url,
+  //             display_order: index,
+  //           };
+  //         }
+
+  //         const newId = uuidv4();
+  //         // If the image doesn't have an ID, it means it's new and needs to be uploaded
+  //         const fileExt = image.image_url.split(".").pop();
+  //         const fileName = `${user.id}/${
+  //           item.id
+  //         }/${crypto.randomUUID()}.${fileExt}`;
+  //         let fileData: Blob;
+
+  //         if (image.file) {
+  //           fileData = image.file;
+  //         } else {
+  //           const response = await fetch(image.image_url);
+  //           fileData = await response.blob();
+  //         }
+
+  //         // Upload the new image
+  //         const { error: uploadError } = await supabase.storage
+  //           .from("item-images")
+  //           .upload(fileName, fileData, {
+  //             cacheControl: "3600",
+  //             upsert: false,
+  //           });
+  //         if (uploadError) throw uploadError;
+
+  //         const {
+  //           data: { publicUrl },
+  //         } = supabase.storage.from("item-images").getPublicUrl(fileName);
+
+  //         return {
+  //           id: newId,
+  //           item_id: item.id,
+  //           image_url: publicUrl,
+  //           display_order: index,
+  //         };
+  //       })
+  //     );
+
+  //     // Delete old images that are no longer associated with this item
+  //     const existingIds = images.filter((img) => img.id).map((img) => img.id);
+  //     await supabase
+  //       .from("item_images")
+  //       .delete()
+  //       .eq("item_id", item.id)
+  //       .not("id", "in", `(${existingIds.join(",")})`);
+
+  //     // Insert new images if necessary
+  //     if (imageUploads.length > 0) {
+  //       const { error: imageError } = await supabase
+  //         .from("item_images")
+  //         .upsert(imageUploads, { onConflict: "id" });
+  //       if (imageError) throw imageError;
+  //     }
+
+  //     images.forEach((image) => URL.revokeObjectURL(image.image_url));
+  //     router.push("/inventory");
+  //     toast.success("Item updated successfully");
+  //   } catch (error) {
+  //     console.error("Save error:", error);
+  //     toast.error("Error saving changes");
+  //   } finally {
+  //     setIsSaving(false);
+  //   }
+  // };
 
   if (isLoading) return <div>Loading...</div>;
 

@@ -19,7 +19,7 @@ const InventoryHeader: React.FC<InventoryHeaderProps> = ({
           disabled={selectedItemsCount === 0}
           className="bg-[#FF3B30] hover:bg-[#E6352B] text-white rounded-[8px]"
         >
-          Send to POS 2
+          Send to POS
         </Button>
         {canManageItems && user && (
           <Button

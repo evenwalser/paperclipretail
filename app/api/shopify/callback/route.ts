@@ -40,6 +40,31 @@ export async function GET(req: Request) {
     .eq('owner_id', user.id);
 
 const redirectURL = new URL('/inventory', process.env.NEXT_PUBLIC_APP_URL);
+async function registerWebhooks(shopName: string, accessToken: string) {
+  const webhook = {
+    topic: "inventory_levels/update",
+    address: `${process.env.NEXT_PUBLIC_APP_URL}/api/shopify-webhooks`, // Replace with your app's public URL
+    format: "json",
+  };
+
+  const response = await fetch(`https://${shopName}/admin/api/2025-01/webhooks.json`, {
+    method: "POST",
+    headers: {
+      "X-Shopify-Access-Token": accessToken,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ webhook }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Failed to register webhook:", errorText);
+    throw new Error("Webhook registration failed");
+  }
+
+  console.log("Webhook registered successfully");
+}
+await registerWebhooks(shop, access_token);
 console.log('access_token',access_token,shop)
 return NextResponse.redirect(redirectURL);
 }

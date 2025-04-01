@@ -43,17 +43,17 @@ export async function POST(request: Request) {
     }
 
     // Fetch the item's Shopify product ID
-    // const { data: item, error: itemError } = await supabase
-    //   .from('items')
-    //   .select('shopify_product_id')
-    //   .eq('id', itemId)
-    //   .single();
-    // if (itemError) {
-    //   throw itemError;
-    // }
+    const { data: item, error: itemError } = await supabase
+      .from('items')
+      .select('shopify_product_id')
+      .eq('id', itemId)
+      .single();
+    if (itemError) {
+      throw itemError;
+    }
 
     // If the item has a Shopify product ID, attempt to delete it from Shopify
-    // if (item.shopify_product_id) {
+    if (item.shopify_product_id) {
       const { accessToken, shopName } = await getShopifyCredentials(storeId);
       if (!accessToken || !shopName) {
         throw new Error('Shopify not connected');
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
       const mutation = `
         mutation {
-          productDelete(input: {id: "gid://shopify/Product/9025386184927"}) {
+          productDelete(input: {id: "${item.shopify_product_id}"}) {
             deletedProductId
             userErrors {
               field
@@ -111,6 +111,7 @@ export async function POST(request: Request) {
       { message: 'Item successfully deleted' },
       { status: 200 }
     );
+}
   } catch (error) {
     console.error('Error deleting item:', error);
     return NextResponse.json(

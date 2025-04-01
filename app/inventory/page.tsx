@@ -171,54 +171,54 @@ export default function InventoryPage() {
     router.push("/pos");
   };
 
-  const handleDelete = async (itemId: string) => {
-    try {
-      const storeId = user.store_id; // Adjust based on how you access storeId
-  
-      const response = await fetch('/api/shopify/delete-product', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ itemId, storeId }),
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete item');
-      }
-  
-      // Update UI (e.g., remove item from list)
-      setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
-      toast.success('Item successfully removed from inventory and Shopify (if applicable)');
-    } catch (error) {
-      console.error('Error removing item:', error);
-      toast.error(`Failed to remove item: ${error.message || 'Unknown error'}`);
-    }
-  };
-
   // const handleDelete = async (itemId: string) => {
-  //   setDeletingItems((prev) => new Set(prev).add(itemId));
   //   try {
-  //     const { error } = await supabase
-  //       .from("items")
-  //       .update({ deleted_at: new Date().toISOString() })
-  //       .eq("id", itemId);
-  //     if (error) throw error;
-  //     setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
-  //     setItemToDelete(null);
-  //     toast.success("Item successfully removed from inventory");
-  //   } catch (error) {
-  //     console.error("Error removing item:", error);
-  //     toast.error("Failed to remove item. Please try again.");
-  //   } finally {
-  //     setDeletingItems((prev) => {
-  //       const next = new Set(prev);
-  //       next.delete(itemId);
-  //       return next;
+  //     const storeId = user.store_id; // Adjust based on how you access storeId
+  
+  //     const response = await fetch('/api/shopify/delete-product', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ itemId, storeId }),
   //     });
+  
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       throw new Error(errorData.error || 'Failed to delete item');
+  //     }
+  
+  //     // Update UI (e.g., remove item from list)
+  //     setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+  //     toast.success('Item successfully removed from inventory and Shopify (if applicable)');
+  //   } catch (error) {
+  //     console.error('Error removing item:', error);
+  //     toast.error(`Failed to remove item: ${error.message || 'Unknown error'}`);
   //   }
   // };
+
+  const handleDelete = async (itemId: string) => {
+    setDeletingItems((prev) => new Set(prev).add(itemId));
+    try {
+      const { error } = await supabase
+        .from("items")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", itemId);
+      if (error) throw error;
+      setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+      setItemToDelete(null);
+      toast.success("Item successfully removed from inventory");
+    } catch (error) {
+      console.error("Error removing item:", error);
+      toast.error("Failed to remove item. Please try again.");
+    } finally {
+      setDeletingItems((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
+  };
 
   const handleBrandFilter = (brand: string) => {
     setFilters((prev) => {

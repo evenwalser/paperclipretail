@@ -97,8 +97,6 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-      console.log("🚀 ~ POST ~ itemId:", itemId)
-      console.log("🚀 ~ POST ~ itemId:", itemId)
 }
 
 async function createShopifyProduct(
@@ -229,6 +227,7 @@ async function createShopifyProduct(
               }
             }
           }
+            media(first: 10) { nodes { id } }
         }
         userErrors {
           field
@@ -300,12 +299,17 @@ async function createShopifyProduct(
   const locationIdFromResponse =
     result.data.productCreate.product.variants.edges[0].node.inventoryItem
       .inventoryLevels.edges[0].node.location.id;
+  const media = result.data.productCreate.product.media.nodes
 
   console.log('product id', productId);
   console.log('variant id', variantId);
   console.log('inventoryLevelId', inventoryLevelId);
   console.log('inventoryItemId', inventoryItemId);
   console.log('locationId', locationIdFromResponse);
+  console.log('media', media);
+  console.log('media[0]', media[0]);
+
+
 
   return { productId, variantId, inventoryLevelId, inventoryItemId, locationId: locationIdFromResponse };
 }

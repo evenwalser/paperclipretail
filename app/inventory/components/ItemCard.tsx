@@ -7,6 +7,7 @@ import { Pencil, Trash2, Copy } from "lucide-react";
 import { ItemCardProps } from "../types";
 import { isVideo } from "../utils/inventory-utils";
 import Image from "next/image";
+import 'swiper/css';
 
 const ItemCard: React.FC<ItemCardProps> = ({
   item,

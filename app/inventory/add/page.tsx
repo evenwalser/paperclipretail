@@ -20,7 +20,7 @@ interface ImageFile {
   file: File | null;
   filepath: string | null;
 }
-  
+
 interface Category {
   id: string;
   name: string;
@@ -433,7 +433,7 @@ export default function AddItemPage() {
 
         .select()
         .single();
-        console.log("Inserted item ID:", item.id);
+      console.log("Inserted item ID:", item.id);
       console.log("🚀 ~ handleSubmit ~ logoUrl:", logoUrl);
       if (itemError) throw itemError;
       const imageUploads = await Promise.all(
@@ -484,7 +484,9 @@ export default function AddItemPage() {
       );
 
       if (imageUploads.length > 0) {
-        const { error } = await supabase.from("item_images").insert(imageUploads);
+        const { error } = await supabase
+          .from("item_images")
+          .insert(imageUploads);
         if (error) throw error;
         const { data: insertedImages, error: fetchError } = await supabase
           .from("item_images")
@@ -493,46 +495,79 @@ export default function AddItemPage() {
         console.log("Inserted images:", insertedImages);
         if (fetchError) console.error("Fetch error:", fetchError);
       }
+
       images.forEach((image) => URL.revokeObjectURL(image.url));
       if (listOnShopify) {
         try {
           console.log("Sending itemId to API:", item.id);
-          const response = await fetch('/api/shopify/create-product', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          const response = await fetch("/api/shopify/create-product", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ storeId: user.store_id, itemId: item.id }),
           });
-  
+
           // if (!response.ok) {
           //   const errorData = await response.json();
           //   throw new Error(errorData.error || 'Failed to create Shopify product');
           // }
-  
+
           const shopifyProduct = await response.json();
-          console.log("🚀 ~ handleSubmit ~ shopifyProduct:", shopifyProduct)
+          console.log("🚀 ~ handleSubmit ~ shopifyProduct:", shopifyProduct);
           await supabase
-            .from('items')
+            .from("items")
             .update({
               shopify_product_id: shopifyProduct?.product?.productId,
               shopify_variant_id: shopifyProduct?.product?.variantId,
-              shopify_inventory_item_id: shopifyProduct?.product?.inventoryItemId,
+              shopify_inventory_item_id:
+                shopifyProduct?.product?.inventoryItemId,
               shopify_location_id: shopifyProduct?.product?.locationId,
               list_on_shopify: true,
             })
-            .eq('id', item.id);
-            console.log("🚀 ~ handleSubmit ~ shopify_product_id:", shopifyProduct?.product?.productId);
-            console.log("🚀 ~ handleSubmit ~ shopify_variant_id:", shopifyProduct?.product?.variantId);
-            console.log("🚀 ~ handleSubmit ~ shopify_inventory_item_id:", shopifyProduct?.product?.inventoryItemId);
-            console.log("🚀 ~ handleSubmit ~ shopify_location_id:", shopifyProduct?.product?.locationId);
+            .eq("id", item.id);
+
+          const mediaNodes = shopifyProduct.product.media || [];
+
+          const { data: insertedImages } = await supabase
+            .from("item_images")
+            .select("id")
+            .eq("item_id", item.id)
+            .order("display_order");
+
+            if (insertedImages && mediaNodes.length > 0) {
+              await Promise.all(
+                insertedImages.map(async (img, index) => {
+                  if (index < mediaNodes.length) {
+                    await supabase
+                      .from("item_images")
+                      .update({ shopify_media_id: mediaNodes[index].id })
+                      .eq("id", img.id);
+                  }
+                }))}
+
+          console.log(
+            "🚀 ~ handleSubmit ~ shopify_product_id:",
+            shopifyProduct?.product?.productId
+          );
+          console.log(
+            "🚀 ~ handleSubmit ~ shopify_variant_id:",
+            shopifyProduct?.product?.variantId
+          );
+          console.log(
+            "🚀 ~ handleSubmit ~ shopify_inventory_item_id:",
+            shopifyProduct?.product?.inventoryItemId
+          );
+          console.log(
+            "🚀 ~ handleSubmit ~ shopify_location_id:",
+            shopifyProduct?.product?.locationId
+          );
         } catch (error) {
-          console.error('Shopify sync error:', error);
+          console.error("Shopify sync error:", error);
           // toast.error('Failed to sync with Shopify');
         }
       }
-       
-      
+
       toast.success("Item added successfully!");
-      // router.push("/inventory");
+      router.push("/inventory");
     } catch (error) {
       console.error("Error saving item:", error);
       toast.error("Failed to save item. Please try again.");
@@ -638,29 +673,29 @@ export default function AddItemPage() {
       setIsDuplicating(false);
     }
   };
-  const demoAdd =async () => {
+  const demoAdd = async () => {
     try {
-      const response = await fetch('/api/shopify/create-product', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeId: user.store_id, itemId: '1234' }),
+      const response = await fetch("/api/shopify/create-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeId: user.store_id, itemId: "1234" }),
       });
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create Shopify product');
+        throw new Error(errorData.error || "Failed to create Shopify product");
       }
       const shopifyProduct = await response.json();
-      console.log("🚀 ~ demoAdd ~ shopifyProduct:", shopifyProduct)
+      console.log("🚀 ~ demoAdd ~ shopifyProduct:", shopifyProduct);
       // await supabase.from('items').update({
       //   shopify_product_id: shopifyProduct.product.id,
       //   shopify_variant_id: shopifyProduct.product.variants[0].id,
       //   list_on_shopify: true,
       // }).eq('id', item.id);
     } catch (error) {
-      console.error('Shopify sync error:', error);
+      console.error("Shopify sync error:", error);
       // toast.error('Failed to sync with Shopify');
     }
-  }
+  };
 
   const extractJson = (response: string) => {
     try {
@@ -687,7 +722,7 @@ export default function AddItemPage() {
         </CardHeader>
         <CardContent>
           <div className="w-full max-w-2xl mx-auto">
-          {/* <button onClick={demoAdd}>Add shopify demo</button> */}
+            {/* <button onClick={demoAdd}>Add shopify demo</button> */}
             {currentView === "initial" && (
               <InitialView
                 onCameraClick={() => {
