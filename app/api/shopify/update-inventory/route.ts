@@ -60,6 +60,7 @@ export async function POST(req: Request) {
     for (const update of validUpdates) {
       const { inventoryItemId, locationId } = itemMap.get(update.itemId);
       const quantityDelta = update.quantityDelta;
+      console.log("🚀 ~ POST ~ quantityDelta:", quantityDelta)
 
       console.log(`Processing update - Item ID: ${update.itemId}, Delta: ${quantityDelta}`);
 
@@ -69,7 +70,7 @@ export async function POST(req: Request) {
             changes: [{
               inventoryItemId: "${inventoryItemId}",
               locationId: "${locationId}",
-              delta: ${quantityDelta}
+              delta: ${-5}
             }],
             name: "available",
             reason: "correction"

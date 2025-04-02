@@ -8,7 +8,7 @@
 
 // export async function POST(req: Request) {
 //   try {
-//     const { storeId, itemId, updatedQuantity } = await req.json();
+//     const { storeId, itemId, previousQuantity } = await req.json();
 //     const supabase = await createClient();
 //     const { data: { user } } = await supabase.auth.getUser();
 //     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -251,7 +251,7 @@ import { getShopifyCredentials } from "@/lib/shopify";
 
 export async function POST(req: Request) {
   try {
-    const { storeId, itemId, updatedQuantity } = await req.json();
+    const { storeId, itemId, previousQuantity } = await req.json();
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -350,41 +350,45 @@ export async function POST(req: Request) {
       variantInput["options"] = updatedOptions;
     }
 
-    // Handle inventory update if quantity changed and Shopify IDs exist
-    // if (item.shopify_inventory_item_id && item.shopify_location_id) {
-    //   const inventoryMutation = `
-    //     mutation {
-    //       inventoryAdjustQuantities(input: {
-    //         changes: [{
-    //           inventoryItemId: "${item.shopify_inventory_item_id}",
-    //           locationId: "${item.shopify_location_id}",
-    //           delta: ${item.quantity},
-    //         }],
-    //         name: "available",
-    //         reason: "correction"
-    //       }) {
-    //         inventoryAdjustmentGroup {
-    //           id
-    //         }
-    //         userErrors {
-    //           field
-    //           message
-    //         }
-    //       }
-    //     }
-    //   `;
-    //   const inventoryResponse = await fetch(`https://${shopName}/admin/api/2025-01/graphql.json`, {
-    //     method: "POST",
-    //     headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
-    //     body: JSON.stringify({ query: inventoryMutation }),
-    //   });
-    //   const inventoryResult = await inventoryResponse.json();
-    //   console.log("🚀 ~ POST ~ inventoryResult:", inventoryResult);
-    //   if (inventoryResult.errors || inventoryResult.data.inventoryAdjustQuantities.userErrors.length > 0) {
-    //     console.error("Error adjusting inventory:", inventoryResult.errors || inventoryResult.data.inventoryAdjustQuantities.userErrors);
-    //     // Optionally, rollback Supabase update or notify the user
-    //   }
-    // }
+    const deltaValue = item.quantity - previousQuantity;
+    console.log("🚀 ~ POST ~ deltaValue:", deltaValue)
+    console.log("🚀 ~ POST ~ item.quantity:", item.quantity)
+    if (item.shopify_inventory_item_id && item.shopify_location_id) {
+      const inventoryMutation = `
+        mutation {
+          inventoryAdjustQuantities(input: {
+            changes: [{
+              inventoryItemId: "${item.shopify_inventory_item_id}",
+              locationId: "${item.shopify_location_id}",
+              delta: ${deltaValue},
+            }],
+            name: "available",
+            reason: "correction"
+          }) {
+            inventoryAdjustmentGroup {
+              id
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `;
+      const inventoryResponse = await fetch(`https://${shopName}/admin/api/2025-01/graphql.json`, {
+        method: "POST",
+        headers: { "X-Shopify-Access-Token": accessToken, "Content-Type": "application/json" },
+        body: JSON.stringify({ query: inventoryMutation }),
+      });
+      const inventoryResult = await inventoryResponse.json();
+      console.log("🚀 ~ POST ~ inventoryResult:", inventoryResult);
+      console.log("🚀 ~ POST ~ inventoryResult:", inventoryResult.data.inventoryAdjustQuantities.inventoryAdjustmentGroup);
+
+      if (inventoryResult.errors || inventoryResult.data.inventoryAdjustQuantities.userErrors.length > 0) {
+        console.error("Error adjusting inventory:", inventoryResult.errors || inventoryResult.data.inventoryAdjustQuantities.userErrors);
+        // Optionally, rollback Supabase update or notify the user
+      }
+    }
 
     // Determine media to delete
     const currentItemMediaIds = item.item_images.map(img => img.shopify_media_id).filter(id => id);

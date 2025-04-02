@@ -43,7 +43,7 @@ const redirectURL = new URL('/inventory', process.env.NEXT_PUBLIC_APP_URL);
 async function registerWebhooks(shopName: string, accessToken: string) {
   const webhook = {
     topic: "inventory_levels/update",
-    address: `${process.env.NEXT_PUBLIC_APP_URL}/api/shopify-webhooks`, // Replace with your app's public URL
+    address: `${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/shopify-webhooks`, // Replace with your app's public URL
     format: "json",
   };
 

@@ -40,13 +40,13 @@ export async function POST(req: Request) {
       .digest("base64");
     console.log("🚀 ~ POST ~ calculatedHmac:", calculatedHmac);
     console.log("🚀 ~ POST ~ hmacHeader:", hmacHeader);
-    // if (calculatedHmac !== hmacHeader) {
-    //   console.log("unauthorized");
-    //   return NextResponse.json(
-    //     { error: "Unauthorized: Invalid HMAC" },
-    //     { status: 401 }
-    //   );
-    // }
+    if (calculatedHmac !== hmacHeader) {
+      console.log("unauthorized");
+      return NextResponse.json(
+        { error: "Unauthorized: Invalid HMAC" },
+        { status: 401 }
+      );
+    }
 
     // Parse the JSON payload
     const payload = JSON.parse(rawBody.toString("utf-8"));

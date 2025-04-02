@@ -30,6 +30,7 @@ export default function EditItemPage() {
   const [images, setImages] = useState<ItemImage[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [previousQuantity, setPreviousQuantity] = useState();
   const [selectedCategories, setSelectedCategories] = useState({
     level1: "",
     level2: "",
@@ -97,6 +98,7 @@ export default function EditItemPage() {
           availableInStore: itemData.available_in_store,
           listOnPaperclip: itemData.list_on_paperclip,
         });
+        setPreviousQuantity(itemData.quantity)
         setLogoUrl(itemData.logo_url || "");
         setSelectedTags(itemData.tags || []);
 
@@ -445,7 +447,7 @@ export default function EditItemPage() {
         const response = await fetch('/api/shopify/update-product', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ storeId: user.store_id, itemId: item.id , updatedQuantity}),
+          body: JSON.stringify({ storeId: user.store_id, itemId: item.id , previousQuantity}),
         });
         if (!response.ok) {
           const errorData = await response.json();
