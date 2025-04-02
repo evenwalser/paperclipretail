@@ -59,23 +59,23 @@ export function Receipt({ saleData, items, userId, customerDetails, receiptLogo,
         .select("store_name, store_logo, address, contact_details")
         .eq("owner_id", userId)
         .single();
-
-      if (error) {
-        console.error("Error fetching store details:", error);
-      } else if (storeData) {
-        setStoreDetails(storeData);
+        
+        if (error) {
+          console.error("Error fetching store details:", error);
+        } else if (storeData) {
+          setStoreDetails(storeData);
+        }
+      };
+      
+      if (userId) {
+        fetchStoreDetails();
       }
-    };
-
-    if (userId) {
-      fetchStoreDetails();
-    }
-  }, [userId]);
+    }, [userId]);
 
   const handlePrint = () => {
     window.print();
   };
-
+  
   return (
     <div className="bg-[#191e25] p-6 rounded-lg max-w-[600px] w-full mx-auto receipt-content">
        {/* {receiptLogo && (
@@ -93,7 +93,7 @@ export function Receipt({ saleData, items, userId, customerDetails, receiptLogo,
          <div className="w-[180px] h-[180px] p-4 overflow-hidden">
           {storeDetails.store_logo && (
               <img
-                src={receiptLogo}
+                src={receiptLogo || storeDetails.store_logo}
                 alt="Store Logo"                
               />
             )}

@@ -71,7 +71,8 @@ const stripePromise = loadStripe(
 export default function POSPage() {
   const [availableReaders, setAvailableReaders] = useState<Reader[]>([]);
   const [showReaderManager, setShowReaderManager] = useState(false);
-  const { items, updateQuantity, removeItem, total, clearCart, isLoading } = useCart();
+  const { items, updateQuantity, removeItem, total, clearCart, isLoading } =
+    useCart();
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
@@ -538,6 +539,7 @@ export default function POSPage() {
           setShowReceipt(true);
           toast.success("Payment successful via cash");
           clearCart();
+          setDiscount({ type: "fixed", value: 0 });
           setAmount("0.00");
           setPendingReceiptId(null); // Clear after use
         }
@@ -940,6 +942,8 @@ export default function POSPage() {
     setPaymentIntent(null);
     setTerminalStatus("Reader Ready");
     setIsProcessing(false);
+    setTerminalLoading(false);
+    setShowTerminalOptions(false);
   };
 
   // Validate and update item quantity
@@ -997,7 +1001,7 @@ export default function POSPage() {
   const processRefund = async () => {
     // Prevent multiple refund processes from starting
     if (isProcessRefund) return;
-  
+
     setIsProcessRefund(true); // Indicate that processing has started
     try {
       const resetRefundState = () => {
@@ -1007,7 +1011,7 @@ export default function POSPage() {
         setRefundReason("");
         setSearchSaleId("");
       };
-  
+
       await processRefundUtil(
         selectedSale,
         refundItems,

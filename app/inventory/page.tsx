@@ -18,10 +18,13 @@ import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { sortItems } from "./utils/inventory-utils";
 import { useMemo } from "react";
 import { getShopifyCredentials } from "@/lib/shopify";
+import { cloneDeep } from "lodash";
 
 interface Category {
   id: string;
   name: string;
+  level?: number;
+  parent_id?: string;
 }
 
 type Brand = {
@@ -29,11 +32,11 @@ type Brand = {
   logo_url: string;
 };
 
-
 export default function InventoryPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [allItemsCategories, setAllItemsCategories] = useState<Category[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -70,8 +73,10 @@ export default function InventoryPage() {
         const [categoryData, sizesData, brandsData, agesData, colorsData] =
           await Promise.all([
             fetchLevel1Categories(),
-            supabase.rpc("get_distinct_sizes",  { p_store_id: user.store_id }),
-            supabase.rpc("get_distinct_brands_with_logo", { p_store_id: user.store_id }),
+            supabase.rpc("get_distinct_sizes", { p_store_id: user.store_id }),
+            supabase.rpc("get_distinct_brands_with_logo", {
+              p_store_id: user.store_id,
+            }),
             supabase.rpc("get_distinct_ages", { p_store_id: user.store_id }),
             supabase.rpc("get_distinct_colors", { p_store_id: user.store_id }),
           ]);
@@ -92,6 +97,20 @@ export default function InventoryPage() {
   // Fetch items based on filters and page
   useEffect(() => {
     const loadItems = async () => {
+      let categoryFilter = cloneDeep(filters);
+
+      const targetItem = allItemsCategories.find(
+        (item) => item.parent_id === filters.category
+      );
+
+      if (targetItem) {
+        const nextLevelItem = allItemsCategories.find(
+          (item) => item.parent_id === targetItem.id
+        );
+        if (nextLevelItem) {
+          categoryFilter.category = nextLevelItem.id;
+        }
+      }
       if (!user) return;
       try {
         setIsLoading(true);
@@ -99,9 +118,14 @@ export default function InventoryPage() {
           currentPage,
           9,
           user,
-          filters
+          categoryFilter
         );
         setItems(items.filter((item) => !item.deleted_at));
+        if (allItemsCategories.length === 0) {
+          setAllItemsCategories(
+            items.map((item) => [...item.categories]).flat()
+          );
+        }
         setTotalPages(totalPages);
       } catch (error) {
         console.error("Failed to load items:", error);
@@ -293,7 +317,13 @@ export default function InventoryPage() {
                   <span className="text-gray-500 text-sm">No Logo</span>
                 </div>
               )}
-              <span className={`${filters.brands.includes(brandObj.brand) ? "text-[#000]" : ""}`}>{brandObj.brand}</span>
+              <span
+                className={`${
+                  filters.brands.includes(brandObj.brand) ? "text-[#000]" : ""
+                }`}
+              >
+                {brandObj.brand}
+              </span>
             </button>
           ))}
         </div>

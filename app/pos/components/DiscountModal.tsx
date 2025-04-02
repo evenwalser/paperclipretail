@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { DiscountModalProps } from '../types';
+import React, { useState, useEffect } from "react";
+import { DiscountModalProps } from "../types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner"; // For error notifications
@@ -9,7 +9,7 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
   setDiscount,
   setShowDiscountModal,
   total,
-  calculateFinalTotal
+  calculateFinalTotal,
 }) => {
   // Local state for the text input value, initialized from discount.value
   const [inputValue, setInputValue] = useState(discount.value.toString());
@@ -49,27 +49,36 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
 
   // Handle the "Apply" action
   const applyDiscount = () => {
-    const parsedValue = parseFloat(inputValue);
-    if (isNaN(parsedValue)) {
-      toast.error("Please enter a valid number");
-      return;
-    }
-    let finalValue = parsedValue;
-    if (discount.type === "percentage") {
-      if (finalValue < 0 || finalValue > 100) {
-        toast.error("Percentage must be between 0 and 100");
-        return;
-      }
-    } else if (discount.type === "fixed") {
-      if (finalValue < 0 || finalValue > total) {
-        toast.error(`Amount must be between 0 and ${total.toFixed(2)}`);
-        return;
-      }
-    }
-    // Update the discount state and close the modal
-    setDiscount((prev) => ({ ...prev, value: finalValue }));
     setShowDiscountModal(false);
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const parsedValue = parseFloat(inputValue);
+      if (isNaN(parsedValue)) {
+        toast.error("Please enter a valid number");
+        return;
+      }
+      let finalValue = parsedValue;
+
+      if (discount.type === "percentage") {
+        if (finalValue < 0 || finalValue > 100) {
+          toast.error("Percentage must be between 0 and 100");
+          return;
+        }
+      } else if (discount.type === "fixed") {
+        if (finalValue < 0 || finalValue > total) {
+          toast.error(`Amount must be between 0 and ${total.toFixed(2)}`);
+          return;
+        }
+      }
+
+      // Update the discount state if validation passes
+      setDiscount((prev) => ({ ...prev, value: finalValue }));
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [inputValue]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -80,7 +89,7 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
             {/* Discount Type Toggle */}
             <div className="flex gap-4">
               <Button
-                variant={discount.type === "percentage" ? "default" : "outline"}
+                variant={discount.type === "percentage" ? "outline" : "default"}
                 onClick={() =>
                   setDiscount((prev) => ({ ...prev, type: "percentage" }))
                 }
@@ -88,7 +97,7 @@ const DiscountModal: React.FC<DiscountModalProps> = ({
                 Percentage (%)
               </Button>
               <Button
-                variant={discount.type === "fixed" ? "default" : "outline"}
+                variant={discount.type === "fixed" ? "outline" : "default"}
                 onClick={() =>
                   setDiscount((prev) => ({ ...prev, type: "fixed" }))
                 }

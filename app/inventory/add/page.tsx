@@ -312,7 +312,20 @@ export default function AddItemPage() {
         price: dataObject.price_avg?.toString() || prev.price,
       }));
       setCondition(dataObject.condition || "New");
-      setBrand(dataObject.brand || ""); // Added to set brand from AI response
+      setBrand(dataObject.brand || "");
+      try {
+        const response = await fetch(
+          `/api/logo-search?q=${encodeURIComponent(dataObject.brand)}`
+        );
+        if (!response.ok) throw new Error("Failed to fetch brand suggestions");
+        const data = await response.json();
+        setBrandSuggestions(data);
+        setLogoUrl(data[0]?.logo_url || "");
+      } catch (error) {
+        console.error("Error fetching brand suggestions:", error);
+        setBrandSuggestions([]);
+      }
+
       setColor(dataObject.color || "");
       setSuggestedTags(dataObject.tags || []);
       setSelectedTags(dataObject.tags || []);
