@@ -35,6 +35,7 @@ export interface Item {
   age: string;
   color: string;
   status: string;
+  image_url?: string;
   store_id: number;
   title: string;
   quantity: number;

@@ -2,12 +2,9 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@/utils/supabase/server";
 
-// Disable Next.js body parsing to get raw body
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Route segment config
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // Handle POST request
 export async function POST(req: Request) {

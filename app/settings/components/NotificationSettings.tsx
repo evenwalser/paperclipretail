@@ -1,27 +1,63 @@
 'use client'
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Bell, Mail, MessageSquare } from 'lucide-react'
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Bell, Mail, MessageSquare } from 'lucide-react';
+import { createClient } from "@/utils/supabase/client";
+import { useUser } from '@/app/contexts/UserContext';
 
 export function NotificationSettings() {
-  const [notificationChannels, setNotificationChannels] = useState(['in-app'])
-  const [lowStockAlert, setLowStockAlert] = useState(true)
-  const [newSaleAlert, setNewSaleAlert] = useState(true)
-  const [notificationEmail, setNotificationEmail] = useState('')
-  const [notificationPhone, setNotificationPhone] = useState('')
+  const supabase = createClient();
+  const user = useUser();
+  const [notificationChannels, setNotificationChannels] = useState<string[]>(['in-app']);
+  const [lowStockAlert, setLowStockAlert] = useState(true);
+  const [newSaleAlert, setNewSaleAlert] = useState(true);
+  const [notificationEmail, setNotificationEmail] = useState('');
+  const [notificationPhone, setNotificationPhone] = useState('');
+  const [message, setMessage] = useState(''); // State for message content
+  const [messageType, setMessageType] = useState<'success' | 'error' | null>(null); // State for message type
 
   const toggleNotificationChannel = (channel: string) => {
     setNotificationChannels(current =>
       current.includes(channel)
         ? current.filter(c => c !== channel)
         : [...current, channel]
-    )
-  }
+    );
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('user_settings')
+      .upsert({
+        user_id: user.id,
+        notification_email: notificationEmail,
+        notification_phone: notificationPhone,
+        notification_channels: notificationChannels,
+        low_stock_alert: lowStockAlert,
+        new_sale_alert: newSaleAlert,
+      });
+
+    if (error) {
+      setMessage('Failed to save settings');
+      setMessageType('error');
+      console.error('Error saving settings:', error);
+    } else {
+      setMessage('Settings saved successfully');
+      setMessageType('success');
+      console.log('Settings saved successfully');
+    }
+
+    // Clear the message after 3 seconds
+    setTimeout(() => {
+      setMessage('');
+      setMessageType(null);
+    }, 3000);
+  };
 
   return (
     <Card>
@@ -106,10 +142,24 @@ export function NotificationSettings() {
           </div>
         </div>
 
-        <Button className="w-full bg-[#FF3B30] hover:bg-[#E6352B] text-white">
+        <Button
+          onClick={handleSave}
+          className="w-full bg-[#FF3B30] hover:bg-[#E6352B] text-white"
+        >
           Save Changes
         </Button>
+
+        {/* Display the success or error message */}
+        {message && (
+          <div
+            className={`mt-4 p-2 rounded ${
+              messageType === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            }`}
+          >
+            {message}
+          </div>
+        )}
       </CardContent>
     </Card>
-  )
-} 
+  );
+}

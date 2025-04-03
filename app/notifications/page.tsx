@@ -24,11 +24,12 @@ export default function NotificationsPage() {
   const [counterOffer, setCounterOffer] = useState('')
   const user = useUser()
   const userStoreId = user?.store_id
+  console.log("🚀 ~ NotificationsPage ~ userStoreId:", userStoreId)
 
   useEffect(() => {
     fetchNotifications()
     subscribeToNotifications()
-  }, [user])
+  }, [user, userStoreId])
 
   const fetchNotifications = async () => {
     try {

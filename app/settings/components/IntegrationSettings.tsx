@@ -8,7 +8,7 @@ import Image from 'next/image'
 
 export function IntegrationSettings() {
   const [syncStatus, setSyncStatus] = useState('Loading...')
-  const [lastSyncTime, setLastSyncTime] = useState(null)
+  const [lastSyncTime, setLastSyncTime] = useState<string>('Never')
   const [isConnected, setIsConnected] = useState(false)
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function IntegrationSettings() {
         setIsConnected(data.connected)
         setSyncStatus(data.connected ? 'Connected' : 'Disconnected')
         setLastSyncTime(data.lastSyncTime ? new Date(data.lastSyncTime).toLocaleString() : 'Never')
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching integration status:', error)
         setSyncStatus('Error')
         setLastSyncTime('Unknown')

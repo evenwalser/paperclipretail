@@ -100,11 +100,11 @@ export async function POST(req: Request) {
 }
 
 async function createShopifyProduct(
-  shopName,
-  accessToken,
-  item,
-  images,
-  categoryHierarchy
+  shopName: string,
+  accessToken: string,
+  item: any,
+  images: any[],
+  categoryHierarchy: string[]
 ) {
   console.log("here is images", images);
 
@@ -139,7 +139,7 @@ async function createShopifyProduct(
   console.log("Location DATA:", locationData);
   console.log("Location ID:", locationId);
 
-  async function getCollectionIdByTitle(shopName, accessToken, title) {
+  async function getCollectionIdByTitle(shopName: string, accessToken: string, title: string) {
     const query = `
       query {
         collections(first: 1, query: "title:'${title}'") {
@@ -512,7 +512,7 @@ async function createShopifyProduct(
 //   return { productId, variantId, inventoryLevelId };
 // }
 
-async function getOnlineStorePublicationId(shopName, accessToken) {
+async function getOnlineStorePublicationId(shopName: string, accessToken: string) {
   const query = `
     query {
       publications(first: 10) {
@@ -545,7 +545,7 @@ async function getOnlineStorePublicationId(shopName, accessToken) {
 
   const publications = result.data.publications.edges;
   const onlineStorePub = publications.find(
-    (pub) => pub.node.name === "Online Store"
+    (pub: { node: { name: string } }) => pub.node.name === "Online Store"
   );
   if (!onlineStorePub) {
     throw new Error("Online Store publication not found");
@@ -554,7 +554,7 @@ async function getOnlineStorePublicationId(shopName, accessToken) {
   return onlineStorePub.node.id;
 }
 
-async function publishProduct(productId, shopName, accessToken) {
+async function publishProduct(productId: string, shopName: string, accessToken: string) {
   const publicationId = await getOnlineStorePublicationId(
     shopName,
     accessToken
@@ -605,7 +605,7 @@ async function publishProduct(productId, shopName, accessToken) {
   // No return needed; product is returned from createShopifyProduct
 }
 
-async function getCategoryHierarchy(categoryId, supabase) {
+async function getCategoryHierarchy(categoryId: string, supabase: any) {
   let hierarchy = [];
   let currentId = categoryId;
   while (currentId) {

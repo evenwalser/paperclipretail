@@ -276,9 +276,9 @@ export default function EditItemPage() {
         color: dataObject.color || prev.color,
       }));
       setSuggestedTags(dataObject.tags || []); // Set AI-suggested tags
-      setSelectedTags((prev) => [
-        ...new Set([...prev, ...(dataObject.tags || [])]),
-      ]);
+      setSelectedTags((prev) => 
+        Array.from(new Set([...prev, ...(dataObject.tags || [])]))
+      );
 
       if (dataObject.category_id) {
         const categoryNames = dataObject.category_id.split(" > ");

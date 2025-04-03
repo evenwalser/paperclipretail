@@ -29,9 +29,8 @@ export async function GET(request: Request) {
 async function fetchAllShopifyProducts(accessToken: string, shopDomain: string): Promise<any[]> {
   const products: any[] = [];
   let url: string | null = `https://${shopDomain}/admin/api/2025-01/products.json?limit=250`;
-
   while (url) {
-    const response = await fetch(url, {
+    const response: Response = await fetch(url, {
       method: 'GET',
       headers: {
         'X-Shopify-Access-Token': accessToken,

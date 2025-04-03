@@ -45,11 +45,10 @@ export async function POST(req: Request) {
       locationId: item.shopify_location_id,           // Dynamic value from DB
     }]));
 
-    const validUpdates = updates.filter(update => 
-      itemMap.has(update.itemId) && 
-      itemMap.get(update.itemId).inventoryItemId && 
-      itemMap.get(update.itemId).locationId
-    );
+    const validUpdates = updates.filter(update => {
+      const item = itemMap.get(update.itemId);
+      return item && item.inventoryItemId && item.locationId;
+    });
 
     if (validUpdates.length === 0) {
       console.log('No valid items to update');
@@ -58,7 +57,8 @@ export async function POST(req: Request) {
 
     // Update inventory for each item
     for (const update of validUpdates) {
-      const { inventoryItemId, locationId } = itemMap.get(update.itemId);
+      const item = itemMap.get(update.itemId) as { inventoryItemId: string; locationId: string };
+      const { inventoryItemId, locationId } = item;
       const quantityDelta = update.quantityDelta;
       console.log("🚀 ~ POST ~ quantityDelta:", quantityDelta)
 

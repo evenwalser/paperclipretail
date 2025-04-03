@@ -170,8 +170,8 @@ export default function DetailsView({
                 {tag}
                 <button
                   onClick={() =>
-                    setSelectedTags((prev) =>
-                      prev.filter((_, i) => i !== index)
+                    setSelectedTags((prev: string[]) =>
+                      prev.filter((_: string, i: number) => i !== index)
                     )
                   }
                   className="ml-1 text-red-500 hover:text-red-700"

@@ -217,7 +217,7 @@ export default function InventoryPage() {
       toast.success('Item successfully removed from inventory and Shopify (if applicable)');
     } catch (error) {
       console.error('Error removing item:', error);
-      toast.error(`Failed to remove item: ${error.message || 'Unknown error'}`);
+      toast.error(`Failed to remove item: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
