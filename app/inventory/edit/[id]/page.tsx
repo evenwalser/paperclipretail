@@ -442,6 +442,30 @@ export default function EditItemPage() {
       //   quantity: parseInt(itemDetails.quantity) || 0,
       // };
       const updatedQuantity =  parseInt(itemDetails.quantity) || 0
+
+      // if (itemDetails?.listOnPaperclip && item?.marketplace_product_id) {
+      //   const marketplaceData = {
+      //     title: itemDetails.name,
+      //     description: itemDetails.description,
+      //     price: parseFloat(itemDetails.price) || 0,
+      //     quantity: parseInt(itemDetails.quantity) || 0,
+      //     images: imageUploads.map(img => img.image_url),
+      //     category_id: selectedCategories.level3 || selectedCategories.level2 || selectedCategories.level1,
+      //   };
+
+      //   const response = await fetch(`https://paperclip.marketplace/api/products/${item?.marketplace_product_id}`, {
+      //     method: "PUT",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //       "Authorization": `Bearer ${process.env.MARKETPLACE_API_KEY}`,
+      //     },
+      //     body: JSON.stringify(marketplaceData),
+      //   });
+
+      //   if (!response.ok) {
+      //     console.error("Failed to update product on marketplace:", await response.text());
+      //   }
+      // }
       if (item.shopify_product_id) {
       try {
         const response = await fetch('/api/shopify/update-product', {

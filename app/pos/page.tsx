@@ -409,7 +409,7 @@ export default function POSPage() {
       for (const item of items) {
         const { data: currentItem, error } = await supabase
           .from("items")
-          .select("quantity")
+          .select("quantity") //marketplace_product_id
           .eq("id", item.id)
           .single();
 
@@ -523,6 +523,33 @@ export default function POSPage() {
         );
 
         if (success && saleRecord) {
+
+          // for (const soldItem of items) {
+          //   const { data: itemData } = await supabase
+          //     .from("items")
+          //     .select("marketplace_product_id, quantity")
+          //     .eq("id", soldItem.id)
+          //     .single();
+
+          //   if (itemData?.marketplace_product_id) {
+          //     const newQuantity = itemData.quantity - soldItem.quantity;
+          //     const response = await fetch(
+          //       `https://paperclip.marketplace/api/products/${itemData.marketplace_product_id}/inventory`,
+          //       {
+          //         method: "PUT",
+          //         headers: {
+          //           "Content-Type": "application/json",
+          //           "Authorization": `Bearer ${process.env.MARKETPLACE_API_KEY}`,
+          //         },
+          //         body: JSON.stringify({ quantity: newQuantity }),
+          //       }
+          //     );
+
+          //     if (!response.ok) {
+          //       console.error("Failed to update marketplace inventory:", await response.text());
+          //     }
+          //   }
+          // }
           setReceiptData({
             saleData: saleRecord,
             items: saleItems,

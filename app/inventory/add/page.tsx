@@ -82,7 +82,7 @@ export default function AddItemPage() {
   const [age, setAge] = useState("");
   const [color, setColor] = useState("");
   const [availableInStore, setAvailableInStore] = useState(true);
-  const [listOnPaperclip, setListOnPaperclip] = useState(true);
+  const [listOnPaperclip, setListOnPaperclip] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -510,6 +510,92 @@ export default function AddItemPage() {
       }
 
       images.forEach((image) => URL.revokeObjectURL(image.url));
+
+      // if (listOnPaperclip) {
+      //   try {
+      //     const marketplaceData = {
+      //       title: itemDetails.name.trim(),
+      //       description: itemDetails.description.trim(),
+      //       price: priceNum,
+      //       images: imageUploads.map((img) => img.image_url),
+      //       quantity: quantityNum,
+      //       category_id,
+      //     };
+      
+      //     // Use Next.js API instead of calling the external API directly
+      //     const response = await fetch("/api/marketplace/create-marketplace-product", {
+      //       method: "POST",
+      //       headers: {
+      //         "Content-Type": "application/json",
+      //       },
+      //       body: JSON.stringify(marketplaceData),
+      //     });
+      //     console.log("🚀 ~ handleSubmit ~ response:", response)
+      
+      //     if (!response.ok) {
+      //       console.error("Failed to create product on marketplace:", await response.text());
+      //       return; // Exit if failed
+      //     }
+      
+      //     const marketplaceProduct = await response.json();
+      //     const marketplaceProductId = marketplaceProduct.id;
+      
+      //     // Update Supabase with marketplace_product_id
+      //     const { error: updateError } = await supabase
+      //       .from("items")
+      //       .update({ marketplace_product_id: marketplaceProductId })
+      //       .eq("id", item.id);
+      
+      //     if (updateError) {
+      //       console.error("Failed to update marketplace_product_id:", updateError);
+      //     }
+      //   } catch (error) {
+      //     console.error("Error listing product on marketplace:", error);
+      //   }
+      // }
+      
+
+      console.log("🚀 ~ handleSubmit ~ listOnPaperclip:", listOnPaperclip)
+      // if (listOnPaperclip) {
+      //   const marketplaceData = {
+      //     title: itemDetails.name.trim(),
+      //     description: itemDetails.description.trim(),
+      //     price: priceNum,
+      //     images: imageUploads.map(img => img.image_url),
+      //     quantity: quantityNum,
+      //     category_id,
+      //   };
+
+      //   const response = await fetch("https://api.restful-api.dev/objects/4", {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //       // "Authorization": `Bearer ${process.env.MARKETPLACE_API_KEY}`,
+      //     },
+      //     body: JSON.stringify(marketplaceData),
+      //   });
+      //   console.log("🚀 ~ handleSubmit ~ response:", response)
+        
+      //   if (!response.ok) {
+      //     console.error("Failed to create product on marketplace:", await response.text());
+      //     // Optionally, mark as not synced or retry later
+      //   } else {
+      //     const marketplaceProduct = await response.json();
+      //     const marketplaceProductId = marketplaceProduct.id;
+
+      //     // Update Supabase with marketplace_product_id
+      //     const { error: updateError } = await supabase
+      //       .from("items")
+      //       .update({ marketplace_product_id: marketplaceProductId })
+      //       .eq("id", item.id);
+
+      //     if (updateError) {
+      //       console.error("Failed to update marketplace_product_id:", updateError);
+      //     }
+      //   }
+      // }
+
+
       if (listOnShopify) {
         try {
           console.log("Sending itemId to API:", item.id);
