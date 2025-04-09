@@ -18,6 +18,7 @@ export interface ItemImage {
   
   export interface ItemType {
     shopify_product_id?: any;
+    paperclip_marketplace_id?: string;
     id: string;
     title: string;
     description: string;
@@ -28,7 +29,7 @@ export interface ItemImage {
     size?: string;
     status: "available" | "low_stock" | "out_of_stock";
     available_in_store: boolean;
-    list_on_paperclip: boolean;
+    list_on_paper_clip: boolean;
     store_id: string;
     item_images: ItemImage[];
   }

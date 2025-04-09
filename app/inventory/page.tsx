@@ -195,16 +195,16 @@ export default function InventoryPage() {
     router.push("/pos");
   };
 
+
   const handleDelete = async (itemId: string) => {
+    setDeletingItems((prev) => new Set(prev).add(itemId));
     try {
-      const storeId = user.store_id; // Adjust based on how you access storeId
-  
-      const response = await fetch('/api/shopify/delete-product', {
+      const response = await fetch('/api/delete-item', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ itemId, storeId }),
+        body: JSON.stringify({ itemId, storeId: user.store_id }),
       });
   
       if (!response.ok) {
@@ -212,14 +212,47 @@ export default function InventoryPage() {
         throw new Error(errorData.error || 'Failed to delete item');
       }
   
-      // Update UI (e.g., remove item from list)
+      // Update UI by removing the item from state
       setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
-      toast.success('Item successfully removed from inventory and Shopify (if applicable)');
+      setItemToDelete(null);
+      toast.success('Item successfully removed from inventory and external platforms (if applicable)');
     } catch (error) {
       console.error('Error removing item:', error);
       toast.error(`Failed to remove item: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setDeletingItems((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
     }
   };
+
+  // const handleDelete = async (itemId: string) => {
+  //   try {
+  //     const storeId = user.store_id; // Adjust based on how you access storeId
+  
+  //     const response = await fetch('/api/shopify/delete-product', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ itemId, storeId }),
+  //     });
+  
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       throw new Error(errorData.error || 'Failed to delete item');
+  //     }
+  
+  //     // Update UI (e.g., remove item from list)
+  //     setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+  //     toast.success('Item successfully removed from inventory and Shopify (if applicable)');
+  //   } catch (error) {
+  //     console.error('Error removing item:', error);
+  //     toast.error(`Failed to remove item: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  //   }
+  // };
 
   // const handleDelete = async (itemId: string) => {
   //   setDeletingItems((prev) => new Set(prev).add(itemId));
@@ -235,6 +268,68 @@ export default function InventoryPage() {
   //   } catch (error) {
   //     console.error("Error removing item:", error);
   //     toast.error("Failed to remove item. Please try again.");
+  //   } finally {
+  //     setDeletingItems((prev) => {
+  //       const next = new Set(prev);
+  //       next.delete(itemId);
+  //       return next;
+  //     });
+  //   }
+  // };
+
+
+  // const handleDelete = async (itemId: string) => {
+  //   setDeletingItems((prev) => new Set(prev).add(itemId));
+  //   try {
+  //     // Find the item from your state list
+  //     const itemToRemove = items.find((item) => item.id === itemId);
+  //     if (!itemToRemove) {
+  //       throw new Error("Item not found");
+  //     }
+
+  //     // If the item is listed on Paperclip, delete it there first.
+  //     if (itemToRemove.paperclip_marketplace_id) {
+  //       try {
+  //         const paperclipPayload = {
+  //           userId: user.id,
+  //           paperclipItemId: itemToRemove.paperclip_marketplace_id,
+  //         };
+  //         const paperclipResponse = await fetch("/api/paperclip/delete-item", {
+  //           method: "POST",
+  //           headers: { "Content-Type": "application/json" },
+  //           body: JSON.stringify(paperclipPayload),
+  //         });
+  //         if (!paperclipResponse.ok) {
+  //           const errorText = await paperclipResponse.text();
+  //           throw new Error(`Paperclip deletion failed: ${errorText}`);
+  //         }
+  //         console.log("Successfully deleted item from Paperclip");
+  //       } catch (paperclipError) {
+  //         console.error("Error deleting item on Paperclip:", paperclipError);
+  //         toast.error("Failed to delete item on Paperclip. Please try again.");
+  //         // Optionally, you might choose to abort the deletion process here.
+  //         // return;
+  //       }
+  //     }
+
+  //     // Mark the item as deleted in Supabase.
+  //     const { error } = await supabase
+  //       .from("items")
+  //       .update({ deleted_at: new Date().toISOString() })
+  //       .eq("id", itemId);
+  //     if (error) throw error;
+
+  //     // Update local state.
+  //     setItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+  //     setItemToDelete(null);
+  //     toast.success("Item successfully removed from inventory");
+  //   } catch (error) {
+  //     console.error("Error removing item:", error);
+  //     toast.error(
+  //       `Failed to remove item: ${
+  //         error instanceof Error ? error.message : "Unknown error"
+  //       }`
+  //     );
   //   } finally {
   //     setDeletingItems((prev) => {
   //       const next = new Set(prev);

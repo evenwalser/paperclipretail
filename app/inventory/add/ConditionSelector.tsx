@@ -4,10 +4,8 @@ import { Sparkles, Star, ThumbsUp, Check, AlertCircle } from "lucide-react";
 
 const conditionOptions = [
   { value: "New", icon: Sparkles },
-  { value: "Like New", icon: Star },
-  { value: "Very Good", icon: ThumbsUp },
-  { value: "Good", icon: Check },
-  { value: "Fair", icon: AlertCircle },
+  { value: "Refurbished", icon: Star },
+  { value: "Used", icon: AlertCircle },
 ] as const;
 
 interface ConditionSelectorProps {

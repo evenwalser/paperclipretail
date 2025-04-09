@@ -7,7 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Wand2 } from "lucide-react";
+import { Tags, Wand2 } from "lucide-react";
 import ImageSection from "./ImageSection";
 import BasicInfo from "./BasicInfo";
 import CategorySelector from "./CategorySelector";
@@ -18,6 +18,16 @@ import { getUser } from "@/lib/services/items";
 import { analyzeImage } from "@/lib/together";
 import { Category, ItemImage, ItemType } from "./types";
 
+interface BrandSuggestion {
+  name: string;
+  logo_url: string;
+}
+
+interface User {
+  id: string;
+  store_id: string;
+}
+
 export default function EditItemPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
@@ -26,11 +36,11 @@ export default function EditItemPage() {
   // State declarations
   const [item, setItem] = useState<ItemType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [images, setImages] = useState<ItemImage[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [previousQuantity, setPreviousQuantity] = useState();
+  const [previousQuantity, setPreviousQuantity] = useState<number | undefined>();
   const [selectedCategories, setSelectedCategories] = useState({
     level1: "",
     level2: "",
@@ -58,7 +68,7 @@ export default function EditItemPage() {
     category: "",
   });
 
-  const [brandSuggestions, setBrandSuggestions] = useState<any[]>([]);
+  const [brandSuggestions, setBrandSuggestions] = useState<BrandSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
@@ -98,7 +108,7 @@ export default function EditItemPage() {
           availableInStore: itemData.available_in_store,
           listOnPaperclip: itemData.list_on_paperclip,
         });
-        setPreviousQuantity(itemData.quantity)
+        setPreviousQuantity(itemData.quantity);
         setLogoUrl(itemData.logo_url || "");
         setSelectedTags(itemData.tags || []);
 
@@ -151,7 +161,7 @@ export default function EditItemPage() {
     }
   };
 
-  const handleBrandSelect = (selectedBrand: any) => {
+  const handleBrandSelect = (selectedBrand: BrandSuggestion) => {
     setItemDetails((prev) => ({ ...prev, brand: selectedBrand.name }));
     setLogoUrl(selectedBrand.logo_url || "");
     setShowSuggestions(false);
@@ -276,7 +286,7 @@ export default function EditItemPage() {
         color: dataObject.color || prev.color,
       }));
       setSuggestedTags(dataObject.tags || []); // Set AI-suggested tags
-      setSelectedTags((prev) => 
+      setSelectedTags((prev) =>
         Array.from(new Set([...prev, ...(dataObject.tags || [])]))
       );
 
@@ -304,8 +314,7 @@ export default function EditItemPage() {
     }
   };
 
-
-    const handleSave = async () => {
+  const handleSave = async () => {
     if (!item) return;
 
     setFieldErrors({ name: "", price: "", images: "", category: "" });
@@ -372,7 +381,6 @@ export default function EditItemPage() {
       const imageUploads = await Promise.all(
         images.map(async (image, index) => {
           if (image.id) {
-            // If the image already has an ID, we simply update the database record (no need to upload again)
             return {
               id: image.id,
               item_id: item.id,
@@ -383,11 +391,8 @@ export default function EditItemPage() {
           }
 
           const newId = uuidv4();
-          // If the image doesn't have an ID, it means it's new and needs to be uploaded
           const fileExt = image.image_url.split(".").pop();
-          const fileName = `${user.id}/${
-            item.id
-          }/${crypto.randomUUID()}.${fileExt}`;
+          const fileName = `${user?.id}/${item.id}/${crypto.randomUUID()}.${fileExt}`;
           let fileData: Blob;
 
           if (image.file) {
@@ -441,47 +446,77 @@ export default function EditItemPage() {
       //   price: parseFloat(itemDetails.price) || 0,
       //   quantity: parseInt(itemDetails.quantity) || 0,
       // };
-      const updatedQuantity =  parseInt(itemDetails.quantity) || 0
+      const updatedQuantity = parseInt(itemDetails.quantity) || 0;
 
-      // if (itemDetails?.listOnPaperclip && item?.marketplace_product_id) {
-      //   const marketplaceData = {
-      //     title: itemDetails.name,
-      //     description: itemDetails.description,
-      //     price: parseFloat(itemDetails.price) || 0,
-      //     quantity: parseInt(itemDetails.quantity) || 0,
-      //     images: imageUploads.map(img => img.image_url),
-      //     category_id: selectedCategories.level3 || selectedCategories.level2 || selectedCategories.level1,
-      //   };
+      if (itemDetails.listOnPaperclip && item?.paperclip_marketplace_id && user?.id) {
+        try {
+          const updatePayload = {
+            userId: user.id,
+            paperclipItemId: item.paperclip_marketplace_id,
+            itemDetails: {
+              name: itemDetails.name,
+              description: itemDetails.description,
+              price: itemDetails.price,
+              quantity: parseInt(itemDetails.quantity),
+              condition: itemDetails.condition,
+              size: itemDetails.size,
+              brand: itemDetails.brand,
+              age: itemDetails.age,
+              color: itemDetails.color,
+              tags: selectedTags,
+            },
+            images: imageUploads.map((img) => img.image_url),
+            selectedCategories: {
+              level1: selectedCategories.level1
+                ? parseInt(selectedCategories.level1)
+                : undefined,
+              level2: selectedCategories.level2
+                ? parseInt(selectedCategories.level2)
+                : undefined,
+              level3: selectedCategories.level3
+                ? parseInt(selectedCategories.level3)
+                : undefined,
+            },
+          };
 
-      //   const response = await fetch(`https://paperclip.marketplace/api/products/${item?.marketplace_product_id}`, {
-      //     method: "PUT",
-      //     headers: {
-      //       "Content-Type": "application/json",
-      //       "Authorization": `Bearer ${process.env.MARKETPLACE_API_KEY}`,
-      //     },
-      //     body: JSON.stringify(marketplaceData),
-      //   });
-
-      //   if (!response.ok) {
-      //     console.error("Failed to update product on marketplace:", await response.text());
-      //   }
-      // }
-      if (item.shopify_product_id) {
-      try {
-        const response = await fetch('/api/shopify/update-product', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ storeId: user.store_id, itemId: item.id , previousQuantity}),
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update Shopify product');
+          const updateResponse = await fetch("/api/paperclip/update-item", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updatePayload),
+          });
+          if (!updateResponse.ok) {
+            const errorText = await updateResponse.text();
+            throw new Error(`Paperclip update failed: ${errorText}`);
+          }
+          const updateResult = await updateResponse.json();
+          console.log("Paperclip update result:", updateResult);
+        } catch (err) {
+          console.error("Error updating item on Paperclip:", err);
+          toast.error("Failed to update item on Paperclip.");
         }
-      } catch (error) {
-        console.error('Shopify update error:', error);
-        toast.error('Failed to sync with Shopify, but local changes saved');
       }
-    }
+      if (item.shopify_product_id && user?.store_id) {
+        try {
+          const response = await fetch("/api/shopify/update-product", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              storeId: user.store_id,
+              itemId: item.id,
+              previousQuantity,
+            }),
+          });
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(
+              errorData.error || "Failed to update Shopify product"
+            );
+          }
+        } catch (error) {
+          console.error("Shopify update error:", error);
+          toast.error("Failed to sync with Shopify, but local changes saved");
+        }
+      }
 
       images.forEach((image) => URL.revokeObjectURL(image.image_url));
       router.push("/inventory");
@@ -493,147 +528,6 @@ export default function EditItemPage() {
       setIsSaving(false);
     }
   };
-
-  
-  // const handleSave = async () => {
-  //   if (!item) return;
-
-  //   setFieldErrors({ name: "", price: "", images: "", category: "" });
-  //   let hasErrors = false;
-  //   const newErrors = { name: "", price: "", images: "", category: "" };
-
-  //   if (!itemDetails.name.trim()) {
-  //     newErrors.name = "Item name is required";
-  //     hasErrors = true;
-  //   }
-  //   if (
-  //     !itemDetails.price ||
-  //     isNaN(parseFloat(itemDetails.price)) ||
-  //     parseFloat(itemDetails.price) <= 0
-  //   ) {
-  //     newErrors.price = "Valid price is required";
-  //     hasErrors = true;
-  //   }
-  //   const filteredImages = images.filter((image) =>
-  //     /\.(jpg|jpeg|png|gif|webp)$/i.test(image.image_url)
-  //   );
-  //   if (filteredImages.length === 0) {
-  //     newErrors.images = "At least one image is required";
-  //     hasErrors = true;
-  //   }
-  //   if (!selectedCategories.level1) {
-  //     newErrors.category = "Please select a main category";
-  //     hasErrors = true;
-  //   }
-
-  //   if (hasErrors) {
-  //     setFieldErrors(newErrors);
-  //     return;
-  //   }
-
-  //   setIsSaving(true);
-  //   try {
-  //     // Update the item details in the database
-  //     const { error: itemError } = await supabase
-  //       .from("items")
-  //       .update({
-  //         title: itemDetails.name,
-  //         description: itemDetails.description,
-  //         price: parseFloat(itemDetails.price) || 0,
-  //         quantity: parseInt(itemDetails.quantity) || 0,
-  //         category_id:
-  //           selectedCategories.level3 ||
-  //           selectedCategories.level2 ||
-  //           selectedCategories.level1,
-  //         condition: itemDetails.condition,
-  //         size: itemDetails.size,
-  //         brand: itemDetails.brand,
-  //         logo_url: logoUrl,
-  //         age: itemDetails.age,
-  //         color: itemDetails.color,
-  //         available_in_store: itemDetails.availableInStore,
-  //         list_on_paperclip: itemDetails.listOnPaperclip,
-  //         tags: selectedTags,
-  //       })
-  //       .eq("id", item.id);
-
-  //     if (itemError) throw itemError;
-
-  //     const imageUploads = await Promise.all(
-  //       images.map(async (image, index) => {
-  //         if (image.id) {
-  //           // If the image already has an ID, we simply update the database record (no need to upload again)
-  //           return {
-  //             id: image.id,
-  //             item_id: item.id,
-  //             image_url: image.image_url,
-  //             display_order: index,
-  //           };
-  //         }
-
-  //         const newId = uuidv4();
-  //         // If the image doesn't have an ID, it means it's new and needs to be uploaded
-  //         const fileExt = image.image_url.split(".").pop();
-  //         const fileName = `${user.id}/${
-  //           item.id
-  //         }/${crypto.randomUUID()}.${fileExt}`;
-  //         let fileData: Blob;
-
-  //         if (image.file) {
-  //           fileData = image.file;
-  //         } else {
-  //           const response = await fetch(image.image_url);
-  //           fileData = await response.blob();
-  //         }
-
-  //         // Upload the new image
-  //         const { error: uploadError } = await supabase.storage
-  //           .from("item-images")
-  //           .upload(fileName, fileData, {
-  //             cacheControl: "3600",
-  //             upsert: false,
-  //           });
-  //         if (uploadError) throw uploadError;
-
-  //         const {
-  //           data: { publicUrl },
-  //         } = supabase.storage.from("item-images").getPublicUrl(fileName);
-
-  //         return {
-  //           id: newId,
-  //           item_id: item.id,
-  //           image_url: publicUrl,
-  //           display_order: index,
-  //         };
-  //       })
-  //     );
-
-  //     // Delete old images that are no longer associated with this item
-  //     const existingIds = images.filter((img) => img.id).map((img) => img.id);
-  //     await supabase
-  //       .from("item_images")
-  //       .delete()
-  //       .eq("item_id", item.id)
-  //       .not("id", "in", `(${existingIds.join(",")})`);
-
-  //     // Insert new images if necessary
-  //     if (imageUploads.length > 0) {
-  //       const { error: imageError } = await supabase
-  //         .from("item_images")
-  //         .upsert(imageUploads, { onConflict: "id" });
-  //       if (imageError) throw imageError;
-  //     }
-
-  //     images.forEach((image) => URL.revokeObjectURL(image.image_url));
-  //     router.push("/inventory");
-  //     toast.success("Item updated successfully");
-  //   } catch (error) {
-  //     console.error("Save error:", error);
-  //     toast.error("Error saving changes");
-  //   } finally {
-  //     setIsSaving(false);
-  //   }
-  // };
 
   if (isLoading) return <div>Loading...</div>;
 
@@ -671,8 +565,8 @@ export default function EditItemPage() {
               showSuggestions={showSuggestions}
               onBrandSelect={handleBrandSelect}
               logoUrl={logoUrl}
-              selectedTags={selectedTags} // Add this
-              onTagsChange={setSelectedTags} // Add this
+              selectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
             />
             <CategorySelector
               categories={categories}

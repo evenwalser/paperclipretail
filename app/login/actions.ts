@@ -5,9 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 
 // Use environment variables for production/staging
-const BASEURL = process.env.NODE_ENV === 'production' 
-  ? 'https://api.paperclip.co/v4' 
-  : 'https://staging-api.paperclip.co/v4';
+const BASEURL = `${process.env.NEXT_PUBLIC_PAPERCLIP_API_URL}/v4`;
 
 export async function signup(formData: FormData) {
   const supabase = await createClient();

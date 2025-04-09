@@ -271,7 +271,7 @@ export async function POST(request: Request) {
 "price_low" - Low Price: Identify the best deals or lower-end prices for similar items.
 "price_avg" - Average Price: Determine the common market value for the item based on similar listings.
 "price_high" - High Price: Identify the upper-end prices, especially for items that are rare, high-quality, or particularly desirable within this category.
-"condition" - Assess the item’s condition with precision and choose one of following values which seems most likely (New, Like New, Very Good, Good, Fair). When not sure default to used.
+"condition" - Assess the item’s condition with precision and choose one of following values which seems most likely (New, Refurbished, Used). When not sure default to used.
 "images_summary" - An array of summaries of all provided images. Focus on describing the image into smallest details, so it can be re-used in future prompts. Focus on details which might help identify items on the image. Brands, logos, serial numbers, clothing tags. Generate one summary per image.
 "category_id" - Identify the most suitable category ID for the item based on the provided images. Use the category tree json object on the begining of this prompt to find the category ID and give value like "Sports & fitness > Footwear > Kids".
 "weight" - Determine the approximate weight of the item as float value in kg

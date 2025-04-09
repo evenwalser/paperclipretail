@@ -12,6 +12,8 @@ import DetailsView from "./DetailsView";
 import { analyzeImage } from "@/lib/together";
 import { createShopifyProduct } from "@/lib/shopify";
 import { Button } from "react-day-picker";
+import { ListOnPaperclipParams } from "@/app/api/paperclip/create-items/route";
+
 
 type ViewState = "initial" | "camera" | "review" | "details";
 
@@ -75,14 +77,14 @@ export default function AddItemPage() {
   });
   const [isPrePopulated, setIsPrePopulated] = useState(false);
   const [condition, setCondition] = useState<
-    "New" | "Like New" | "Very Good" | "Good" | "Fair"
+   "New" | "Refurbished" | "Used"
   >("New");
   const [size, setSize] = useState("");
   const [brand, setBrand] = useState("");
   const [age, setAge] = useState("");
   const [color, setColor] = useState("");
   const [availableInStore, setAvailableInStore] = useState(true);
-  const [listOnPaperclip, setListOnPaperclip] = useState(false);
+  const [listOnPaperclip, setListOnPaperclip] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -278,7 +280,7 @@ export default function AddItemPage() {
     const newIndex = newOrder.findIndex((img) => img.url === selectedImage.url);
     setCurrentImageIndex(newIndex);
   };
-
+  console.log('here is selected categories', selectedCategories)
   const handleAIAnalysis = async () => {
     if (!images.length) {
       toast.error("Please add at least one image to analyze");
@@ -511,90 +513,93 @@ export default function AddItemPage() {
 
       images.forEach((image) => URL.revokeObjectURL(image.url));
 
-      // if (listOnPaperclip) {
-      //   try {
-      //     const marketplaceData = {
-      //       title: itemDetails.name.trim(),
-      //       description: itemDetails.description.trim(),
-      //       price: priceNum,
-      //       images: imageUploads.map((img) => img.image_url),
-      //       quantity: quantityNum,
-      //       category_id,
-      //     };
-      
-      //     // Use Next.js API instead of calling the external API directly
-      //     const response = await fetch("/api/marketplace/create-marketplace-product", {
-      //       method: "POST",
-      //       headers: {
-      //         "Content-Type": "application/json",
-      //       },
-      //       body: JSON.stringify(marketplaceData),
-      //     });
-      //     console.log("🚀 ~ handleSubmit ~ response:", response)
-      
-      //     if (!response.ok) {
-      //       console.error("Failed to create product on marketplace:", await response.text());
-      //       return; // Exit if failed
-      //     }
-      
-      //     const marketplaceProduct = await response.json();
-      //     const marketplaceProductId = marketplaceProduct.id;
-      
-      //     // Update Supabase with marketplace_product_id
-      //     const { error: updateError } = await supabase
-      //       .from("items")
-      //       .update({ marketplace_product_id: marketplaceProductId })
-      //       .eq("id", item.id);
-      
-      //     if (updateError) {
-      //       console.error("Failed to update marketplace_product_id:", updateError);
-      //     }
-      //   } catch (error) {
-      //     console.error("Error listing product on marketplace:", error);
-      //   }
-      // }
-      
+   
+     
 
       console.log("🚀 ~ handleSubmit ~ listOnPaperclip:", listOnPaperclip)
+      if (listOnPaperclip) {
+        try {
+          const payload: ListOnPaperclipParams = {
+            userId: user?.id,
+            itemDetails: {
+              name: itemDetails.name.trim(),
+              description: itemDetails.description.trim(),
+              price: priceNum.toString(),
+              condition: condition,
+            },
+            images: imageUploads.map((img) => img.image_url), // Array of URLs
+            selectedCategories: {
+              level1: selectedCategories.level1 ? parseInt(selectedCategories.level1) : undefined,
+              level2: selectedCategories.level2 ? parseInt(selectedCategories.level2) : undefined,
+              level3: selectedCategories.level3 ? parseInt(selectedCategories.level3) : undefined,
+            },
+            brand,
+            size,
+            color,
+            retailId: item?.id,
+            tags: item?.tags
+          };
+      
+          const response = await fetch("/api/paperclip/create-items", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+      
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Paperclip API error:", errorText);
+            throw new Error(`Failed to list on Paperclip: ${errorText}`);
+          }
+      
+          const result = await response.json();
+          console.log("Paperclip listing successful:", result);
+        } catch (error) {
+          console.error("Error listing on Paperclip:", error);
+          toast.error("Failed to list item on Paperclip.");
+        }
+      }
+    
       // if (listOnPaperclip) {
-      //   const marketplaceData = {
-      //     title: itemDetails.name.trim(),
-      //     description: itemDetails.description.trim(),
-      //     price: priceNum,
-      //     images: imageUploads.map(img => img.image_url),
-      //     quantity: quantityNum,
-      //     category_id,
+      //   // Construct the payload with the given properties
+      //   const payload = {
+      //     userId: user?.id,
+      //     itemDetails,
+      //     images,
+      //     selectedCategories,
+      //     brand,
+      //     size,
+      //     color,
       //   };
-
-      //   const response = await fetch("https://api.restful-api.dev/objects/4", {
-      //     method: "POST",
+      
+      //   // Call the API endpoint using fetch
+      //   fetch('/api/paperclip/create-items', {
+      //     method: 'POST',
       //     headers: {
-      //       "Content-Type": "application/json",
-      //       // "Authorization": `Bearer ${process.env.MARKETPLACE_API_KEY}`,
+      //       'Content-Type': 'application/json'
       //     },
-      //     body: JSON.stringify(marketplaceData),
-      //   });
-      //   console.log("🚀 ~ handleSubmit ~ response:", response)
-        
-      //   if (!response.ok) {
-      //     console.error("Failed to create product on marketplace:", await response.text());
-      //     // Optionally, mark as not synced or retry later
-      //   } else {
-      //     const marketplaceProduct = await response.json();
-      //     const marketplaceProductId = marketplaceProduct.id;
-
-      //     // Update Supabase with marketplace_product_id
-      //     const { error: updateError } = await supabase
-      //       .from("items")
-      //       .update({ marketplace_product_id: marketplaceProductId })
-      //       .eq("id", item.id);
-
-      //     if (updateError) {
-      //       console.error("Failed to update marketplace_product_id:", updateError);
-      //     }
-      //   }
+      //     body: JSON.stringify(payload),
+      //   })
+      //     .then(response => {
+      //       if (!response.ok) {
+      //         // You can throw an error or handle a non-2xx response here
+      //         throw new Error(`HTTP error! status: ${response.status}`);
+      //       }
+      //       return response.json();
+      //     })
+      //     .then(data => {
+      //       // Handle the successful response data
+      //       console.log('API call succeeded:', data);
+      //     })
+      //     .catch(error => {
+      //       // Handle any errors from the fetch or the API call
+      //       console.error('Error calling listOnPaperclip API:', error);
+      //     });
       // }
-
+      // Show success message
+ 
 
       if (listOnShopify) {
         try {
@@ -772,29 +777,7 @@ export default function AddItemPage() {
       setIsDuplicating(false);
     }
   };
-  const demoAdd = async () => {
-    try {
-      const response = await fetch("/api/shopify/create-product", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeId: user.store_id, itemId: "1234" }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create Shopify product");
-      }
-      const shopifyProduct = await response.json();
-      console.log("🚀 ~ demoAdd ~ shopifyProduct:", shopifyProduct);
-      // await supabase.from('items').update({
-      //   shopify_product_id: shopifyProduct.product.id,
-      //   shopify_variant_id: shopifyProduct.product.variants[0].id,
-      //   list_on_shopify: true,
-      // }).eq('id', item.id);
-    } catch (error) {
-      console.error("Shopify sync error:", error);
-      // toast.error('Failed to sync with Shopify');
-    }
-  };
+
 
   const extractJson = (response: string) => {
     try {
@@ -873,7 +856,7 @@ export default function AddItemPage() {
                 condition={condition}
                 onConditionChange={(value) =>
                   setCondition(
-                    value as "New" | "Like New" | "Very Good" | "Good" | "Fair"
+                    value as "New" | "Refurbished" | "Used"
                   )
                 }
                 size={size}
