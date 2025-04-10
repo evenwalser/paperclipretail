@@ -14,7 +14,6 @@ import { createShopifyProduct } from "@/lib/shopify";
 import { Button } from "react-day-picker";
 import { ListOnPaperclipParams } from "@/app/api/paperclip/create-items/route";
 
-
 type ViewState = "initial" | "camera" | "review" | "details";
 
 interface ImageFile {
@@ -76,9 +75,9 @@ export default function AddItemPage() {
     level3: "",
   });
   const [isPrePopulated, setIsPrePopulated] = useState(false);
-  const [condition, setCondition] = useState<
-   "New" | "Refurbished" | "Used"
-  >("New");
+  const [condition, setCondition] = useState<"New" | "Refurbished" | "Used">(
+    "New"
+  );
   const [size, setSize] = useState("");
   const [brand, setBrand] = useState("");
   const [age, setAge] = useState("");
@@ -200,6 +199,16 @@ export default function AddItemPage() {
     const files = event.target.files;
     if (!files?.length) return;
 
+    const webpFiles = Array.from(files).filter(
+      (file) => file.type === "image/webp"
+    );
+    if (webpFiles.length > 0) {
+      toast.error(
+        "WEBP images are not supported. Please upload images in JPEG, PNG, or GIF format."
+      );
+      return;
+    }
+
     try {
       const newImages = await Promise.all(
         Array.from(files).map(async (file) => {
@@ -280,7 +289,7 @@ export default function AddItemPage() {
     const newIndex = newOrder.findIndex((img) => img.url === selectedImage.url);
     setCurrentImageIndex(newIndex);
   };
-  console.log('here is selected categories', selectedCategories)
+  console.log("here is selected categories", selectedCategories);
   const handleAIAnalysis = async () => {
     if (!images.length) {
       toast.error("Please add at least one image to analyze");
@@ -547,13 +556,13 @@ export default function AddItemPage() {
             },
             body: JSON.stringify(payload),
           });
-      
+
           if (!response.ok) {
             const errorText = await response.text();
             console.error("Paperclip API error:", errorText);
             throw new Error(`Failed to list on Paperclip: ${errorText}`);
           }
-      
+
           const result = await response.json();
           console.log("Paperclip listing successful:", result);
         } catch (error) {
@@ -561,45 +570,6 @@ export default function AddItemPage() {
           toast.error("Failed to list item on Paperclip.");
         }
       }
-    
-      // if (listOnPaperclip) {
-      //   // Construct the payload with the given properties
-      //   const payload = {
-      //     userId: user?.id,
-      //     itemDetails,
-      //     images,
-      //     selectedCategories,
-      //     brand,
-      //     size,
-      //     color,
-      //   };
-      
-      //   // Call the API endpoint using fetch
-      //   fetch('/api/paperclip/create-items', {
-      //     method: 'POST',
-      //     headers: {
-      //       'Content-Type': 'application/json'
-      //     },
-      //     body: JSON.stringify(payload),
-      //   })
-      //     .then(response => {
-      //       if (!response.ok) {
-      //         // You can throw an error or handle a non-2xx response here
-      //         throw new Error(`HTTP error! status: ${response.status}`);
-      //       }
-      //       return response.json();
-      //     })
-      //     .then(data => {
-      //       // Handle the successful response data
-      //       console.log('API call succeeded:', data);
-      //     })
-      //     .catch(error => {
-      //       // Handle any errors from the fetch or the API call
-      //       console.error('Error calling listOnPaperclip API:', error);
-      //     });
-      // }
-      // Show success message
- 
 
       if (listOnShopify) {
         try {
@@ -609,11 +579,6 @@ export default function AddItemPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ storeId: user.store_id, itemId: item.id }),
           });
-
-          // if (!response.ok) {
-          //   const errorData = await response.json();
-          //   throw new Error(errorData.error || 'Failed to create Shopify product');
-          // }
 
           const shopifyProduct = await response.json();
           console.log("🚀 ~ handleSubmit ~ shopifyProduct:", shopifyProduct);
@@ -637,16 +602,18 @@ export default function AddItemPage() {
             .eq("item_id", item.id)
             .order("display_order");
 
-            if (insertedImages && mediaNodes.length > 0) {
-              await Promise.all(
-                insertedImages.map(async (img, index) => {
-                  if (index < mediaNodes.length) {
-                    await supabase
-                      .from("item_images")
-                      .update({ shopify_media_id: mediaNodes[index].id })
-                      .eq("id", img.id);
-                  }
-                }))}
+          if (insertedImages && mediaNodes.length > 0) {
+            await Promise.all(
+              insertedImages.map(async (img, index) => {
+                if (index < mediaNodes.length) {
+                  await supabase
+                    .from("item_images")
+                    .update({ shopify_media_id: mediaNodes[index].id })
+                    .eq("id", img.id);
+                }
+              })
+            );
+          }
 
           console.log(
             "🚀 ~ handleSubmit ~ shopify_product_id:",
@@ -666,7 +633,6 @@ export default function AddItemPage() {
           );
         } catch (error) {
           console.error("Shopify sync error:", error);
-          // toast.error('Failed to sync with Shopify');
         }
       }
 
@@ -778,7 +744,6 @@ export default function AddItemPage() {
     }
   };
 
-
   const extractJson = (response: string) => {
     try {
       const jsonStart = response.indexOf("{");
@@ -855,9 +820,7 @@ export default function AddItemPage() {
                 onCategoryChange={setSelectedCategories}
                 condition={condition}
                 onConditionChange={(value) =>
-                  setCondition(
-                    value as "New" | "Refurbished" | "Used"
-                  )
+                  setCondition(value as "New" | "Refurbished" | "Used")
                 }
                 size={size}
                 onSizeChange={setSize}

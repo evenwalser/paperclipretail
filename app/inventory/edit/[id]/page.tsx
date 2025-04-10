@@ -174,6 +174,12 @@ export default function EditItemPage() {
     const files = event.target.files;
     if (!files?.length) return;
 
+    const webpFiles = Array.from(files).filter(file => file.type === 'image/webp');
+  if (webpFiles.length > 0) {
+    toast.error("WEBP images are not supported. Please upload images in JPEG, PNG, or GIF format.");
+    return;
+  }
+
     try {
       const newImages = await Promise.all(
         Array.from(files).map(async (file) => {
