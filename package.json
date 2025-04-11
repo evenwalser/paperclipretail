@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "clean": "if exist .next rd /s /q .next",
     "dev": "next dev",
     "prebuild": "tsc --noEmit || true",
-    "build": "next build",
+    "build": "npm run clean && next build",
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx lib/db/seed.ts",

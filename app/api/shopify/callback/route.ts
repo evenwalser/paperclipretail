@@ -60,20 +60,9 @@ export async function GET(req: Request) {
   return NextResponse.redirect(redirectURL);
 }
 
-  try {
-    await registerWebhooks(shop, access_token);
-  } catch (error) {
-    console.error("Error registering webhook:", error);
-  }
-
-  const redirectURL = new URL("/inventory", process.env.NEXT_PUBLIC_APP_URL);
-  return NextResponse.redirect(redirectURL);
-}
-
 async function registerWebhooks(shopName: string, accessToken: string) {
   const webhook = {
     topic: "inventory_levels/update",
-    address: `${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/shopify-webhooks`,
     address: `${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/shopify-webhooks`,
     format: "json",
   };
