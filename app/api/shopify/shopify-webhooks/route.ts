@@ -48,6 +48,7 @@ export async function POST(req: Request) {
     // Parse the JSON payload
     const payload = JSON.parse(rawBody.toString("utf-8"));
     const { inventory_item_id, location_id, available } = payload;
+    
     console.log("🚀 ~ POST ~ payload:", payload);
 
     const fullInventoryItemId = `gid://shopify/InventoryItem/${inventory_item_id}`; // e.g., "gid://shopify/InventoryItem/48987871543519"
