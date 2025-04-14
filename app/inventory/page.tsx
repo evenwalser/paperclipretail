@@ -11,13 +11,13 @@ import { cn } from "@/lib/utils";
 import { useCart } from "../contexts/CartContext";
 import { useRole } from "@/hooks/useRole";
 import { useUser } from "../contexts/UserContext";
-import InventoryHeader from "./components/InventoryHeader";
-import InventoryFilters from "./components/InventoryFilters";
-import ItemCard from "./components/ItemCard";
+import InventoryHeader from "../../components/inventory/InventoryHeader";
+import InventoryFilters from "../../components/inventory/InventoryFilters";
+import ItemCard from "../../components/inventory/ItemCard";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
-import { sortItems } from "./utils/inventory-utils";
+import { sortItems } from "../../utils/inventory";
 import { useMemo } from "react";
-import { getShopifyCredentials } from "@/lib/shopify";
+import { getShopifyCredentials } from "@/lib/shopify";  
 import { cloneDeep } from "lodash";
 
 interface Category {

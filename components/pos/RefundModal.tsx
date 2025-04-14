@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefundModalProps } from '../types';
+import { RefundModalProps } from './types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Minus } from "lucide-react";

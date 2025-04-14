@@ -1,6 +1,6 @@
 import React from 'react';
-import { TerminalStatusProps } from '../../types';
 import { Button } from "@/components/ui/button";
+import { TerminalStatusProps } from '../types';
 
 const TerminalStatus: React.FC<TerminalStatusProps> = ({
   terminalStatus,

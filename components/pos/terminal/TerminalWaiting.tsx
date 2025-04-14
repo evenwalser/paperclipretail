@@ -1,6 +1,6 @@
 import React from 'react';
-import { TerminalWaitingProps } from '../../types';
 import { Button } from "@/components/ui/button";
+import { TerminalWaitingProps } from '../types';
 
 const TerminalWaiting: React.FC<TerminalWaitingProps> = ({
   setWaitingForTerminal,

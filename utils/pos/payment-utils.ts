@@ -1,4 +1,4 @@
-import { SaleItem, Discount } from "../types";
+import { SaleItem, Discount } from "../../components/pos/types";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { processCustomerData } from "./customer-utils";
@@ -88,22 +88,27 @@ export const processCashPayment = async (
       .eq("id", saleRecord.id);
 
 
-      const updates = items.map(item => ({
+      const shopifyUpdates = items
+      .filter(item => item.shopify_product_id) // Only include items with Shopify ID
+      .map(item => ({
         itemId: item.id,
-        quantityDelta: -item.quantity, // Decrease inventory
+        quantityDelta: -item.quantity,
+        shopify_product_id: item.shopify_product_id
       }));
-  
-      const shopifyResponse = await fetch('/api/shopify/update-inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeId, updates }),
-      });
-      console.log("🚀 ~ shopifyResponse:", shopifyResponse)
-  
-      if (!shopifyResponse.ok) {
-        console.error('Failed to update Shopify inventory:', await shopifyResponse.json());
-        // Optionally, notify the user but don't fail the sale
-        toast.error('Sale recorded, but Shopify inventory update failed');
+
+
+      
+      if (shopifyUpdates.length > 0) {
+        const shopifyResponse = await fetch('/api/shopify/update-inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storeId, updates: shopifyUpdates }),
+        });
+
+        if (!shopifyResponse.ok) {
+          console.error('Failed to update Shopify inventory:', await shopifyResponse.json());
+          toast.error('Sale recorded, but Shopify inventory update failed');
+        }
       }
 
     // Create payment record

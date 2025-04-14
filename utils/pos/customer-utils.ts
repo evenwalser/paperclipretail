@@ -1,4 +1,4 @@
-import { CustomerData } from "../types";
+import { CustomerData } from "../../components/pos/types";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 

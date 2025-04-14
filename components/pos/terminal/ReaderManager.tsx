@@ -1,6 +1,6 @@
 import React from 'react';
-import { ReaderManagerProps } from '../../types';
 import { Button } from "@/components/ui/button";
+import { ReaderManagerProps } from '../types';
 
 const ReaderManager: React.FC<ReaderManagerProps> = ({
   reader,

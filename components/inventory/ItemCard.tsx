@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination } from "swiper/modules";
 import { Pencil, Trash2, Copy } from "lucide-react";
-import { ItemCardProps } from "../types";
-import { isVideo } from "../utils/inventory-utils";
+import { ItemCardProps } from "./types";
+import { isVideo } from "../../utils/inventory";
 import Image from "next/image";
 import 'swiper/css';
 

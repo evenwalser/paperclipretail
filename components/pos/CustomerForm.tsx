@@ -1,5 +1,5 @@
 import React from 'react';
-import { CustomerFormProps } from '../types';
+import { CustomerFormProps } from './types';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

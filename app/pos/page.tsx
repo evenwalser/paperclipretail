@@ -22,18 +22,18 @@ import {
   RefundSale,
   RefundSaleItem,
   SaleReceiptData,
-} from "./types";
+} from "../../components/pos/types";
 
 // Import components
-import CartSection from "./components/CartSection";
-import PaymentSection from "./components/PaymentSection";
-import CustomerForm from "./components/CustomerForm";
-import PaymentOptionsModal from "./components/PaymentOptionsModal";
-import DiscountModal from "./components/DiscountModal";
-import RefundModal from "./components/RefundModal";
-import ReaderManager from "./components/terminal/ReaderManager";
-import TerminalStatus from "./components/terminal/TerminalStatus";
-import TerminalWaiting from "./components/terminal/TerminalWaiting";
+import CartSection from "@/components/pos/CartSection";
+import PaymentSection from "@/components/pos/PaymentSection";
+import CustomerForm from "@/components/pos/CustomerForm";
+import PaymentOptionsModal from "@/components/pos/PaymentOptionsModal";
+import DiscountModal from "@/components/pos/DiscountModal";
+import RefundModal from "@/components/pos/RefundModal";
+import ReaderManager from "@/components/pos/terminal/ReaderManager";
+import TerminalStatus from "@/components/pos/terminal/TerminalStatus";
+import TerminalWaiting from "@/components/pos/terminal/TerminalWaiting";
 
 // Import utilities
 import {
@@ -41,7 +41,7 @@ import {
   calculateFinalTotal,
   processCashPayment,
   storeTerminalPaymentContext,
-} from "./utils/payment-utils";
+} from "../../utils/pos/payment-utils";
 
 import {
   checkReaderStatus,
@@ -49,19 +49,19 @@ import {
   selectReader as selectReaderUtil,
   createTerminalPayment as createTerminalPaymentUtil,
   processTerminalPayment as processTerminalPaymentUtil,
-} from "./utils/terminal-utils";
+} from "../../utils/pos/terminal-utils";
 
 import {
   processCustomerData,
   validateCustomerData,
-} from "./utils/customer-utils";
+} from "../../utils/pos/customer-utils";
 
 import {
   searchSale as searchSaleUtil,
   updateRefundQuantity as updateRefundQuantityUtil,
   calculateRefundTotal as calculateRefundTotalUtil,
   processRefund as processRefundUtil,
-} from "./utils/refund-utils";
+} from "../../utils/pos/refund-utils";
 
 // Initialize Stripe
 const stripePromise = loadStripe(

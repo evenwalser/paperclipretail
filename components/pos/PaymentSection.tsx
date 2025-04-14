@@ -1,5 +1,5 @@
 import React from 'react';
-import { PaymentSectionProps } from '../types';
+import { PaymentSectionProps } from './types';
 import { Button } from "@/components/ui/button";
 import { CreditCard, Smartphone, QrCode } from "lucide-react";
 import {

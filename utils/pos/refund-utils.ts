@@ -1,4 +1,4 @@
-import { RefundSale, RefundSaleItem } from "../types";
+import { RefundSale, RefundSaleItem } from "../../components/pos/types";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import { formatCurrency } from "./payment-utils";

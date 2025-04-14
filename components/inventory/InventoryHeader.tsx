@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { InventoryHeaderProps } from '../types';
+import { InventoryHeaderProps } from './types';
 
 const InventoryHeader: React.FC<InventoryHeaderProps> = ({
   selectedItemsCount,

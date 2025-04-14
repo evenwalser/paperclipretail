@@ -8,15 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Tags, Wand2 } from "lucide-react";
-import ImageSection from "./ImageSection";
-import BasicInfo from "./BasicInfo";
-import CategorySelector from "./CategorySelector";
-import ConditionSelector from "./ConditionSelector";
-import SizeSelector from "./SizeSelector";
-import AvailabilityToggles from "./AvailabilityToggles";
+import ImageSection from "@/components/inventory/edit/ImageSection";
+import BasicInfo from "@/components/inventory/edit/BasicInfo";
+import CategorySelector from "@/components/inventory/edit/CategorySelector";
+import ConditionSelector from "@/components/inventory/edit/ConditionSelector";
+import SizeSelector from "@/components/inventory/edit/SizeSelector";
+import AvailabilityToggles from "@/components/inventory/edit/AvailabilityToggles";
 import { getUser } from "@/lib/services/items";
 import { analyzeImage } from "@/lib/together";
-import { Category, ItemImage, ItemType } from "./types";
+import { Category, ItemImage, ItemType } from "@/components/inventory/edit/types";
 
 interface BrandSuggestion {
   name: string;

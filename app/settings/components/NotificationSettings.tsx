@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +18,30 @@ export function NotificationSettings() {
   const [newSaleAlert, setNewSaleAlert] = useState(true);
   const [notificationEmail, setNotificationEmail] = useState('');
   const [notificationPhone, setNotificationPhone] = useState('');
-  const [message, setMessage] = useState(''); // State for message content
-  const [messageType, setMessageType] = useState<'success' | 'error' | null>(null); // State for message type
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!user?.id) return;
+      
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (data) {
+        setNotificationChannels(data.notification_channels || ['in-app']);
+        setLowStockAlert(data.low_stock_alert ?? true);
+        setNewSaleAlert(data.new_sale_alert ?? true);
+        setNotificationEmail(data.notification_email || '');
+        setNotificationPhone(data.notification_phone || '');
+      }
+    };
+
+    fetchSettings();
+  }, [user]);
 
   const toggleNotificationChannel = (channel: string) => {
     setNotificationChannels(current =>
@@ -29,8 +51,27 @@ export function NotificationSettings() {
     );
   };
 
+  const validatePhoneNumber = (phone: string) => {
+    return /^\+[1-9]\d{1,14}$/.test(phone);
+  };
+
   const handleSave = async () => {
     if (!user) return;
+
+    // Validate SMS settings
+    if (notificationChannels.includes('sms')) {
+      if (!notificationPhone) {
+        setMessage('Phone number is required for SMS notifications');
+        setMessageType('error');
+        return;
+      }
+      if (!validatePhoneNumber(notificationPhone)) {
+        setMessage('Phone number must be in E.164 format (e.g., +1234567890)');
+        setMessageType('error');
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from('user_settings')
       .upsert({
@@ -49,10 +90,8 @@ export function NotificationSettings() {
     } else {
       setMessage('Settings saved successfully');
       setMessageType('success');
-      console.log('Settings saved successfully');
     }
 
-    // Clear the message after 3 seconds
     setTimeout(() => {
       setMessage('');
       setMessageType(null);
@@ -66,22 +105,22 @@ export function NotificationSettings() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Notification Channels</h3>
-          <div className="flex space-x-4">
+        <h3 className="text-lg font-semibold">Notification Channels</h3>
+          <div className="flex flex-wrap gap-2">
             {['in-app', 'email', 'sms'].map((channel) => (
               <Button
                 key={channel}
                 variant="outline"
-                className={`flex items-center ${
+                className={`flex items-center gap-2 ${
                   notificationChannels.includes(channel)
-                    ? 'bg-green-500 text-white'
-                    : ''
+                    ? 'bg-green-500 text-white hover:bg-green-600'
+                    : 'bg-gray-100 hover:bg-gray-200'
                 }`}
                 onClick={() => toggleNotificationChannel(channel)}
               >
-                {channel === 'in-app' && <Bell className="mr-2 h-4 w-4" />}
-                {channel === 'email' && <Mail className="mr-2 h-4 w-4" />}
-                {channel === 'sms' && <MessageSquare className="mr-2 h-4 w-4" />}
+                {channel === 'in-app' && <Bell className="h-4 w-4" />}
+                {channel === 'email' && <Mail className="h-4 w-4" />}
+                {channel === 'sms' && <MessageSquare className="h-4 w-4" />}
                 {channel.charAt(0).toUpperCase() + channel.slice(1)}
               </Button>
             ))}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { SaleItem, CartSectionProps } from '../types';
+
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Trash2 } from "lucide-react";
 import {
@@ -8,6 +8,7 @@ import {
   CardFooter,
   CardTitle,
 } from "@/components/ui/card";
+import { CartSectionProps } from './types';
 
 const CartSection: React.FC<CartSectionProps> = ({
   items,

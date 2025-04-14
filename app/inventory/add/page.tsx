@@ -5,14 +5,15 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import InitialView from "./InitialView";
-import CameraView from "./CameraView";
-import ReviewView from "./ReviewView";
-import DetailsView from "./DetailsView";
+import InitialView from "@/components/inventory/add/InitialView";
+import CameraView from "@/components/inventory/add/CameraView";
+import ReviewView from "@/components/inventory/add/ReviewView";
+import DetailsView from "@/components/inventory/add/DetailsView"; 
 import { analyzeImage } from "@/lib/together";
 import { createShopifyProduct } from "@/lib/shopify";
 import { Button } from "react-day-picker";
 import { ListOnPaperclipParams } from "@/app/api/paperclip/create-items/route";
+
 
 type ViewState = "initial" | "camera" | "review" | "details";
 

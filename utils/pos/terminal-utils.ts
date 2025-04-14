@@ -1,4 +1,4 @@
-import { Reader } from "../types";
+import { Reader } from "../../components/pos/types";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 

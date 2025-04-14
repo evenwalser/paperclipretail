@@ -1,5 +1,5 @@
 import React from 'react';
-import { PaymentOptionsModalProps } from '../types';
+import { PaymentOptionsModalProps } from './types';
 import { Button } from "@/components/ui/button";
 import { CreditCard } from "lucide-react";
 

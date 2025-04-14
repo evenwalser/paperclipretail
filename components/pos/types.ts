@@ -96,6 +96,7 @@ export interface SaleItem {
   category?: string;
   size?: string;
   shopify_inventory_level_id?: string;
+  shopify_product_id?: string;
 }
 
 export interface RefundSaleItem extends SaleItem {
