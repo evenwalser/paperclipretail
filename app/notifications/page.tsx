@@ -173,6 +173,13 @@ export default function NotificationsPage() {
             </div>
           </div>
         </CardHeader>
+        {
+          notificationList.length === 0 && !loading ? (
+            <CardContent className="p-0 text-center py-20">
+              No notifications available.
+              </CardContent>
+          ) : null
+        }
         <CardContent className="p-0">
           <ScrollArea className="h-[600px]">
             <AnimatePresence>

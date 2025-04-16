@@ -26,7 +26,7 @@ export function QuickActions() {
         </Card>
         <Card className="!pb-0 h-max border foreground">
           <CardContent className="p-0 !mb-0">
-            <Link href="/pos">
+            <Link href="/inventory">
               <Button
                 className="w-full h-24 flex flex-col items-center justify-center space-y-2 bg-card text-card-foreground shadow-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 p-6 pt-0 flex flex-col items-center justify-center h-32"
               >
@@ -40,7 +40,7 @@ export function QuickActions() {
         </Card>
         <Card className="!pb-0 h-max border foreground">
           <CardContent className="p-0 !mb-0">
-            <Link href="/inventory">
+            <Link href="/pos">
               <Button
                 className="w-full h-24 flex flex-col items-center justify-center space-y-2 bg-card text-card-foreground shadow-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 p-6 pt-0 flex flex-col items-center justify-center h-32"
               >
