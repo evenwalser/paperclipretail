@@ -156,8 +156,8 @@ export default function LoginPage({
   return (
     <div className="min-h-screen w-full flex">
       {/* Left Section - Login Form */}
-      <div className="w-full lg:w-[45%] flex justify-center p-[30px]  lg:p-[40px] bg-[#fff]">
-        <div className="w-full max-w-md space-y-8">
+      <div className="w-full px-[90px] py-[30px] bg-[#fff]">
+        <div className="w-full space-y-8">
           {/* Logo */}
           <div className="flex justify-start">
             <Image
@@ -263,7 +263,7 @@ export default function LoginPage({
                   id="name"
                   name="name"
                   type="text"
-                  className="h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] placeholder:text-[#717680]"
+                  className="h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] placeholder:text-[#717680] focus:border-[#F71D3B] focus:outline-hidden"
                   placeholder="Enter your full name"
                 />
               </div>
@@ -277,13 +277,15 @@ export default function LoginPage({
                 id="email"
                 name="email"
                 type="email"
-                className={`h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] placeholder:text-[#717680] ${validationErrors.email ? 'border-red-500' : ''
+                className={`h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] focus:border-[#F71D3B] focus:outline-hidden placeholder:text-[#717680] ${validationErrors.email ? 'border-red-500' : ''
                   }`}
                 placeholder="Enter your work email"
                 onChange={handleEmailChange}
               />
               {validationErrors.email && (
-                <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+                <div className="mt-[6px]">
+                  <p className="text-[#535862] text-[14px] font-[400]">{validationErrors.email}</p>
+                </div>
               )}
             </div>
 
@@ -296,7 +298,7 @@ export default function LoginPage({
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  className={`h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] pr-10 placeholder:text-[#717680] ${validationErrors.password ? 'border-red-500' : ''
+                  className={`h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] pr-10 focus:border-[#F71D3B] focus:outline-hidden placeholder:text-[#717680] ${validationErrors.password ? 'border-red-500' : ''
                     }`}
                   placeholder="Enter your password"
                   onChange={handlePasswordChange}
@@ -314,10 +316,11 @@ export default function LoginPage({
                 </button>
               </div>
               {validationErrors.password && (
-                <p className="text-red-500 text-sm mt-1">{validationErrors.password}</p>
+                <div className="mt-[6px]">
+                  <p className="text-[#535862] text-[14px] font-[400]">{validationErrors.password}</p>
+                </div>
               )}
             </div>
-
             {!isLogin && (
               <div className="!mt-[14px] relative">
                 <label htmlFor="confirmPassword" className="block text-[14px] font-[500] text-[#474747] mb-[6px]">
@@ -329,7 +332,7 @@ export default function LoginPage({
                     name="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     required
-                    className={`h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] pr-10 placeholder:text-[#717680] ${validationErrors.confirmPassword ? 'border-red-500' : ''
+                    className={`h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] pr-10 focus:border-[#F71D3B] focus:outline-hidden placeholder:text-[#717680] ${validationErrors.confirmPassword ? 'border-red-500' : ''
                       }`}
                     placeholder="Confirm your password"
                     onChange={handleConfirmPasswordChange}
@@ -347,7 +350,9 @@ export default function LoginPage({
                   </button>
                 </div>
                 {validationErrors.confirmPassword && (
-                  <p className="text-red-500 text-sm mt-1">{validationErrors.confirmPassword}</p>
+                  <div className="mt-[6px]">
+                    <p className="text-[#535862] text-[14px] font-[400]">{validationErrors.confirmPassword}</p>
+                  </div>
                 )}
               </div>
             )}
@@ -383,7 +388,7 @@ export default function LoginPage({
           <div className="text-center text-sm !mt-[12px]">
             {isLogin ? (
               <>
-                <span className="text-gray-600 text-[14px] text-[#535862] font-[400]">Don't have a Paperclip Retail account? </span>
+                <span className="text-gray-600 text-[14px] text-[#535862] font-[400]">{`Don't`} have a Paperclip Retail account? </span>
                 <Link href="?tab=signup" className="text-[#F71D3B] font-[600] text-[14px]">
                   Create Now
                 </Link>
@@ -406,15 +411,15 @@ export default function LoginPage({
       </div>
 
       {/* Right Section - Dashboard Preview */}
-      <div className="hidden lg:flex w-[55%] bg-[#fff] items-center justify-center p-[16px]">
-        <div className="relative w-full max-w-3xl">
+      <div className="w-full bg-[#fff]  p-[16px]">
+        <div className="relative w-full 2xl:w-[800px] h-full">
           {/* <div className="absolute inset-0 bg-gradient-to-br from-pink-100/30 to-red-100/30 rounded-3xl transform rotate-2"></div> */}
           <Image
             src={DashboardPreview}
             alt="Dashboard Preview"
             width={1200}
             height={800}
-            className="relative"
+            className="w-full h-[928px]"
             priority
           />
         </div>

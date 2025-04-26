@@ -22,9 +22,8 @@
   border: 1px solid #fafafa;
 }
 
-
 body {
-  font-family: "Sofia Pro", sans-serif;
+  font-family: "Inter", sans-serif;
   background: linear-gradient(
     to bottom right,
     var(--background-start),
