@@ -28,7 +28,7 @@ export async function updateSession(request: NextRequest) {
   )
 
   // Define public routes that do not require authentication
-  const publicRoutes = ['/login', '/reset-password', '/update-password', '/accept-invite', '/signup']
+  const publicRoutes = ['/login', '/reset-password', '/update-password', '/accept-invite', '/signup', '/auth/callback']
   
   // Define route permissions with their allowed roles
   const routePermissions = {
@@ -54,6 +54,7 @@ export async function updateSession(request: NextRequest) {
 
   // If user is not logged in, redirect to login page
   if (!user) {
+    console.log('User not logged in, redirecting to login page')
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirectTo', pathname)

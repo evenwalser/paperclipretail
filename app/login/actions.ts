@@ -80,7 +80,7 @@ export async function signup(formData: FormData) {
       redirect("/login?tab=signup&error=" + encodeURIComponent("User ID is missing"));
     }
     await supabase.auth.admin.deleteUser(data.user.id);
-    redirect('/login?tab=signup&error=' + encodeURIComponent('Paperclip registration failed'));
+    redirect('/login?tab=signup&error=' + encodeURIComponent('PaperClip registration failed'));
   }
 
   const registerData = await registerResponse.json();
@@ -89,7 +89,7 @@ export async function signup(formData: FormData) {
       redirect("/login?tab=signup&error=" + encodeURIComponent("User ID is missing"));
     }
     await supabase.auth.admin.deleteUser(data.user.id);
-    redirect('/login?tab=signup&error=' + encodeURIComponent('Paperclip registration failed'));
+    redirect('/login?tab=signup&error=' + encodeURIComponent('PaperClip registration failed'));
   }
 
   // // Log in to Paperclip to get access token
@@ -196,3 +196,5 @@ export async function logout() {
 
   return redirect("/login");
 }
+
+
