@@ -91,10 +91,10 @@ export default function LoginPage({
       setValidationErrors(prev => ({ ...prev, password: 'Password must be at least 6 characters' }));
       return false;
     }
-    if (!/[A-Z]/.test(password)) {
-      setValidationErrors(prev => ({ ...prev, password: 'Password must contain at least one uppercase letter' }));
-      return false;
-    }
+    // if (!/[A-Z]/.test(password)) {
+    //   setValidationErrors(prev => ({ ...prev, password: 'Password must contain at least one uppercase letter' }));
+    //   return false;
+    // }
     if (!/[0-9]/.test(password)) {
       setValidationErrors(prev => ({ ...prev, password: 'Password must contain at least one number' }));
       return false;
@@ -277,7 +277,7 @@ export default function LoginPage({
                 id="email"
                 name="email"
                 type="email"
-                className={`h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] focus:border-[#F71D3B] focus:outline-hidden placeholder:text-[#717680] ${validationErrors.email ? 'border-red-500' : ''
+                className={`h-12 mt-1 rounded-[12px] border-[#D5D7DA] text-[#474747] !bg-[#fff] focus:border-[#F71D3B] focus:outline-hidden placeholder:text-[#717680] ${validationErrors.email ? 'border-red-500' : ''
                   }`}
                 placeholder="Enter your work email"
                 onChange={handleEmailChange}
@@ -343,9 +343,9 @@ export default function LoginPage({
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                   >
                     {showConfirmPassword ? (
-                      <EyeOffIcon className="h-5 w-5 text-[#A4A7AE]" />
-                    ) : (
                       <EyeIcon className="h-5 w-5 text-[#A4A7AE]" />
+                    ) : (
+                      <EyeOffIcon className="h-5 w-5 text-[#A4A7AE]" />
                     )}
                   </button>
                 </div>
@@ -388,7 +388,7 @@ export default function LoginPage({
           <div className="text-center text-sm !mt-[12px]">
             {isLogin ? (
               <>
-                <span className="text-gray-600 text-[14px] text-[#535862] font-[400]">{`Don't`} have a Paperclip Retail account? </span>
+                <span className="text-gray-600 text-[14px] text-[#535862] font-[400]">{`Don't`} have a PaperClip Retail account? </span>
                 <Link href="?tab=signup" className="text-[#F71D3B] font-[600] text-[14px]">
                   Create Now
                 </Link>
