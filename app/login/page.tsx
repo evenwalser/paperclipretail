@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/client";
-import LoginImage from "@/public/paperclip_logo_red.png";
-import DashboardPreview from "@/public/dashboard-preview.png";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
+import paperclipLogo from "../../public/paperclip_logo_red.png";
+import dashboardPreview from "../../public/dashboard-preview.png";
 
 export default function LoginPage({
   searchParams,
@@ -161,7 +161,7 @@ export default function LoginPage({
           {/* Logo */}
           <div className="flex justify-start">
             <Image
-              src={LoginImage}
+              src={paperclipLogo}
               alt="Paperclip Logo"
               width={150}
               height={50}
@@ -415,7 +415,7 @@ export default function LoginPage({
         <div className="relative w-full 2xl:w-[800px] h-full">
           {/* <div className="absolute inset-0 bg-gradient-to-br from-pink-100/30 to-red-100/30 rounded-3xl transform rotate-2"></div> */}
           <Image
-            src={DashboardPreview}
+            src={dashboardPreview}
             alt="Dashboard Preview"
             width={1200}
             height={800}

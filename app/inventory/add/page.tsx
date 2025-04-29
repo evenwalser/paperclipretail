@@ -129,7 +129,7 @@ export default function AddItemPage() {
       else setCategories(data);
     };
     fetchCategories();
-  }, []);
+  }, [user]);
 
   // Handle duplicate item
   useEffect(() => {

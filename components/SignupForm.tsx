@@ -9,6 +9,7 @@ import { signup } from "./SignupFormAction"; // Ensure this is properly defined 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
+import paperclipLogo from "../public/paperclip_logo_red.png"
 
 
 export default function SignupForm({
@@ -21,8 +22,8 @@ export default function SignupForm({
   return (
     <div className="flex justify-center items-center h-[-webkit-fill-available] absolute w-full flex-col">
       <div className="p-6">
-        <img
-          src={'/paperclip_logo_red.png'}
+        <Image
+          src={paperclipLogo}
           alt="Paperclip Logo"
           width={200}
           height={67}

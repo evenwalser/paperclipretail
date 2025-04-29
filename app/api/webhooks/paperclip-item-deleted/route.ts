@@ -17,8 +17,7 @@ export async function POST(request: NextRequest) {
   try {
     // Get the raw body as a Buffer for HMAC verification
     const rawBody = Buffer.from(await request.arrayBuffer());
-    console.log("🚀 ~ POST ~ rawBody:", rawBody)
-
+    
     // Retrieve the shared secret from environment variables
     const secret = process.env.PAPERCLIP_WEBHOOK_SECRET;
     if (!secret) {
@@ -33,11 +32,12 @@ export async function POST(request: NextRequest) {
 
     // Parse the JSON payload
     const body = JSON.parse(rawBody.toString());
-    console.log("🚀 ~ POST ~ body:", body)
-    const { event, item_id, quantity_sold } = body;
+    console.log("Paperclip item deleted webhook:", body);
+    
+    const { event, item_id } = body;
 
-    // Ensure the event is 'item_sold'
-    if (event !== 'item_sold') {
+    // Ensure the event is 'item_deleted'
+    if (event !== 'item_deleted') {
       return NextResponse.json({ error: 'Invalid event' }, { status: 400 });
     }
 
@@ -45,37 +45,58 @@ export async function POST(request: NextRequest) {
     const supabase = createClient();
 
     // Find the item in the database using paperclip_marketplace_id
-    const { data: item, error } = await supabase
+    const { data: item, error: findError } = await supabase
       .from('items')
-      .select('id, quantity')
+      .select('id')
       .eq('paperclip_marketplace_id', item_id)
       .single();
 
-    if (error || !item) {
-      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    if (findError || !item) {
+      return NextResponse.json({ error: 'Item not found in retail system' }, { status: 404 });
     }
 
-    // Calculate the new quantity
-    const newQuantity = item.quantity - quantity_sold;
-    if (newQuantity < 0) {
-      return NextResponse.json({ error: 'Insufficient quantity' }, { status: 400 });
-    }
-
-    // Update the item quantity in the database
+    // Option 1: Mark the item as unlisted on Paperclip but don't delete it from retail
     const { error: updateError } = await supabase
       .from('items')
-      .update({ quantity: newQuantity })
+      .update({
+        list_on_paperclip: false,
+        paperclip_delisted_at: new Date().toISOString(),
+        listed_on_paperclip: false,
+      })
       .eq('id', item.id);
 
     if (updateError) {
       throw updateError;
     }
 
-    // Respond with success
-    return NextResponse.json(
-      { message: 'Quantity updated successfully', quantity: newQuantity },
-      { status: 200 }
-    );
+    // Option 2 (Alternative): Delete the item from the retail system
+    // Only uncomment if you want to completely delete the item when deleted from marketplace
+    /*
+    // First delete associated images
+    const { error: deleteImagesError } = await supabase
+      .from('item_images')
+      .delete()
+      .eq('item_id', item.id);
+
+    if (deleteImagesError) {
+      throw deleteImagesError;
+    }
+
+    // Then delete the item itself
+    const { error: deleteItemError } = await supabase
+      .from('items')
+      .delete()
+      .eq('id', item.id);
+
+    if (deleteItemError) {
+      throw deleteItemError;
+    }
+    */
+
+    return NextResponse.json({ 
+      message: 'Item unlisted from Paperclip successfully',
+      itemId: item.id 
+    }, { status: 200 });
   } catch (error) {
     console.error('Webhook processing error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
