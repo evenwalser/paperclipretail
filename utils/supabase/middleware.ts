@@ -28,7 +28,7 @@ export async function updateSession(request: NextRequest) {
   )
 
   // Define public routes that do not require authentication
-  const publicRoutes = ['/login', '/reset-password', '/update-password', '/accept-invite', '/signup', '/auth/callback']
+  const publicRoutes = ['/login', '/reset-password', '/update-password', '/accept-invite', '/signup', '/auth/callback', '/api/webhooks/paperclip-item-created']
   
   // Define route permissions with their allowed roles
   const routePermissions = {

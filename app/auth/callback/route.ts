@@ -117,6 +117,18 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=Token storage failed`);
   }
 
+  const paperclipUserId = loginData.data.userId;
+  if (paperclipUserId && (!existingUser)) {
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ paperclip_marketplace_id: paperclipUserId })
+      .eq('id', userId);
+    if (updateError) {
+      console.error('Error updating Paperclip Marketplace ID:', updateError);
+    }
+  }
+
+
   // Redirect
   const forwardedHost = request.headers.get('x-forwarded-host');
   const isLocalEnv = process.env.NODE_ENV === 'development';

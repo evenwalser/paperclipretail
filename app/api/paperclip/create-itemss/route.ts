@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/client"; // Ensure this path is valid in your project
+import { IncomingForm } from "formidable";
 import FormData from "form-data";
 import fetch from "node-fetch"; // For fetching remote images
+import { readFileSync } from "fs";
 
 // Initialize Supabase client
 const supabase = createClient();

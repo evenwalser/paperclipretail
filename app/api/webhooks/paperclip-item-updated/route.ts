@@ -49,11 +49,12 @@ export async function POST(request: NextRequest) {
       .from('items')
       .select('id, category_id')
       .eq('paperclip_marketplace_id', item.id)
+      .is('paperclip_deleted_at', null)
       .single();
 
-    if (findError || !existingItem) {
-      return NextResponse.json({ error: 'Item not found in retail system' }, { status: 404 });
-    }
+      if (findError || !existingItem) {
+        return NextResponse.json({ error: 'Item not found or is deleted in retail system' }, { status: 404 });
+      }
 
     // Update item in retail system
     const { error: updateError } = await supabase

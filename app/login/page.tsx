@@ -181,7 +181,7 @@ export default function LoginPage({
           <div className="flex flex-col sm:flex-row gap-[12px] !mt-[20px] lg:!mt-[40px]">
             <Button
               variant="outline"
-              className="w-full h-12 text-[16px] font-[600] border border-[#D5D7DA] rounded-[12px] text-[#414651] shadow-sm"
+              className="w-full h-12 text-[16px] font-[600] border border-[#D5D7DA] rounded-[12px] text-[#414651] hover:text-[#414651] shadow-sm"
               onClick={handleGoogleSignIn}
             >
               <svg
@@ -213,7 +213,7 @@ export default function LoginPage({
 
             <Button
               variant="outline"
-              className="w-full h-12 text-[16px] font-[600] border border-[#D5D7DA] rounded-[12px] text-[#414651] shadow-sm"
+              className="w-full h-12 text-[16px] font-[600] border border-[#D5D7DA] rounded-[12px] text-[#414651] hover:text-[#414651] shadow-sm"
               onClick={handleAppleSignIn}
             >
               <svg
@@ -263,7 +263,7 @@ export default function LoginPage({
                   id="name"
                   name="name"
                   type="text"
-                  className="h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] placeholder:text-[#717680] focus:border-[#F71D3B] focus:outline-hidden"
+                  className="h-12 mt-1 rounded-[12px] text-[#474747] border-[#D5D7DA] !bg-[#fff] placeholder:text-[#717680] focus:border-[#F71D3B] focus:outline-hidden"
                   placeholder="Enter your full name"
                 />
               </div>
@@ -298,7 +298,7 @@ export default function LoginPage({
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  className={`h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] pr-10 focus:border-[#F71D3B] focus:outline-hidden placeholder:text-[#717680] ${validationErrors.password ? 'border-red-500' : ''
+                  className={`h-12 mt-1 rounded-[12px] border-[#D5D7DA] text-[#474747] !bg-[#fff] pr-10 focus:border-[#F71D3B] focus:outline-hidden placeholder:text-[#717680] ${validationErrors.password ? 'border-red-500' : ''
                     }`}
                   placeholder="Enter your password"
                   onChange={handlePasswordChange}
@@ -332,7 +332,7 @@ export default function LoginPage({
                     name="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     required
-                    className={`h-12 mt-1 rounded-[12px] border-[#D5D7DA] !bg-[#fff] pr-10 focus:border-[#F71D3B] focus:outline-hidden placeholder:text-[#717680] ${validationErrors.confirmPassword ? 'border-red-500' : ''
+                    className={`h-12 mt-1 rounded-[12px] text-[#474747] border-[#D5D7DA] !bg-[#fff] pr-10 focus:border-[#F71D3B] focus:outline-hidden placeholder:text-[#717680] ${validationErrors.confirmPassword ? 'border-red-500' : ''
                       }`}
                     placeholder="Confirm your password"
                     onChange={handleConfirmPasswordChange}

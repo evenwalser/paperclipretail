@@ -6,7 +6,6 @@ import { createClient } from '@/utils/supabase/client';
 function computeHMAC(rawBody: Buffer, secret: string): string {
   return crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
 }
-
 export async function POST(request: NextRequest) {
   // Extract the signature from the header
   const signature = request.headers.get('X-Paperclip-Signature');
@@ -47,7 +46,7 @@ export async function POST(request: NextRequest) {
     // Find the item in the database using paperclip_marketplace_id
     const { data: item, error: findError } = await supabase
       .from('items')
-      .select('id')
+      .select('id, deleted_at')
       .eq('paperclip_marketplace_id', item_id)
       .single();
 
@@ -55,13 +54,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Item not found in retail system' }, { status: 404 });
     }
 
+    if (item.deleted_at) {
+      return NextResponse.json({ 
+        message: 'Item already unlisted from Paperclip',
+        itemId: item.id 
+      }, { status: 200 });
+    }
+
     // Option 1: Mark the item as unlisted on Paperclip but don't delete it from retail
     const { error: updateError } = await supabase
       .from('items')
       .update({
-        list_on_paperclip: false,
-        paperclip_delisted_at: new Date().toISOString(),
-        listed_on_paperclip: false,
+        deleted_at: new Date().toISOString(),
       })
       .eq('id', item.id);
 

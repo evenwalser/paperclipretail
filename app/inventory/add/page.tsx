@@ -12,7 +12,7 @@ import DetailsView from "@/components/inventory/add/DetailsView";
 import { analyzeImage } from "@/lib/together";
 import { createShopifyProduct } from "@/lib/shopify";
 import { Button } from "react-day-picker";
-import { ListOnPaperclipParams } from "@/app/api/paperclip/create-items/route";
+import { ListOnPaperclipParams } from "@/app/api/paperclip/create-itemss/route";
 
 
 type ViewState = "initial" | "camera" | "review" | "details";
@@ -129,7 +129,7 @@ export default function AddItemPage() {
       else setCategories(data);
     };
     fetchCategories();
-  }, [user]);
+  }, []);
 
   // Handle duplicate item
   useEffect(() => {
@@ -527,50 +527,99 @@ export default function AddItemPage() {
      
 
       console.log("🚀 ~ handleSubmit ~ listOnPaperclip:", listOnPaperclip)
-      if (listOnPaperclip) {
-        try {
-          const payload: ListOnPaperclipParams = {
-            userId: user?.id,
-            itemDetails: {
-              name: itemDetails.name.trim(),
-              description: itemDetails.description.trim(),
-              price: priceNum.toString(),
-              condition: condition,
-            },
-            images: imageUploads.map((img) => img.image_url), // Array of URLs
-            selectedCategories: {
-              level1: selectedCategories.level1 ? parseInt(selectedCategories.level1) : undefined,
-              level2: selectedCategories.level2 ? parseInt(selectedCategories.level2) : undefined,
-              level3: selectedCategories.level3 ? parseInt(selectedCategories.level3) : undefined,
-            },
-            brand,
-            size,
-            color,
-            retailId: item?.id,
-            tags: item?.tags
-          };
+      // if (listOnPaperclip) {
+      //   try {
+      //     const payload: ListOnPaperclipParams = {
+      //       userId: user?.id,
+      //       itemDetails: {
+      //         name: itemDetails.name.trim(),
+      //         description: itemDetails.description.trim(),
+      //         price: priceNum.toString(),
+      //         condition: condition,
+      //       },
+      //       images: imageUploads.map((img) => img.image_url), // Array of URLs
+      //       selectedCategories: {
+      //         level1: selectedCategories.level1 ? parseInt(selectedCategories.level1) : undefined,
+      //         level2: selectedCategories.level2 ? parseInt(selectedCategories.level2) : undefined,
+      //         level3: selectedCategories.level3 ? parseInt(selectedCategories.level3) : undefined,
+      //       },
+      //       brand,
+      //       size,
+      //       color,
+      //       retailId: item?.id,
+      //       tags: item?.tags
+      //     };
       
-          const response = await fetch("/api/paperclip/create-items", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-          });
+      //     const response = await fetch("/api/paperclip/create-items", {
+      //       method: "POST",
+      //       headers: {
+      //         "Content-Type": "application/json",
+      //       },
+      //       body: JSON.stringify(payload),
+      //     });
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Paperclip API error:", errorText);
-            throw new Error(`Failed to list on Paperclip: ${errorText}`);
-          }
+      //     if (!response.ok) {
+      //       const errorText = await response.text();
+      //       console.error("Paperclip API error:", errorText);
+      //       throw new Error(`Failed to list on Paperclip: ${errorText}`);
+      //     }
 
-          const result = await response.json();
-          console.log("Paperclip listing successful:", result);
-        } catch (error) {
-          console.error("Error listing on Paperclip:", error);
-          toast.error("Failed to list item on Paperclip.");
-        }
+      //     const result = await response.json();
+      //     console.log("Paperclip listing successful:", result);
+      //   } catch (error) {
+      //     console.error("Error listing on Paperclip:", error);
+      //     toast.error("Failed to list item on Paperclip.");
+      //   }
+      // }
+
+      
+if (listOnPaperclip) {
+  try {
+    const formData = new FormData();
+
+    // Append basic fields
+    formData.append("userId", user?.id);
+    formData.append("name", itemDetails.name.trim());
+    formData.append("description", itemDetails.description.trim());
+    formData.append("price", priceNum.toString());
+    formData.append("condition", condition);
+
+    // Append categories
+    formData.append("categoryId", "1")
+    // formData.append("selectedCategories[level2]", selectedCategories.level2 || "");
+    // formData.append("selectedCategories[level3]", selectedCategories.level3 || "");
+
+    // Append other fields
+    formData.append("brand", brand);
+    formData.append("size", size);
+    formData.append("color", color);
+    formData.append("retailId", item?.id || "");
+    formData.append("tags", JSON.stringify(item?.tags || []));
+
+    // Append image files
+    images.forEach((image) => {
+      if (image.file) {
+        formData.append("media", image.file);
       }
+    });
+
+    const response = await fetch("/api/paperclip/create-items", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to list on Paperclip: ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log("Paperclip listing successful:", result);
+  } catch (error) {
+    console.error("Error listing on Paperclip:", error);
+    toast.error("Failed to list item on Paperclip.");
+  }
+}
 
       if (listOnShopify) {
         try {

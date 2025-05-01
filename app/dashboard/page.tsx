@@ -78,6 +78,7 @@ export default function DashboardPage() {
     signIn("google", { prompt: "select_account" });
   };
   const user = useUser();
+  console.log("🚀 ~ DashboardPage ~ user:", user)
 
   useEffect(() => {
     async function fetchUserStore() {

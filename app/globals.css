@@ -118,14 +118,14 @@ h6 {
   background: #2d3748;
 }
 
-.dark h1,
+/* .dark h1,
 .dark h2,
 .dark h3,
 .dark h4,
 .dark h5,
 .dark h6 {
   color: #e2e8f0;
-}
+} */
 
 .dark .subheading {
   color: #a0aec0;

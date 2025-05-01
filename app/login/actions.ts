@@ -91,7 +91,7 @@ export async function signup(formData: FormData) {
     await supabase.auth.admin.deleteUser(data.user.id);
     redirect('/login?tab=signup&error=' + encodeURIComponent('PaperClip registration failed'));
   }
-
+  
   // // Log in to Paperclip to get access token
   // const loginResponse = await fetch(`${BASEURL}/login`, {
   //   method: 'POST',
@@ -141,6 +141,7 @@ export async function login(formData: FormData) {
   // Log in with Supabase
   const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
 
+  console.log("🚀 ~ login ~ authData:", authData)
   if (error) {
     redirect('/login?tab=login&error=' + encodeURIComponent(error.message));
   }
@@ -166,6 +167,19 @@ export async function login(formData: FormData) {
     redirect('/login?tab=login&error=' + encodeURIComponent('Paperclip login failed'));
   }
 
+  const paperclipUserId = loginData.data.userId;
+  if (!paperclipUserId) {
+    redirect('/login?tab=login&error=' + encodeURIComponent('Paperclip user ID missing'));
+  }
+
+  const { error: updateError } = await supabase
+      .from('users')
+      .update({ paperclip_marketplace_id: paperclipUserId })
+      .eq('id', authData.user.id);
+    if (updateError) {
+      console.error('Error updating Paperclip ID:', updateError);
+    }
+
   // Store or update the Paperclip token
   const { error: tokenError } = await supabase
     .from('user_tokens')
@@ -175,6 +189,7 @@ export async function login(formData: FormData) {
     }, {
       onConflict: 'user_id'
     });
+
 
   if (tokenError) {
     console.error('Error storing Paperclip token:', tokenError);

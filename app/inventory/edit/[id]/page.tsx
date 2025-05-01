@@ -454,46 +454,103 @@ export default function EditItemPage() {
       // };
       const updatedQuantity = parseInt(itemDetails.quantity) || 0;
 
+      // if (itemDetails.listOnPaperclip && item?.paperclip_marketplace_id && user?.id) {
+      //   try {
+      //     const updatePayload = {
+      //       userId: user.id,
+      //       paperclipItemId: item.paperclip_marketplace_id,
+      //       itemDetails: {
+      //         name: itemDetails.name,
+      //         description: itemDetails.description,
+      //         price: itemDetails.price,
+      //         quantity: parseInt(itemDetails.quantity),
+      //         condition: itemDetails.condition,
+      //         size: itemDetails.size,
+      //         brand: itemDetails.brand,
+      //         age: itemDetails.age,
+      //         color: itemDetails.color,
+      //         tags: selectedTags,
+      //       },
+      //       images: imageUploads.map((img) => img.image_url),
+      //       selectedCategories: {
+      //         level1: selectedCategories.level1
+      //           ? parseInt(selectedCategories.level1)
+      //           : undefined,
+      //         level2: selectedCategories.level2
+      //           ? parseInt(selectedCategories.level2)
+      //           : undefined,
+      //         level3: selectedCategories.level3
+      //           ? parseInt(selectedCategories.level3)
+      //           : undefined,
+      //       },
+      //     };
+
+      //     const updateResponse = await fetch("/api/paperclip/update-item", {
+      //       method: "POST",
+      //       headers: { "Content-Type": "application/json" },
+      //       body: JSON.stringify(updatePayload),
+      //     });
+      //     if (!updateResponse.ok) {
+      //       const errorText = await updateResponse.text();
+      //       throw new Error(`Paperclip update failed: ${errorText}`);
+      //     }
+      //     const updateResult = await updateResponse.json();
+      //     console.log("Paperclip update result:", updateResult);
+      //   } catch (err) {
+      //     console.error("Error updating item on Paperclip:", err);
+      //     toast.error("Failed to update item on Paperclip.");
+      //   }
+      // }
+
       if (itemDetails.listOnPaperclip && item?.paperclip_marketplace_id && user?.id) {
         try {
-          const updatePayload = {
-            userId: user.id,
-            paperclipItemId: item.paperclip_marketplace_id,
-            itemDetails: {
-              name: itemDetails.name,
-              description: itemDetails.description,
-              price: itemDetails.price,
-              quantity: parseInt(itemDetails.quantity),
-              condition: itemDetails.condition,
-              size: itemDetails.size,
-              brand: itemDetails.brand,
-              age: itemDetails.age,
-              color: itemDetails.color,
-              tags: selectedTags,
-            },
-            images: imageUploads.map((img) => img.image_url),
-            selectedCategories: {
-              level1: selectedCategories.level1
-                ? parseInt(selectedCategories.level1)
-                : undefined,
-              level2: selectedCategories.level2
-                ? parseInt(selectedCategories.level2)
-                : undefined,
-              level3: selectedCategories.level3
-                ? parseInt(selectedCategories.level3)
-                : undefined,
-            },
-          };
-
+          // Create a FormData object to hold all data and files
+          const formData = new FormData();
+      
+          // Append basic fields
+          formData.append("userId", user.id);
+          formData.append("paperclipItemId", item.paperclip_marketplace_id);
+          formData.append("name", itemDetails.name.trim());
+          formData.append("description", itemDetails.description.trim());
+          formData.append("price", itemDetails.price);
+          formData.append("quantity", itemDetails.quantity.toString());
+          formData.append("condition", itemDetails.condition);
+          formData.append("size", itemDetails.size || "");
+          formData.append("brand", itemDetails.brand || "");
+          formData.append("age", itemDetails.age || "");
+          formData.append("color", itemDetails.color || "");
+          formData.append("tags", JSON.stringify(selectedTags));
+      
+          // Append the selected category (preferring level3, then level2, then level1, defaulting to "1")
+          const categoryId = selectedCategories.level3 || selectedCategories.level2 || selectedCategories.level1 || "1";
+          formData.append("categoryId", categoryId);
+      
+          // First verify if the image has a valid URL and fetch it if needed
+          const imagePromises = imageUploads.map(async (img, index) => {
+            if (img.image_url) {
+              try {
+                const response = await fetch(img.image_url);
+                const blob = await response.blob();
+                formData.append(`images[${index}]`, blob, `image-${index}.jpg`);
+              } catch (error) {
+                console.error(`Error processing image ${index}:`, error);
+              }
+            }
+          });
+      
+          await Promise.all(imagePromises);
+      
+          // Send the POST request with FormData
           const updateResponse = await fetch("/api/paperclip/update-item", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updatePayload),
+            body: formData, // No need for Content-Type header; fetch sets it automatically for FormData
           });
+      
           if (!updateResponse.ok) {
             const errorText = await updateResponse.text();
             throw new Error(`Paperclip update failed: ${errorText}`);
           }
+      
           const updateResult = await updateResponse.json();
           console.log("Paperclip update result:", updateResult);
         } catch (err) {

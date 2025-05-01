@@ -57,10 +57,15 @@ export async function POST(request: NextRequest) {
 
     // Get user information by marketplace user_id to link the item to the correct store
     const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id, store_id')
-      .eq('paperclip_user_id', item.user_id)
-      .single();
+    .from('users')
+    .select('id, store_id')
+    .eq('paperclip_marketplace_id', item.userId)
+    .single();
+    console.log("🚀 ~ POST ~ useritem error:", item.userId)
+  if (userError || !userData || !userData.store_id) {
+    console.log("🚀 ~ POST ~ userError:", userError)
+    return NextResponse.json({ error: 'User or store not found' }, { status: 404 });
+  }
 
     if (userError || !userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -83,22 +88,22 @@ export async function POST(request: NextRequest) {
     const { data: newItem, error: itemError } = await supabase
       .from('items')
       .insert({
-        title: item.name,
-        description: item.description,
-        price: parseFloat(item.price),
+        title: item.name,                 //name
+        description: item.description,    //description
+        price: parseFloat(item.price),     //price
         quantity: item.quantity || 1,
-        category_id: categoryId,
-        condition: mapConditionFromMarketplace(item.condition_type),
+        category_id: categoryId,          //categorId
+        condition: mapConditionFromMarketplace(item.condition_type),  // condition
         size: item.size || '',
-        brand: item.brand || '',
+        brand: item.brand || '',          // brand
         available_in_store: true,
         list_on_paperclip: true,
         store_id: userData.store_id,
         created_by: userData.id,
-        paperclip_marketplace_id: item.id,
+        paperclip_marketplace_id: item.id,  // marketplace_id
         paperclip_listed_at: new Date().toISOString(),
         listed_on_paperclip: true,
-        tags: item.tags || [],
+        tags: item.tags || [],  // tags
       })
       .select()
       .single();
@@ -108,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Process images if available
-    if (item.media && item.media.length > 0) {
+    if (item.media && item.media.length > 0) {    // media is an array of image URLs
       const imageUploads = item.media.map((imageUrl: string, index: number) => ({
         item_id: newItem.id,
         image_url: imageUrl,
