@@ -38,6 +38,7 @@ export default function EditItemPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [images, setImages] = useState<ItemImage[]>([]);
+  const [age, setAge] = useState<string>("");   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [previousQuantity, setPreviousQuantity] = useState<number | undefined>();
@@ -138,6 +139,7 @@ export default function EditItemPage() {
 
     fetchData();
   }, [id, supabase]);
+
 
   const handleBrandChange = async (value: string) => {
     setItemDetails((prev) => ({ ...prev, brand: value }));
@@ -321,276 +323,497 @@ export default function EditItemPage() {
   };
 
   const handleSave = async () => {
-    if (!item) return;
+  if (!item) return;
 
-    setFieldErrors({ name: "", price: "", images: "", category: "" });
-    let hasErrors = false;
-    const newErrors = { name: "", price: "", images: "", category: "" };
+  setFieldErrors({ name: "", price: "", images: "", category: "" });
+  let hasErrors = false;
+  const newErrors = { name: "", price: "", images: "", category: "" };
 
-    if (!itemDetails.name.trim()) {
-      newErrors.name = "Item name is required";
-      hasErrors = true;
-    }
-    if (
-      !itemDetails.price ||
-      isNaN(parseFloat(itemDetails.price)) ||
-      parseFloat(itemDetails.price) <= 0
-    ) {
-      newErrors.price = "Valid price is required";
-      hasErrors = true;
-    }
-    const filteredImages = images.filter((image) =>
-      /\.(jpg|jpeg|png|gif|webp)$/i.test(image.image_url)
-    );
-    if (filteredImages.length === 0) {
-      newErrors.images = "At least one image is required";
-      hasErrors = true;
-    }
-    if (!selectedCategories.level1) {
-      newErrors.category = "Please select a main category";
-      hasErrors = true;
-    }
+  if (!itemDetails.name.trim()) {
+    newErrors.name = "Item name is required";
+    hasErrors = true;
+  }
+  if (
+    !itemDetails.price ||
+    isNaN(parseFloat(itemDetails.price)) ||
+    parseFloat(itemDetails.price) <= 0
+  ) {
+    newErrors.price = "Valid price is required";
+    hasErrors = true;
+  }
+  const filteredImages = images.filter((image) =>
+    /\.(jpg|jpeg|png|gif|webp)$/i.test(image.image_url)
+  );
+  if (filteredImages.length === 0) {
+    newErrors.images = "At least one image is required";
+    hasErrors = true;
+  }
+  if (!selectedCategories.level1) {
+    newErrors.category = "Please select a main category";
+    hasErrors = true;
+  }
 
-    if (hasErrors) {
-      setFieldErrors(newErrors);
-      return;
-    }
+  if (hasErrors) {
+    setFieldErrors(newErrors);
+    return;
+  }
 
-    setIsSaving(true);
-    try {
-      // Update the item details in the database
-      const { error: itemError } = await supabase
-        .from("items")
-        .update({
-          title: itemDetails.name,
-          description: itemDetails.description,
-          price: parseFloat(itemDetails.price) || 0,
-          quantity: parseInt(itemDetails.quantity) || 0,
-          category_id:
-            selectedCategories.level3 ||
-            selectedCategories.level2 ||
-            selectedCategories.level1,
-          condition: itemDetails.condition,
-          size: itemDetails.size,
-          brand: itemDetails.brand,
-          logo_url: logoUrl,
-          age: itemDetails.age,
-          color: itemDetails.color,
-          available_in_store: itemDetails.availableInStore,
-          list_on_paperclip: itemDetails.listOnPaperclip,
-          tags: selectedTags,
-        })
-        .eq("id", item.id);
+  setIsSaving(true);
+  try {
+    // Update the item details in the database
+    const { error: itemError } = await supabase
+      .from("items")
+      .update({
+        title: itemDetails.name,
+        description: itemDetails.description,
+        price: parseFloat(itemDetails.price) || 0,
+        quantity: parseInt(itemDetails.quantity) || 0,
+        category_id:
+          selectedCategories.level3 ||
+          selectedCategories.level2 ||
+          selectedCategories.level1,
+        condition: itemDetails.condition,
+        size: itemDetails.size,
+        brand: itemDetails.brand,
+        logo_url: logoUrl,
+        age: itemDetails.age,
+        color: itemDetails.color,
+        available_in_store: itemDetails.availableInStore,
+        list_on_paperclip: itemDetails.listOnPaperclip,
+        tags: selectedTags,
+      })
+      .eq("id", item.id);
 
-      if (itemError) throw itemError;
+    if (itemError) throw itemError;
 
-      const imageUploads = await Promise.all(
-        images.map(async (image, index) => {
-          if (image.id) {
-            return {
-              id: image.id,
-              item_id: item.id,
-              image_url: image.image_url,
-              display_order: index,
-              shopify_media_id: image.shopify_media_id,
-            };
-          }
-
-          const newId = uuidv4();
-          const fileExt = image.image_url.split(".").pop();
-          const fileName = `${user?.id}/${item.id}/${crypto.randomUUID()}.${fileExt}`;
-          let fileData: Blob;
-
-          if (image.file) {
-            fileData = image.file;
-          } else {
-            const response = await fetch(image.image_url);
-            fileData = await response.blob();
-          }
-
-          // Upload the new image
-          const { error: uploadError } = await supabase.storage
-            .from("item-images")
-            .upload(fileName, fileData, {
-              cacheControl: "3600",
-              upsert: false,
-            });
-          if (uploadError) throw uploadError;
-
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("item-images").getPublicUrl(fileName);
-
+    const imageUploads = await Promise.all(
+      images.map(async (image, index) => {
+        if (image.id) {
           return {
-            id: newId,
+            id: image.id,
             item_id: item.id,
-            image_url: publicUrl,
+            image_url: image.image_url,
             display_order: index,
+            shopify_media_id: image.shopify_media_id,
           };
-        })
-      );
+        }
 
-      // Delete old images that are no longer associated with this item
-      const existingIds = images.filter((img) => img.id).map((img) => img.id);
-      await supabase
+        const newId = uuidv4();
+        const fileExt = image.image_url.split(".").pop();
+        const fileName = `${user?.id}/${item.id}/${crypto.randomUUID()}.${fileExt}`;
+        let fileData: Blob;
+
+        if (image.file) {
+          fileData = image.file;
+        } else {
+          const response = await fetch(image.image_url);
+          fileData = await response.blob();
+        }
+
+        // Upload the new image
+        const { error: uploadError } = await supabase.storage
+          .from("item-images")
+          .upload(fileName, fileData, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+        if (uploadError) throw uploadError;
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("item-images").getPublicUrl(fileName);
+
+        return {
+          id: newId,
+          item_id: item.id,
+          image_url: publicUrl,
+          display_order: index,
+        };
+      })
+    );
+
+    // Delete old images that are no longer associated with this item
+    const existingIds = images.filter((img) => img.id).map((img) => img.id);
+    await supabase
+      .from("item_images")
+      .delete()
+      .eq("item_id", item.id)
+      .not("id", "in", `(${existingIds.join(",")})`);
+
+    // Insert new images if necessary
+    if (imageUploads.length > 0) {
+      const { error: imageError } = await supabase
         .from("item_images")
-        .delete()
-        .eq("item_id", item.id)
-        .not("id", "in", `(${existingIds.join(",")})`);
-
-      // Insert new images if necessary
-      if (imageUploads.length > 0) {
-        const { error: imageError } = await supabase
-          .from("item_images")
-          .upsert(imageUploads, { onConflict: "id" });
-        if (imageError) throw imageError;
-      }
-
-      // const updatedData = {
-      //   title: itemDetails.name,
-      //   description: itemDetails.description,
-      //   price: parseFloat(itemDetails.price) || 0,
-      //   quantity: parseInt(itemDetails.quantity) || 0,
-      // };
-      const updatedQuantity = parseInt(itemDetails.quantity) || 0;
-
-      // if (itemDetails.listOnPaperclip && item?.paperclip_marketplace_id && user?.id) {
-      //   try {
-      //     const updatePayload = {
-      //       userId: user.id,
-      //       paperclipItemId: item.paperclip_marketplace_id,
-      //       itemDetails: {
-      //         name: itemDetails.name,
-      //         description: itemDetails.description,
-      //         price: itemDetails.price,
-      //         quantity: parseInt(itemDetails.quantity),
-      //         condition: itemDetails.condition,
-      //         size: itemDetails.size,
-      //         brand: itemDetails.brand,
-      //         age: itemDetails.age,
-      //         color: itemDetails.color,
-      //         tags: selectedTags,
-      //       },
-      //       images: imageUploads.map((img) => img.image_url),
-      //       selectedCategories: {
-      //         level1: selectedCategories.level1
-      //           ? parseInt(selectedCategories.level1)
-      //           : undefined,
-      //         level2: selectedCategories.level2
-      //           ? parseInt(selectedCategories.level2)
-      //           : undefined,
-      //         level3: selectedCategories.level3
-      //           ? parseInt(selectedCategories.level3)
-      //           : undefined,
-      //       },
-      //     };
-
-      //     const updateResponse = await fetch("/api/paperclip/update-item", {
-      //       method: "POST",
-      //       headers: { "Content-Type": "application/json" },
-      //       body: JSON.stringify(updatePayload),
-      //     });
-      //     if (!updateResponse.ok) {
-      //       const errorText = await updateResponse.text();
-      //       throw new Error(`Paperclip update failed: ${errorText}`);
-      //     }
-      //     const updateResult = await updateResponse.json();
-      //     console.log("Paperclip update result:", updateResult);
-      //   } catch (err) {
-      //     console.error("Error updating item on Paperclip:", err);
-      //     toast.error("Failed to update item on Paperclip.");
-      //   }
-      // }
-
-      if (itemDetails.listOnPaperclip && item?.paperclip_marketplace_id && user?.id) {
-        try {
-          // Create a FormData object to hold all data and files
-          const formData = new FormData();
-      
-          // Append basic fields
-          formData.append("userId", user.id);
-          formData.append("paperclipItemId", item.paperclip_marketplace_id);
-          formData.append("name", itemDetails.name.trim());
-          formData.append("description", itemDetails.description.trim());
-          formData.append("price", itemDetails.price);
-          formData.append("quantity", itemDetails.quantity.toString());
-          formData.append("condition", itemDetails.condition);
-          formData.append("size", itemDetails.size || "");
-          formData.append("brand", itemDetails.brand || "");
-          formData.append("age", itemDetails.age || "");
-          formData.append("color", itemDetails.color || "");
-          formData.append("tags", JSON.stringify(selectedTags));
-      
-          // Append the selected category (preferring level3, then level2, then level1, defaulting to "1")
-          const categoryId = selectedCategories.level3 || selectedCategories.level2 || selectedCategories.level1 || "1";
-          formData.append("categoryId", categoryId);
-      
-          // First verify if the image has a valid URL and fetch it if needed
-          const imagePromises = imageUploads.map(async (img, index) => {
-            if (img.image_url) {
-              try {
-                const response = await fetch(img.image_url);
-                const blob = await response.blob();
-                formData.append(`images[${index}]`, blob, `image-${index}.jpg`);
-              } catch (error) {
-                console.error(`Error processing image ${index}:`, error);
-              }
-            }
-          });
-      
-          await Promise.all(imagePromises);
-      
-          // Send the POST request with FormData
-          const updateResponse = await fetch("/api/paperclip/update-item", {
-            method: "POST",
-            body: formData, // No need for Content-Type header; fetch sets it automatically for FormData
-          });
-      
-          if (!updateResponse.ok) {
-            const errorText = await updateResponse.text();
-            throw new Error(`Paperclip update failed: ${errorText}`);
-          }
-      
-          const updateResult = await updateResponse.json();
-          console.log("Paperclip update result:", updateResult);
-        } catch (err) {
-          console.error("Error updating item on Paperclip:", err);
-          toast.error("Failed to update item on Paperclip.");
-        }
-      }
-      if (item.shopify_product_id && user?.store_id) {
-        try {
-          const response = await fetch("/api/shopify/update-product", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              storeId: user.store_id,
-              itemId: item.id,
-              previousQuantity,
-            }),
-          });
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-              errorData.error || "Failed to update Shopify product"
-            );
-          }
-        } catch (error) {
-          console.error("Shopify update error:", error);
-          toast.error("Failed to sync with Shopify, but local changes saved");
-        }
-      }
-
-      images.forEach((image) => URL.revokeObjectURL(image.image_url));
-      router.push("/inventory");
-      toast.success("Item updated successfully");
-    } catch (error) {
-      console.error("Save error:", error);
-      toast.error("Error saving changes");
-    } finally {
-      setIsSaving(false);
+        .upsert(imageUploads, { onConflict: "id" });
+      if (imageError) throw imageError;
     }
-  };
+
+    if (itemDetails.listOnPaperclip && item?.paperclip_marketplace_id && user?.id) {
+      try {
+
+        const selectedCategoryId = selectedCategories.level3 || selectedCategories.level2 || selectedCategories.level1;
+        const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
+        const paperclipCategoryId = selectedCategory?.paperclip_marketplace_id;
+
+        if (!paperclipCategoryId) {
+          toast.error("Selected category does not have a Paperclip marketplace ID. Cannot update on Paperclip.");
+          return;
+        }
+
+        const formData = new FormData();
+
+        // Append basic fields
+        formData.append("userId", user.id);
+        formData.append("paperclipItemId", item.paperclip_marketplace_id);
+        formData.append("name", itemDetails.name.trim());
+        formData.append("description", itemDetails.description.trim());
+        formData.append("price", itemDetails.price);
+        formData.append("quantity", itemDetails.quantity.toString());
+        formData.append("condition", itemDetails.condition);
+        formData.append("size", itemDetails.size || "");
+        formData.append("brand", itemDetails.brand || "");
+        formData.append("age", itemDetails.age || "");
+        formData.append("color", itemDetails.color || "");
+        formData.append("tags", JSON.stringify(selectedTags));
+        formData.append("categoryId", paperclipCategoryId.toString());
+
+        // Append image files
+        await Promise.all(imageUploads.map(async (img, index) => {
+          if (img.image_url) {
+            try {
+              const response = await fetch(img.image_url);
+              const blob = await response.blob();
+              formData.append("media", blob, `image-${index}.jpg`);
+            } catch (error) {
+              console.error(`Error processing image ${index}:`, error);
+            }
+          }
+        }));
+
+        // Send the POST request with FormData
+        const updateResponse = await fetch("/api/paperclip/update-item", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!updateResponse.ok) {
+          const errorText = await updateResponse.text();
+          throw new Error(`Paperclip update failed: ${errorText}`);
+        }
+
+        const updateResult = await updateResponse.json();
+        console.log("Paperclip update result:", updateResult);
+      } catch (err) {
+        console.error("Error updating item on Paperclip:", err);
+        toast.error("Failed to update item on Paperclip.");
+      }
+    }
+
+    if (item.shopify_product_id && user?.store_id) {
+      try {
+        const response = await fetch("/api/shopify/update-product", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            storeId: user.store_id,
+            itemId: item.id,
+            previousQuantity,
+          }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || "Failed to update Shopify product"
+          );
+        }
+      } catch (error) {
+        console.error("Shopify update error:", error);
+        toast.error("Failed to sync with Shopify, but local changes saved");
+      }
+    }
+
+    images.forEach((image) => URL.revokeObjectURL(image.image_url));
+    router.push("/inventory");
+    toast.success("Item updated successfully");
+  } catch (error) {
+    console.error("Save error:", error);
+    toast.error("Error saving changes");
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+  // const handleSave = async () => {
+  //   if (!item) return;
+
+  //   setFieldErrors({ name: "", price: "", images: "", category: "" });
+  //   let hasErrors = false;
+  //   const newErrors = { name: "", price: "", images: "", category: "" };
+
+  //   if (!itemDetails.name.trim()) {
+  //     newErrors.name = "Item name is required";
+  //     hasErrors = true;
+  //   }
+  //   if (
+  //     !itemDetails.price ||
+  //     isNaN(parseFloat(itemDetails.price)) ||
+  //     parseFloat(itemDetails.price) <= 0
+  //   ) {
+  //     newErrors.price = "Valid price is required";
+  //     hasErrors = true;
+  //   }
+  //   const filteredImages = images.filter((image) =>
+  //     /\.(jpg|jpeg|png|gif|webp)$/i.test(image.image_url)
+  //   );
+  //   if (filteredImages.length === 0) {
+  //     newErrors.images = "At least one image is required";
+  //     hasErrors = true;
+  //   }
+  //   if (!selectedCategories.level1) {
+  //     newErrors.category = "Please select a main category";
+  //     hasErrors = true;
+  //   }
+
+  //   if (hasErrors) {
+  //     setFieldErrors(newErrors);
+  //     return;
+  //   }
+
+  //   setIsSaving(true);
+  //   try {
+  //     // Update the item details in the database
+  //     const { error: itemError } = await supabase
+  //       .from("items")
+  //       .update({
+  //         title: itemDetails.name,
+  //         description: itemDetails.description,
+  //         price: parseFloat(itemDetails.price) || 0,
+  //         quantity: parseInt(itemDetails.quantity) || 0,
+  //         category_id:
+  //           selectedCategories.level3 ||
+  //           selectedCategories.level2 ||
+  //           selectedCategories.level1,
+  //         condition: itemDetails.condition,
+  //         size: itemDetails.size,
+  //         brand: itemDetails.brand,
+  //         logo_url: logoUrl,
+  //         age: itemDetails.age,
+  //         color: itemDetails.color,
+  //         available_in_store: itemDetails.availableInStore,
+  //         list_on_paperclip: itemDetails.listOnPaperclip,
+  //         tags: selectedTags,
+  //       })
+  //       .eq("id", item.id);
+
+  //     if (itemError) throw itemError;
+
+  //     const imageUploads = await Promise.all(
+  //       images.map(async (image, index) => {
+  //         if (image.id) {
+  //           return {
+  //             id: image.id,
+  //             item_id: item.id,
+  //             image_url: image.image_url,
+  //             display_order: index,
+  //             shopify_media_id: image.shopify_media_id,
+  //           };
+  //         }
+
+  //         const newId = uuidv4();
+  //         const fileExt = image.image_url.split(".").pop();
+  //         const fileName = `${user?.id}/${item.id}/${crypto.randomUUID()}.${fileExt}`;
+  //         let fileData: Blob;
+
+  //         if (image.file) {
+  //           fileData = image.file;
+  //         } else {
+  //           const response = await fetch(image.image_url);
+  //           fileData = await response.blob();
+  //         }
+
+  //         // Upload the new image
+  //         const { error: uploadError } = await supabase.storage
+  //           .from("item-images")
+  //           .upload(fileName, fileData, {
+  //             cacheControl: "3600",
+  //             upsert: false,
+  //           });
+  //         if (uploadError) throw uploadError;
+
+  //         const {
+  //           data: { publicUrl },
+  //         } = supabase.storage.from("item-images").getPublicUrl(fileName);
+
+  //         return {
+  //           id: newId,
+  //           item_id: item.id,
+  //           image_url: publicUrl,
+  //           display_order: index,
+  //         };
+  //       })
+  //     );
+
+  //     // Delete old images that are no longer associated with this item
+  //     const existingIds = images.filter((img) => img.id).map((img) => img.id);
+  //     await supabase
+  //       .from("item_images")
+  //       .delete()
+  //       .eq("item_id", item.id)
+  //       .not("id", "in", `(${existingIds.join(",")})`);
+
+  //     // Insert new images if necessary
+  //     if (imageUploads.length > 0) {
+  //       const { error: imageError } = await supabase
+  //         .from("item_images")
+  //         .upsert(imageUploads, { onConflict: "id" });
+  //       if (imageError) throw imageError;
+  //     }
+
+  //     // const updatedData = {
+  //     //   title: itemDetails.name,
+  //     //   description: itemDetails.description,
+  //     //   price: parseFloat(itemDetails.price) || 0,
+  //     //   quantity: parseInt(itemDetails.quantity) || 0,
+  //     // };
+  //     const updatedQuantity = parseInt(itemDetails.quantity) || 0;
+
+  //     // if (itemDetails.listOnPaperclip && item?.paperclip_marketplace_id && user?.id) {
+  //     //   try {
+  //     //     const updatePayload = {
+  //     //       userId: user.id,
+  //     //       paperclipItemId: item.paperclip_marketplace_id,
+  //     //       itemDetails: {
+  //     //         name: itemDetails.name,
+  //     //         description: itemDetails.description,
+  //     //         price: itemDetails.price,
+  //     //         quantity: parseInt(itemDetails.quantity),
+  //     //         condition: itemDetails.condition,
+  //     //         size: itemDetails.size,
+  //     //         brand: itemDetails.brand,
+  //     //         age: itemDetails.age,
+  //     //         color: itemDetails.color,
+  //     //         tags: selectedTags,
+  //     //       },
+  //     //       images: imageUploads.map((img) => img.image_url),
+  //     //       selectedCategories: {
+  //     //         level1: selectedCategories.level1
+  //     //           ? parseInt(selectedCategories.level1)
+  //     //           : undefined,
+  //     //         level2: selectedCategories.level2
+  //     //           ? parseInt(selectedCategories.level2)
+  //     //           : undefined,
+  //     //         level3: selectedCategories.level3
+  //     //           ? parseInt(selectedCategories.level3)
+  //     //           : undefined,
+  //     //       },
+  //     //     };
+
+  //     //     const updateResponse = await fetch("/api/paperclip/update-item", {
+  //     //       method: "POST",
+  //     //       headers: { "Content-Type": "application/json" },
+  //     //       body: JSON.stringify(updatePayload),
+  //     //     });
+  //     //     if (!updateResponse.ok) {
+  //     //       const errorText = await updateResponse.text();
+  //     //       throw new Error(`Paperclip update failed: ${errorText}`);
+  //     //     }
+  //     //     const updateResult = await updateResponse.json();
+  //     //     console.log("Paperclip update result:", updateResult);
+  //     //   } catch (err) {
+  //     //     console.error("Error updating item on Paperclip:", err);
+  //     //     toast.error("Failed to update item on Paperclip.");
+  //     //   }
+  //     // }
+
+  //     if (itemDetails.listOnPaperclip && item?.paperclip_marketplace_id && user?.id) {
+  //       try {
+  //         // Create a FormData object to hold all data and files
+  //         const formData = new FormData();
+      
+  //         // Append basic fields
+  //         formData.append("userId", user.id);
+  //         formData.append("paperclipItemId", item.paperclip_marketplace_id);
+  //         formData.append("name", itemDetails.name.trim());
+  //         formData.append("description", itemDetails.description.trim());
+  //         formData.append("price", itemDetails.price);
+  //         formData.append("quantity", itemDetails.quantity.toString());
+  //         formData.append("condition", itemDetails.condition);
+  //         formData.append("size", itemDetails.size || "");
+  //         formData.append("brand", itemDetails.brand || "");
+  //         formData.append("age", itemDetails.age || "");
+  //         formData.append("color", itemDetails.color || "");
+  //         formData.append("tags", JSON.stringify(selectedTags));
+      
+  //         // Append the selected category (preferring level3, then level2, then level1, defaulting to "1")
+  //         const categoryId = selectedCategories.level3 || selectedCategories.level2 || selectedCategories.level1 || "1";
+  //         formData.append("categoryId", categoryId);
+      
+  //         // First verify if the image has a valid URL and fetch it if needed
+  //         const imagePromises = imageUploads.map(async (img, index) => {
+  //           if (img.image_url) {
+  //             try {
+  //               const response = await fetch(img.image_url);
+  //               const blob = await response.blob();
+  //               formData.append(`images[${index}]`, blob, `image-${index}.jpg`);
+  //             } catch (error) {
+  //               console.error(`Error processing image ${index}:`, error);
+  //             }
+  //           }
+  //         });
+      
+  //         await Promise.all(imagePromises);
+      
+  //         // Send the POST request with FormData
+  //         const updateResponse = await fetch("/api/paperclip/update-item", {
+  //           method: "POST",
+  //           body: formData, // No need for Content-Type header; fetch sets it automatically for FormData
+  //         });
+      
+  //         if (!updateResponse.ok) {
+  //           const errorText = await updateResponse.text();
+  //           throw new Error(`Paperclip update failed: ${errorText}`);
+  //         }
+      
+  //         const updateResult = await updateResponse.json();
+  //         console.log("Paperclip update result:", updateResult);
+  //       } catch (err) {
+  //         console.error("Error updating item on Paperclip:", err);
+  //         toast.error("Failed to update item on Paperclip.");
+  //       }
+  //     }
+  //     if (item.shopify_product_id && user?.store_id) {
+  //       try {
+  //         const response = await fetch("/api/shopify/update-product", {
+  //           method: "POST",
+  //           headers: { "Content-Type": "application/json" },
+  //           body: JSON.stringify({
+  //             storeId: user.store_id,
+  //             itemId: item.id,
+  //             previousQuantity,
+  //           }),
+  //         });
+  //         if (!response.ok) {
+  //           const errorData = await response.json();
+  //           throw new Error(
+  //             errorData.error || "Failed to update Shopify product"
+  //           );
+  //         }
+  //       } catch (error) {
+  //         console.error("Shopify update error:", error);
+  //         toast.error("Failed to sync with Shopify, but local changes saved");
+  //       }
+  //     }
+
+  //     images.forEach((image) => URL.revokeObjectURL(image.image_url));
+  //     router.push("/inventory");
+  //     toast.success("Item updated successfully");
+  //   } catch (error) {
+  //     console.error("Save error:", error);
+  //     toast.error("Error saving changes");
+  //   } finally {
+  //     setIsSaving(false);
+  //   }
+  // };
 
   if (isLoading) return <div>Loading...</div>;
 

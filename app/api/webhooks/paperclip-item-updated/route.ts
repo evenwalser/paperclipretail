@@ -7,6 +7,21 @@ function computeHMAC(rawBody: Buffer, secret: string): string {
   return crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
 }
 
+// Helper function to get local category ID from Paperclip category ID
+async function getLocalCategoryId(supabase: any, paperclipCategoryId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('paperclip_marketplace_id', paperclipCategoryId)
+    .single();
+
+  if (error || !data) {
+    console.warn(`No local category found for paperclip_marketplace_id: ${paperclipCategoryId}`);
+    return null;
+  }
+  return data.id;
+}
+
 export async function POST(request: NextRequest) {
   // Extract the signature from the header
   const signature = request.headers.get('X-Paperclip-Signature');
@@ -52,9 +67,18 @@ export async function POST(request: NextRequest) {
       .is('paperclip_deleted_at', null)
       .single();
 
-      if (findError || !existingItem) {
-        return NextResponse.json({ error: 'Item not found or is deleted in retail system' }, { status: 404 });
+    if (findError || !existingItem) {
+      return NextResponse.json({ error: 'Item not found or is deleted in retail system' }, { status: 404 });
+    }
+
+    // Determine the local category ID
+    let localCategoryId = existingItem.category_id; // default to existing category
+    if (item.categoryId) {
+      const mappedCategoryId = await getLocalCategoryId(supabase, item.categoryId);
+      if (mappedCategoryId) {
+        localCategoryId = mappedCategoryId;
       }
+    }
 
     // Update item in retail system
     const { error: updateError } = await supabase
@@ -68,8 +92,7 @@ export async function POST(request: NextRequest) {
         size: item.size || '',
         brand: item.brand || '',
         tags: item.tags || [],
-        // Only update category if needed and you have a mapping system
-        // category_id: mapCategoryFromMarketplace(item.category_id, existingItem.category_id),
+        category_id: localCategoryId,
       })
       .eq('id', existingItem.id);
 

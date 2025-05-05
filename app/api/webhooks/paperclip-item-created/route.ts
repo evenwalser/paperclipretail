@@ -71,17 +71,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    const paperclipCategoryId = item.categoryId;
     // Determine categories based on the marketplace category
-    let categoryId = null;
     // This requires mapping between marketplace categories and your local categories
     // For simplicity, you might want to use a default category initially
-    const { data: categories } = await supabase
-      .from('categories')
-      .select('id')
-      .limit(1);
+    const { data: categoryData, error: categoryError } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('paperclip_marketplace_id', paperclipCategoryId)
+    .single();
     
-    if (categories && categories.length > 0) {
-      categoryId = categories[0].id;
+    let categoryId = null;
+    if (categoryError || !categoryData) {
+      console.warn(`No matching category found for paperclip_marketplace_id: ${paperclipCategoryId}`);
+      // Fall back to a default category
+      const { data: defaultCategory } = await supabase
+        .from('categories')
+        .select('id')
+        .limit(1);
+      if (defaultCategory && defaultCategory.length > 0) {
+        categoryId = defaultCategory[0].id;
+      }
+    } else {
+      categoryId = categoryData.id;
     }
 
     // Create new item in your system

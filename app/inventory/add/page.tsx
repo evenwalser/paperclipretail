@@ -31,6 +31,7 @@ interface Category {
   display_order: number;
   created_at: string;
   updated_at: string;
+  paperclip_marketplace_id: string | null;
 }
 
 interface DuplicateItemData {
@@ -572,6 +573,13 @@ export default function AddItemPage() {
       //   }
       // }
 
+      const selectedCategory = categories.find(cat => cat.id === category_id);
+      console.log("🚀 ~ handleSubmit ~ selectedCategory:", selectedCategory)
+      const paperclipCategoryName = selectedCategory?.name;
+      const paperclipCategoryId = selectedCategory?.paperclip_marketplace_id;
+      console.log("🚀 ~ handleSubmit ~ paperclipCategoryId:", paperclipCategoryId)
+      console.log("🚀 ~ handleSubmit ~ paperclipCategoryName:", paperclipCategoryName)
+
       
 if (listOnPaperclip) {
   try {
@@ -583,9 +591,17 @@ if (listOnPaperclip) {
     formData.append("description", itemDetails.description.trim());
     formData.append("price", priceNum.toString());
     formData.append("condition", condition);
+    formData.append("age", age);
 
     // Append categories
-    formData.append("categoryId", "1")
+    
+   let level1 = selectedCategories.level1 ? parseInt(selectedCategories.level1) : undefined;
+   console.log("🚀 ~ handleSubmit ~ level1:", level1)
+   let  level2 = selectedCategories.level2 ? parseInt(selectedCategories.level2) : undefined;
+   console.log("🚀 ~ handleSubmit ~ level2:", level2)
+   let  level3 = selectedCategories.level3 ? parseInt(selectedCategories.level3) : undefined;
+   console.log("🚀 ~ handleSubmit ~ level3:", level3)
+   formData.append("categoryId", paperclipCategoryId?.toString() || "");
     // formData.append("selectedCategories[level2]", selectedCategories.level2 || "");
     // formData.append("selectedCategories[level3]", selectedCategories.level3 || "");
 
@@ -602,6 +618,7 @@ if (listOnPaperclip) {
         formData.append("media", image.file);
       }
     });
+
 
     const response = await fetch("/api/paperclip/create-items", {
       method: "POST",

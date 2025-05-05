@@ -14,6 +14,7 @@ export interface ItemImage {
     parent_id: string | null;
     level: number;
     display_order: number;
+    paperclip_marketplace_id?: string
   }
   
   export interface ItemType {

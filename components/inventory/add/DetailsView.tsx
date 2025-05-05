@@ -80,7 +80,7 @@ interface DetailsViewProps {
   showSuggestions: boolean;
   onBrandSelect: (brand: any) => void;
   selectedTags: string[];
-  setSelectedTags:any ;
+  setSelectedTags: any;
   setListOnShopify: any;
 }
 
@@ -160,28 +160,28 @@ export default function DetailsView({
       <ConditionSelector condition={condition} onChange={onConditionChange} />
       <SizeSelector size={size} onChange={onSizeChange} />
       <div className="space-y-2">
-          <Label>Tags</Label>
-          <div className="flex flex-wrap gap-2">
-            {selectedTags.map((tag, index) => (
-              <div
-                key={index}
-                className="bg-blue-100 text-blue-800 px-2 py-1 rounded flex items-center"
+        <Label>Tags</Label>
+        <div className="flex flex-wrap gap-2">
+          {selectedTags.map((tag, index) => (
+            <div
+              key={index}
+              className="bg-blue-100 text-blue-800 px-2 py-1 rounded flex items-center"
+            >
+              {tag}
+              <button
+                onClick={() =>
+                  setSelectedTags((prev: string[]) =>
+                    prev.filter((_: string, i: number) => i !== index)
+                  )
+                }
+                className="ml-1 text-red-500 hover:text-red-700"
               >
-                {tag}
-                <button
-                  onClick={() =>
-                    setSelectedTags((prev: string[]) =>
-                      prev.filter((_: string, i: number) => i !== index)
-                    )
-                  }
-                  className="ml-1 text-red-500 hover:text-red-700"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
-          {/* <Input
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+        {/* <Input
             placeholder="Add a tag and press Enter"
             onKeyDown={(e) => {
               if (e.key === "Enter" && e.currentTarget.value.trim()) {
@@ -193,13 +193,13 @@ export default function DetailsView({
               }
             }}
           /> */}
-        </div>
+      </div>
       <div className="relative">
         <Label htmlFor="brand">Brand</Label>
         <div className="relative flex items-center">
           {logoUrl && (
             <img
-              src={logoUrl} 
+              src={logoUrl}
               alt="Brand Logo"
               className="absolute right-2 h-6 w-6 object-contain"
               onError={(e) =>
@@ -215,7 +215,17 @@ export default function DetailsView({
             className={`pl-${logoUrl ? "10" : "3"}`} // Add left padding if logo exists
           />
         </div>
- 
+
+        <div className="space-y-2">
+          <Label htmlFor="age">Age</Label>
+          <Input
+            id="age"
+            value={age}
+            onChange={(e) => onAgeChange(e.target.value)}
+            placeholder="Enter age"
+          />
+        </div>
+
         {showSuggestions && brandSuggestions.length > 0 && (
           <ul className="absolute z-10 w-full bg-[#060d19] border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
             {brandSuggestions.map((suggestion, index) => (
