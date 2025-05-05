@@ -1,28 +1,47 @@
 // contexts/UserContext.tsx
 'use client'
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { getUser } from "@/lib/services/items";
 
+type User = any; // replace 'any' with your actual user type
 
+interface UserContextValue {
+  user: User | null;
+  refreshUser: () => Promise<void>;
+}
 
-const UserContext = createContext<any>(null);
+const UserContext = createContext<UserContextValue>({
+  user: null,
+  refreshUser: async () => {},
+});
 
 interface UserProviderProps {
   children: ReactNode;
 }
 
 export function UserProvider({ children }: UserProviderProps) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
-  useEffect(() => {
-    const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
+    try {
       const userData = await getUser();
       setUser(userData);
-    };
-    fetchUser();
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+    }
   }, []);
 
-  return <UserContext.Provider value={user}>{children}</UserContext.Provider>;
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
+
+  // Expose user and a function to refresh
+  const contextValue: UserContextValue = {
+    user,
+    refreshUser: fetchUser,
+  };
+
+  return <UserContext.Provider value={contextValue}>{children}</UserContext.Provider>;
 }
 
 export function useUser() {

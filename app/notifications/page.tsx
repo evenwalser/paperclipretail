@@ -22,7 +22,7 @@ export default function NotificationsPage() {
   const [activeNotification, setActiveNotification] = useState<Notification | null>(null)
   const [replyContent, setReplyContent] = useState('')
   const [counterOffer, setCounterOffer] = useState('')
-  const user = useUser()
+  const { user, refreshUser } = useUser();
   const userStoreId = user?.store_id
   console.log("🚀 ~ NotificationsPage ~ userStoreId:", userStoreId)
 

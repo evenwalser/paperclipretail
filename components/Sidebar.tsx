@@ -34,7 +34,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
   const { role, isLoading } = useRoleContext();
-  const user = useUser();
+  const { user, refreshUser } = useUser();
   const userStoreId = user?.store_id;
   useEffect(() => {
     fetchUnreadCount();

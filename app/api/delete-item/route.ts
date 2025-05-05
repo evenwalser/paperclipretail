@@ -98,8 +98,10 @@ export async function POST(request: Request) {
 
     // Delete from Paperclip if listed
     if (item.paperclip_marketplace_id) {
+      console.log("🚀 ~ POST ~ item.paperclip_marketplace_id:", item.paperclip_marketplace_id)
       try {
         const paperclipToken = await getPaperclipToken(user.id);
+        
         // Adjusted endpoint and payload according to API requirements.
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_PAPERCLIP_API_URL}/v4/items/delete`,
@@ -113,9 +115,11 @@ export async function POST(request: Request) {
           }
         );
         if (!response.ok) {
+          console.error("Paperclip API error:", response.statusText);
           throw new Error("Paperclip deletion failed");
         }
       } catch (error) {
+        console.error("Error deleting from Paperclip:", error);
         paperclipDeleted = false;
       }
     }

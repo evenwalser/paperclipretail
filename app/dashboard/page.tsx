@@ -77,7 +77,7 @@ export default function DashboardPage() {
   const handleSignIn = () => {
     signIn("google", { prompt: "select_account" });
   };
-  const user = useUser();
+  const { user, refreshUser } = useUser();
   console.log("🚀 ~ DashboardPage ~ user:", user)
 
   useEffect(() => {

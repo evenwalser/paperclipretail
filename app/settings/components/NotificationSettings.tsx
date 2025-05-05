@@ -12,7 +12,7 @@ import { useUser } from '@/app/contexts/UserContext';
 
 export function NotificationSettings() {
   const supabase = createClient();
-  const user = useUser();
+  const { user, refreshUser } = useUser();
   const [notificationChannels, setNotificationChannels] = useState<string[]>(['in-app']);
   const [lowStockAlert, setLowStockAlert] = useState(true);
   const [newSaleAlert, setNewSaleAlert] = useState(true);

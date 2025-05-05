@@ -20,6 +20,7 @@ import { User } from "next-auth";
 import { toast } from "sonner";
 import { InviteForm } from "@/components/InviteForm";
 import SendInviteForm from "@/components/SendInviteForm";
+import { useUser } from "@/app/contexts/UserContext";
 
 interface Address {
   line_1: string;
@@ -39,6 +40,7 @@ export function StoreProfileSettings() {
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [isManualEdit, setIsManualEdit] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { user: contextUser, refreshUser } = useUser();
   const [storeDetails, setStoreDetails] = useState({
     name: "",
     phone: "",
@@ -88,6 +90,10 @@ export function StoreProfileSettings() {
     };
     getSessionAndStore();
   }, []);
+
+  const handleRefresh = async () => {
+    await refreshUser();
+  };
 
   const handleImageUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -244,6 +250,8 @@ export function StoreProfileSettings() {
    
 
       if (profileError) throw profileError;
+
+      handleRefresh(); // Refresh user data to reflect changes
 
       // Redirect to the dashboard after successful profile update
       
