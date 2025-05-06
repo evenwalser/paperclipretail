@@ -391,7 +391,7 @@ export default function InventoryPage() {
         onFilterChange={handleFilterChange}
       />
 
-      {/* {filterOptions.brands.length > 0 && (
+      {filterOptions.brands.length > 0 && (
         <div className="flex flex-wrap gap-4 mb-6">
           {filterOptions.brands.map((brandObj) => (
             <button
@@ -422,7 +422,7 @@ export default function InventoryPage() {
             </button>
           ))}
         </div>
-      )} */}
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (

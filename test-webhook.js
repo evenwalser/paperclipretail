@@ -15,7 +15,7 @@ const WEBHOOK_SECRET = 'LlbFEjTDY2aLshEkzTb7gNiqaXbBR66pzVR32CoyGnNEDYr0hk';
 const payload = {
   event: 'item_created',
   item: {
-    id: "item_1273",
+    id: "item273sdf",
     userId: "D2A50B9416724E79B5974F0B73F8DB3A",
     marketplace: 'example',
     name: 'Test Item',

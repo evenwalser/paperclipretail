@@ -211,7 +211,7 @@ export default function LoginPage({
               {isLogin ? "Log in with Google" : "Sign in with Google"}
             </Button>
 
-            <Button
+            {/* <Button
               variant="outline"
               className="w-full h-12 text-[16px] font-[600] border border-[#D5D7DA] rounded-[12px] text-[#414651] hover:text-[#414651] shadow-sm"
               onClick={handleAppleSignIn}
@@ -232,7 +232,7 @@ export default function LoginPage({
                 />
               </svg>
               {isLogin ? "Log in with Apple" : "Sign in with Apple"}
-            </Button>
+            </Button> */}
           </div>
 
           {/* Divider */}
