@@ -51,6 +51,7 @@ export async function GET(request: Request) {
   // Prepare Paperclip payload
   const firstName = name.split(' ')[0];
   const lastName = name.split(' ').slice(1).join(' ') || firstName;
+  const email = sessionData?.user?.email;
   const googleIdentity = sessionData?.user?.identities?.find(id => id.provider === 'google');
   const providerId = googleIdentity ? googleIdentity?.identity_data?.sub : userId;
 
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
     firstName,
     lastName,
     source: 'google',
+    email,
     timezone: 'Europe/London', // Consider making this dynamic later
     id: providerId,
     // userToken: providerToken,
