@@ -59,17 +59,62 @@ export default async function handler(
   }
   // Handle multipart/form-data content type
   else if (contentType.includes("multipart/form-data")) {
+    console.log("[Webhook] Processing multipart form data");
     const form = new IncomingForm({ multiples: true });
     let fields: Fields, files: Files;
 
     try {
-      ({ fields, files } = await new Promise<{ fields: Fields; files: Files }>(
-        (resolve, reject) => {
-          form.parse(req, (err, f, fi) => {
-            if (err) reject(err);
-            else resolve({ fields: f, files: fi });
-          });
+      // Get the raw body first for HMAC verification
+      const rawBody = await getRawBody(req);
+      
+      // Verify HMAC if signature is present
+      const signature = req.headers["x-paperclip-signature"];
+      if (signature) {
+        const expectedSignature = computeHMAC(rawBody, process.env.PAPERCLIP_WEBHOOK_SECRET || "");
+        if (signature !== expectedSignature) {
+          console.error("[Webhook] Invalid HMAC signature");
+          return res.status(401).json({ error: "Invalid signature" });
         }
+      }
+
+      // Create a proper readable stream with all required methods
+      const { Readable } = require('stream');
+      const mockReq = new Readable({
+        read() {
+          this.push(rawBody);
+          this.push(null);
+        }
+      });
+
+      // Add required properties
+      Object.assign(mockReq, {
+        headers: req.headers,
+        rawBody: rawBody,
+        pipe: (stream: any) => {
+          stream.write(rawBody);
+          stream.end();
+          return stream;
+        },
+        pause: () => mockReq,
+        resume: () => mockReq,
+        destroy: () => {},
+        on: (event: string, handler: Function) => {
+          if (event === 'data') {
+            process.nextTick(() => handler(rawBody));
+          }
+          if (event === 'end') {
+            process.nextTick(() => handler());
+          }
+          return mockReq;
+        }
+      });
+
+      // Parse the form data using the mock request
+      ({ fields, files } = await new Promise<{ fields: Fields; files: Files }>(
+        (resolve, reject) =>
+          form.parse(mockReq as any, (err, f, fi) =>
+            err ? reject(err) : resolve({ fields: f, files: fi })
+          )
       ));
       console.log("[Webhook] Form parsed successfully:", { fields, files });
 
@@ -128,7 +173,7 @@ export default async function handler(
         }
       }
     } catch (err) {
-      console.error("Form parse error:", err);
+      console.error("[Webhook] Form parse error:", err);
       return res.status(400).json({ error: "Invalid form-data" });
     }
   } else {

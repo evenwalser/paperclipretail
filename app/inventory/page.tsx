@@ -120,6 +120,7 @@ export default function InventoryPage() {
           user,
           categoryFilter
         );
+        console.log("🚀 ~ loadItems ~ items:", items)
         setItems(items.filter((item) => !item.deleted_at));
         if (allItemsCategories.length === 0) {
           setAllItemsCategories(
@@ -135,6 +136,7 @@ export default function InventoryPage() {
     };
     loadItems();
   }, [currentPage, user, filters]);
+     
 
   // Fetch store settings
   useEffect(() => {

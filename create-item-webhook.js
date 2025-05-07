@@ -3,8 +3,8 @@ const FormData = require('form-data');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const url = 'https://a6a3-2a09-bac5-3b0c-172d-00-24f-2.ngrok-free.app/api/webhooks/create-item';
-const secret = 'LlbFEjTDY2aLshEkzTb7gNiqaXbBR66pzVR32CoyGnNEDYr0hk';
+const url = 'http://localhost:3000/api/webhooks/paperclip-item-created';
+const secret = 'crBuxl5XgsIgl32WedmIdPWMZnAAF5l7y3Mz62fF';
 
 // Point to your real fixture files
 const imagePath1 = './fixtures/image1.png';
@@ -17,7 +17,7 @@ const img2Buffer = fs.readFileSync(imagePath2);
 const payload = {
   event: 'item_created',
   item: {
-    id: 'item1238593',
+    id: 'item1238d593',
     name: 'Sample Item',
     description: 'This is a sample item',
     price: '19.99',
@@ -28,7 +28,7 @@ const payload = {
     brand: 'SampleBrand',
     tags: ['tag1', 'tag2'],
     media: [],
-    userId: 'user789'
+    userId: 'AFFB0D44D2954B40A7369A49A069B589'
   }
 };
 
