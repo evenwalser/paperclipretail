@@ -32,6 +32,7 @@ import { NotificationSettings } from "./components/NotificationSettings";
 import { IntegrationSettings } from "./components/IntegrationSettings";
 import { createClient } from "@/utils/supabase/client";
 import { getUser } from "@/lib/services/items";
+import { EbayIntegrationSettings } from "./components/EbayIntegrationSettings";
 
 interface Address {
   street: string;
@@ -83,13 +84,15 @@ const SettingsPage = (): any => {
   useEffect(() => {
     const fetchStoreSettings = async () => {
       // Replace with your method for fetching the current user.
-          const user = await getUser();
-          setuser(user);
+      const user = await getUser();
+      setuser(user);
       const userId = user.id;
 
       const { data, error } = await supabase
         .from("stores")
-        .select("id, low_stock_threshold, default_sorting, store_name, contact_details")
+        .select(
+          "id, low_stock_threshold, default_sorting, store_name, contact_details"
+        )
         .eq("owner_id", userId)
         .single();
       if (error) {
@@ -99,9 +102,9 @@ const SettingsPage = (): any => {
         setLowStockThreshold(data.low_stock_threshold);
         setDefaultSorting(data.default_sorting);
         setStoreDetails({
-          name: data.store_name || '',
-          phone: data.contact_details?.phone || '',
-          email: data.contact_details?.email || ''
+          name: data.store_name || "",
+          phone: data.contact_details?.phone || "",
+          email: data.contact_details?.email || "",
         });
       }
     };
@@ -199,10 +202,16 @@ const SettingsPage = (): any => {
                 Notifications
               </TabsTrigger>
               <TabsTrigger
-                value="integrations"
+                value="Shopify"
                 className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-[8px]"
               >
-                Integrations
+                Shopify
+              </TabsTrigger>
+              <TabsTrigger
+                value="eBay"
+                className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-800 data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 rounded-t-[8px]"
+              >
+                eBay
               </TabsTrigger>
             </TabsList>
           </CardHeader>
@@ -255,13 +264,16 @@ const SettingsPage = (): any => {
               // setNotificationPhone={setNotificationPhone}
               />
             </TabsContent>
-            <TabsContent value="integrations">
+            <TabsContent value="Shopify">
               <IntegrationSettings
               // syncStatus={syncStatus}
               // lastSyncTime={lastSyncTime}
               // isReconnecting={isReconnecting}
               // handleReconnect={handleReconnect}
               />
+            </TabsContent>
+            <TabsContent value="eBay">
+              <EbayIntegrationSettings />
             </TabsContent>
           </CardContent>
         </Card>
