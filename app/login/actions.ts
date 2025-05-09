@@ -54,80 +54,6 @@ export async function signup(formData: FormData) {
     redirect("/login?tab=signup&error=" + encodeURIComponent(errMsg));
   }
 
-  // Register with Paperclip Marketplace
-  const firstName = name.split(' ')[0];
-  const lastName = name.split(' ').slice(1).join(' ') || firstName; // Use firstName if no last name
-  const nickname = ''; // Can be empty per requirements
-  const timezone = 'Europe/London'; // Default timezone
-
-  const registerResponse = await fetch(`${BASEURL}/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      email,
-      password,
-      firstName,
-      lastName,
-      nickname,
-      timezone,
-    }),
-  });
-
-  if (!registerResponse.ok) {
-    if (!data?.user?.id) {
-      redirect("/login?tab=signup&error=" + encodeURIComponent("User ID is missing"));
-    }
-    await supabase.auth.admin.deleteUser(data.user.id);
-    redirect('/login?tab=signup&error=' + encodeURIComponent('PaperClip registration failed'));
-  }
-
-  const registerData = await registerResponse.json();
-  if (registerData.code !== 1) {
-    if (!data?.user?.id) {
-      redirect("/login?tab=signup&error=" + encodeURIComponent("User ID is missing"));
-    }
-    await supabase.auth.admin.deleteUser(data.user.id);
-    redirect('/login?tab=signup&error=' + encodeURIComponent('PaperClip registration failed'));
-  }
-  
-  // // Log in to Paperclip to get access token
-  // const loginResponse = await fetch(`${BASEURL}/login`, {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //   },
-  //   body: JSON.stringify({
-  //     email,
-  //     password,
-  //   }),
-  // });
-
-  // if (!loginResponse.ok) {
-  //   await supabase.auth.admin.deleteUser(data?.user?.id);
-  //   redirect('/login?tab=signup&error=' + encodeURIComponent('Paperclip login failed'));
-  // }
-
-  // const loginData = await loginResponse.json();
-  // if (loginData.code !== 1) {
-  //   await supabase.auth.admin.deleteUser(data?.user?.id);
-  //   redirect('/login?tab=signup&error=' + encodeURIComponent('Paperclip login failed'));
-  // }
-
-  // Store the Paperclip token
-  // const { error: tokenError } = await supabase
-  //   .from('user_tokens')
-  //   .insert({
-  //     user_id: data?.user?.id,
-  //     paperclip_token: loginData.data.api_token,
-  //   });
-
-  // if (tokenError) {
-  //   console.error('Error storing Paperclip token:', tokenError);
-  //   // Log the error; user is already created, so no rollback needed
-  // }
-
   revalidatePath('/login', 'page');
   redirect('/login');
 }
@@ -141,59 +67,8 @@ export async function login(formData: FormData) {
   // Log in with Supabase
   const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
 
-  console.log("🚀 ~ login ~ authData:", authData)
   if (error) {
     redirect('/login?tab=login&error=' + encodeURIComponent(error.message));
-  }
-
-  // Log in to Paperclip Marketplace
-  const loginResponse = await fetch(`${BASEURL}/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      email,
-      password,
-    }),
-  });
-
-  if (!loginResponse.ok) {
-    redirect('/login?tab=login&error=' + encodeURIComponent('Paperclip login failed'));
-  }
-
-  const loginData = await loginResponse.json();
-  if (loginData.code !== 1) {
-    redirect('/login?tab=login&error=' + encodeURIComponent('Paperclip login failed'));
-  }
-
-  const paperclipUserId = loginData.data.userId;
-  if (!paperclipUserId) {
-    redirect('/login?tab=login&error=' + encodeURIComponent('Paperclip user ID missing'));
-  }
-
-  const { error: updateError } = await supabase
-      .from('users')
-      .update({ paperclip_marketplace_id: paperclipUserId })
-      .eq('id', authData.user.id);
-    if (updateError) {
-      console.error('Error updating Paperclip ID:', updateError);
-    }
-
-  // Store or update the Paperclip token
-  const { error: tokenError } = await supabase
-    .from('user_tokens')
-    .upsert({
-      user_id: authData?.user?.id,
-      paperclip_token: loginData.data.api_token,
-    }, {
-      onConflict: 'user_id'
-    });
-
-
-  if (tokenError) {
-    console.error('Error storing Paperclip token:', tokenError);
-    // Log the error; proceed since login succeeded
   }
 
   revalidatePath('/', 'page');

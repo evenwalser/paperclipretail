@@ -13,9 +13,11 @@ import {
   Bell,
   Settings,
   LogOut,
+  Link as LinkIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { logout } from "@/app/login/actions";
+import { generateLinkingToken } from "@/app/marketplace/actions";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useRoleContext } from "@/app/contexts/RoleContext";
@@ -36,6 +38,8 @@ export function Sidebar() {
   const { role, isLoading } = useRoleContext();
   const { user, refreshUser } = useUser();
   const userStoreId = user?.store_id;
+  const [isLinking, setIsLinking] = useState(false);
+
   useEffect(() => {
     fetchUnreadCount();
 
@@ -117,6 +121,26 @@ export function Sidebar() {
     }
   };
 
+  const handleLinkMarketplace = async () => {
+    try {
+      setIsLinking(true);
+      const { deepLinkUrl } = await generateLinkingToken();
+      
+      // Open the deep link URL directly
+      window.location.href = deepLinkUrl;
+      
+      // Show a message in case the app doesn't open
+      setTimeout(() => {
+        toast.info("If the app didn't open, please make sure you have the Paperclip Marketplace app installed on your device.");
+      }, 2000);
+    } catch (error) {
+      console.error("Error generating linking token:", error);
+      toast.error("Failed to generate linking URL");
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col h-full bg-white dark:bg-gray-900 w-64 border-r border-gray-200 dark:border-gray-800">
@@ -187,6 +211,17 @@ export function Sidebar() {
               </Button>
             </Link>
           ))}
+
+          {/* Add Link Marketplace Account button */}
+          <Button
+            variant="ghost"
+            onClick={handleLinkMarketplace}
+            disabled={isLinking}
+            className="w-full justify-start rounded-[8px] hover:bg-gray-800 hover:text-[#fff]"
+          >
+            <LinkIcon className="mr-2 h-4 w-4" />
+            {isLinking ? "Generating Link..." : "Link Marketplace Account"}
+          </Button>
         </nav>
       </ScrollArea>
       <div className="p-4 border-t border-gray-800">
