@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   AlertTriangle,
   PoundSterling,
+  Link as LinkIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,8 @@ import { createClient } from "@/utils/supabase/client";
 import { ASSETS } from "@/lib/constants";
 import Image from "next/image";
 import { logout } from "@/app/login/actions";
+import { generateLinkingToken } from "@/app/marketplace/actions";
+import { toast } from "sonner";
 
 interface UserData {
   id: string;
@@ -78,6 +81,7 @@ export function Header() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLinking, setIsLinking] = useState(false);
   const supabase = createClient();
   const handleProfileClick = (path: string) => {
     // router.push(`/settings?tab=${path}`);
@@ -87,6 +91,26 @@ export function Header() {
 
   const handleNotificationClick = () => {
     router.push("/notifications");
+  };
+
+  const handleLinkMarketplace = async () => {
+    try {
+      setIsLinking(true);
+      const { deepLinkUrl } = await generateLinkingToken();
+      
+      // Open the deep link URL directly
+      window.location.href = deepLinkUrl;
+      
+      // Show a message in case the app doesn't open
+      setTimeout(() => {
+        toast.info("If the app didn't open, please make sure you have the Paperclip Marketplace app installed on your device.");
+      }, 2000);
+    } catch (error) {
+      console.error("Error generating linking token:", error);
+      toast.error("Failed to generate linking URL");
+    } finally {
+      setIsLinking(false);
+    }
   };
 
   useEffect(() => {
@@ -150,7 +174,8 @@ export function Header() {
   const getNotificationIcon = (type: Notification["type"]) => {
     switch (type) {
       case "order":
-        return <ShoppingCart className="h-5 w-5 text-blue-500" />;
+        return <ShoppingCart className="h-5 w-5 text-blu.
+        e-500" />;
       case "alert":
         return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
       case "update":
@@ -161,15 +186,18 @@ export function Header() {
   };
 
   return (
-    <header className="bg-gray-900 border-b border-gray-800 p-4 flex justify-end items-center">
-      {/* <div>
-        {" "}
-        {userData && (
-          <>
-            <p>Welcome {userData.name}</p>
-          </>
-        )}
-      </div> */}
+    <header className="bg-gray-900 border-b border-gray-800 p-4 flex  items-center flex justify-end">
+      <div className="flex items-center space-x-4">
+        <Button
+          variant="ghost"
+          onClick={handleLinkMarketplace}
+          disabled={isLinking}
+          className="text-white hover:bg-gray-800"
+        >
+          <LinkIcon className="mr-2 h-4 w-4" />
+          {isLinking ? "Generating Link..." : "Link Marketplace Account"}
+        </Button>
+      </div>
       <div className="flex items-center space-x-4">
         <Popover>
           <PopoverTrigger asChild>

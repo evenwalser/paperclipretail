@@ -113,6 +113,7 @@ export default async function handler(
     // get token
     const supabase = createClient();
     const paperclipToken = await getPaperclipToken(userId);
+    console.log("🚀 ~ paperclipToken:", paperclipToken)
 
     // build FormData for Paperclip
     const formDataToSend = new FormData();
@@ -160,6 +161,7 @@ export default async function handler(
     if (!apiRes.ok) {
       const txt = await apiRes.text();
       console.error("Paperclip API error:", txt);
+      console.error("Paperclip API error:", apiRes.status);
       return res.status(apiRes.status).json({ error: txt });
     }
     const result = (await apiRes.json()) as { data?: { id?: string } };

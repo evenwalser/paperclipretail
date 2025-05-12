@@ -36,6 +36,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
   const { role, isLoading } = useRoleContext();
+  console.log("🚀 ~ Sidebar ~ role:", role)
   const { user, refreshUser } = useUser();
   const userStoreId = user?.store_id;
   const [isLinking, setIsLinking] = useState(false);
@@ -191,10 +192,10 @@ export function Sidebar() {
             >
               <Button
                 variant="ghost"
-                disabled={
-                  role === "sales_associate" &&
-                  !item.roles.includes("sales_associate")
-                }
+                // disabled={
+                //   role === "sales_associate" &&
+                //   !item.roles.includes("sales_associate")
+                // }
                 className={cn(
                   "w-full justify-start rounded-[8px] relative",
                   pathname === item.href
@@ -211,17 +212,6 @@ export function Sidebar() {
               </Button>
             </Link>
           ))}
-
-          {/* Add Link Marketplace Account button */}
-          <Button
-            variant="ghost"
-            onClick={handleLinkMarketplace}
-            disabled={isLinking}
-            className="w-full justify-start rounded-[8px] hover:bg-gray-800 hover:text-[#fff]"
-          >
-            <LinkIcon className="mr-2 h-4 w-4" />
-            {isLinking ? "Generating Link..." : "Link Marketplace Account"}
-          </Button>
         </nav>
       </ScrollArea>
       <div className="p-4 border-t border-gray-800">

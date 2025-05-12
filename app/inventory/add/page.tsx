@@ -634,7 +634,7 @@ if (listOnPaperclip) {
     console.log("Paperclip listing successful:", result);
   } catch (error) {
     console.error("Error listing on Paperclip:", error);
-    toast.error("Failed to list item on Paperclip.");
+    // toast.error("Failed to list item on Paperclip.");
   }
 }
 
