@@ -179,7 +179,7 @@ export default function AddItemPage() {
         setBrandSuggestions(data);
         setShowSuggestions(true);
       } catch (error) {
-        console.error("Error fetching brand suggestions:", error);
+        console.error("Error fetching brand suggestions:", error);  
         setBrandSuggestions([]);
         setShowSuggestions(false);
       }
