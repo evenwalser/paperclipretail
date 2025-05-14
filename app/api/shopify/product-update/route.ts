@@ -22,12 +22,6 @@ interface ShopifyProductData {
   status: string;
   tags: string;
   admin_graphql_api_id: string;
-  created_at: string;
-  updated_at: string;
-  published_at: string;
-  published_scope: string;
-  handle: string;
-  template_suffix?: string;
   variants: ShopifyVariant[];
   images: ShopifyImage[];
   media: ShopifyMedia[];
@@ -37,18 +31,6 @@ interface ShopifyProductData {
     admin_graphql_api_id: string;
   };
   location_id?: string;
-  options?: {
-    name: string;
-    id: number;
-    product_id: number;
-    position: number;
-    values: string[];
-  }[];
-  variant_gids?: {
-    admin_graphql_api_id: string;
-    updated_at: string;
-  }[];
-  has_variants_that_requires_components?: boolean;
 }
 
 interface ShopifyVariant {
@@ -61,50 +43,21 @@ interface ShopifyVariant {
   option2?: string;
   option3?: string;
   title: string;
-  barcode?: string;
-  compare_at_price?: string | null;
-  created_at?: string;
-  position?: number;
-  product_id?: number;
-  sku?: string;
-  taxable?: boolean;
-  updated_at?: string;
-  image_id?: number | null;
-  inventory_policy?: string;
-  old_inventory_quantity?: number;
 }
 
 interface ShopifyImage {
   id: number;
   src: string;
   admin_graphql_api_id: string;
-  product_id?: number;
-  position?: number;
-  created_at?: string;
-  updated_at?: string;
-  alt?: string | null;
-  width?: number;
-  height?: number;
-  variant_ids?: number[];
 }
 
 interface ShopifyMedia {
   id: number;
   media_content_type: string;
   admin_graphql_api_id: string;
-  product_id?: number;
-  position?: number;
-  created_at?: string;
-  updated_at?: string;
-  alt?: string | null;
-  status?: string;
   preview_image?: {
     src: string;
-    alt?: string | null;
-    width?: number;
-    height?: number;
   };
-  variant_ids?: number[];
 }
 
 interface ShopifyInventoryData {
@@ -440,7 +393,6 @@ export async function POST(req: Request) {
     // Extract HMAC header and topic
     const hmac = req.headers.get("x-shopify-hmac-sha256");
     const topic = req.headers.get("x-shopify-topic");
-    console.log("Topic:", topic);
     const shop = req.headers.get("x-shopify-shop-domain");
     
     if (!hmac || !topic || !shop) {
@@ -478,91 +430,10 @@ export async function POST(req: Request) {
     const body = JSON.parse(rawBody.toString("utf-8"));
     console.log("Webhook payload:", body);
 
-    // Use server-side supabase client
-    const supabase = await createClient();
-    
-    // Check for a processing lock for this webhook to prevent duplicates
-    if (topic === "products/create" || topic === "products/update") {
-      const webhookId = `product-${body.id}`;
-      
-      // Try to get an existing lock
-      const { data: existingLock } = await supabase
-        .from("webhook_locks")
-        .select("id, created_at")
-        .eq("webhook_id", webhookId)
-        .single();
-      
-      if (existingLock) {
-        const lockTime = new Date(existingLock.created_at);
-        const now = new Date();
-        const lockAgeMinutes = (now.getTime() - lockTime.getTime()) / 60000;
-        
-        // If the lock is less than 10 seconds old, consider it a duplicate webhook
-        if (lockAgeMinutes < 0.50) { // 10 seconds = 0.17 minutes
-          console.log(`Ignoring duplicate webhook: ${webhookId} (processed ${lockAgeMinutes.toFixed(2)} minutes ago)`);
-          return NextResponse.json({ message: "Webhook already processed" }, { status: 200 });
-        } else {
-          // Lock is old, delete it and proceed
-          await supabase
-            .from("webhook_locks")
-            .delete()
-            .eq("id", existingLock.id);
-        }
-      }
-      
-      // Create a new lock for this webhook
-      await supabase
-        .from("webhook_locks")
-        .insert({
-          webhook_id: webhookId,
-          topic,
-          shop,
-          product_id: body.id,
-          status: "processing"
-        });
-    }
-
-    // Get all stores - we'll find the correct one based on Shopify data later
-    const { data: stores, error: storesError } = await supabase
-      .from("stores")
-      .select("id, shopify_access_token")
-      .order("created_at", { ascending: false });
-    
-    console.log("Stores2:", stores?.length, "Error:", storesError);
-    
-    if (!stores || stores.length === 0) {
-      console.log("No stores found");
-      return NextResponse.json({ error: "No stores found" }, { status: 404 });
-    }
-
-    // For now, use the first store that has a Shopify access token
-    const activeStore = stores.find(store => store.shopify_access_token);
-    
-    if (!activeStore) {
-      console.log("No store with Shopify integration found");
-      return NextResponse.json({ error: "No store with Shopify integration found" }, { status: 404 });
-    }
-
-    const storeId = activeStore.id;
-    console.log("Using store ID:", storeId);
-
-    // Process the webhook based on topic
-    const handler = topicHandlers[topic];
-    if (!handler) {
-      return NextResponse.json({ message: "Webhook received but no handler for this topic" }, { status: 200 });
-    }
-
-    // Call the appropriate handler
-    await handler(body, storeId);
+    console.log("Webhook topic:", topic);
 
     // Update the lock status to completed
-    if (topic === "products/create" || topic === "products/update") {
-      const webhookId = `product-${body.id}`;
-      await supabase
-        .from("webhook_locks")
-        .update({ status: "completed" })
-        .eq("webhook_id", webhookId);
-    }
+    
 
     return NextResponse.json({ message: "Webhook processed successfully" }, { status: 200 });
   } catch (error) {
@@ -573,7 +444,7 @@ export async function POST(req: Request) {
       if (req.headers.get("x-shopify-topic") === "products/create" || 
           req.headers.get("x-shopify-topic") === "products/update") {
         const body = JSON.parse(Buffer.from(await req.arrayBuffer()).toString("utf-8"));
-        const webhookId = `product-${body.id}`;
+        const webhookId = `${req.headers.get("x-shopify-topic")}-${body.id}`;
         
         const supabase = await createClient();
         await supabase
@@ -592,7 +463,7 @@ export async function POST(req: Request) {
 // Handler for product creation events
 async function handleProductCreate(data: ShopifyProductData, storeId: string): Promise<Item> {
   const supabase = await createClient();
-  const { id, title, body_html, vendor, product_type, variants, images, media, tags, category, status, options } = data;
+  const { id, title, body_html, vendor, product_type, variants, images, media, tags, category, status } = data;
   console.log('Product create ')
   
   // Check for duplicates with more flexible matching
@@ -750,143 +621,23 @@ async function handleProductCreate(data: ShopifyProductData, storeId: string): P
   // Get the main variant
   const mainVariant = variants[0];
   
-  // Extract attributes based on options and variant data
-  let size: string | null = null;
-  let color: string | null = null;
-  let condition: string | null = null;
+  // Extract attributes
+  let size = null;
+  let color = null;
+  let condition = null;
   
-  // Try to extract values directly from options
-  if (options && options.length > 0) {
-    // Log all options for debugging
-    console.log("Options from Shopify:", JSON.stringify(options, null, 2));
-    
-    // First, find which options correspond to size, color, and condition
-    const sizeOption = options.find(opt => 
-      opt.name.toLowerCase() === 'size' || 
-      opt.name.toLowerCase().includes('size')
-    );
-    
-    const colorOption = options.find(opt => 
-      opt.name.toLowerCase() === 'color' || 
-      opt.name.toLowerCase().includes('color') || 
-      opt.name.toLowerCase().includes('colour')
-    );
-    
-    const conditionOption = options.find(opt => 
-      opt.name.toLowerCase() === 'condition' || 
-      opt.name.toLowerCase().includes('condition') || 
-      opt.name.toLowerCase().includes('state')
-    );
-    
-    // Then get the values for each option from the variant
-    if (sizeOption) {
-      const optionIndex = sizeOption.position;
-      if (optionIndex === 1 && mainVariant.option1) size = mainVariant.option1;
-      else if (optionIndex === 2 && mainVariant.option2) size = mainVariant.option2;
-      else if (optionIndex === 3 && mainVariant.option3) size = mainVariant.option3;
-      console.log(`Found size option at position ${optionIndex}: ${size}`);
-    }
-    
-    if (colorOption) {
-      const optionIndex = colorOption.position;
-      if (optionIndex === 1 && mainVariant.option1) color = mainVariant.option1;
-      else if (optionIndex === 2 && mainVariant.option2) color = mainVariant.option2;
-      else if (optionIndex === 3 && mainVariant.option3) color = mainVariant.option3;
-      console.log(`Found color option at position ${optionIndex}: ${color}`);
-    }
-    
-    if (conditionOption) {
-      const optionIndex = conditionOption.position;
-      if (optionIndex === 1 && mainVariant.option1) condition = mainVariant.option1;
-      else if (optionIndex === 2 && mainVariant.option2) condition = mainVariant.option2;
-      else if (optionIndex === 3 && mainVariant.option3) condition = mainVariant.option3;
-      console.log(`Found condition option at position ${optionIndex}: ${condition}`);
-    }
-  }
-  
-  // If we couldn't extract the values from the options, try to extract from variant title
-  if ((!size || !color || !condition) && mainVariant.title && mainVariant.title !== 'Default Title') {
-    console.log("Attempting to extract from variant title:", mainVariant.title);
-    const titleParts = mainVariant.title.split(' / ');
-    
-    // Try to identify each part based on pattern matching
-    for (const part of titleParts) {
-      const trimmedPart = part.trim();
-      
-      // Common size patterns
-      if (!size && /^(XS|S|M|L|XL|XXL)$/i.test(trimmedPart)) {
-        size = trimmedPart;
-        console.log("Extracted size from title:", size);
-      }
-      // Common color patterns
-      else if (!color && /^(Red|Blue|Green|Black|White|Yellow|Purple|Pink|Orange|Brown|Grey|Gray)$/i.test(trimmedPart)) {
-        color = trimmedPart;
-        console.log("Extracted color from title:", color);
-      }
-      // Common condition patterns
-      else if (!condition && /^(New|Used|Refurbished)$/i.test(trimmedPart)) {
-        condition = trimmedPart;
-        console.log("Extracted condition from title:", condition);
-      }
-    }
-  }
-  
-  // Extract color from title or description if still not found
+  // Find option values from the variant
+  if (mainVariant.option1 && mainVariant.option1 !== 'Default Title') size = mainVariant.option1;
+  if (mainVariant.option2) color = mainVariant.option2;
+  if (mainVariant.option3) condition = mainVariant.option3;
+
+  // Extract color from title or description if not in variant options
   if (!color) {
     const colorMatch = (title + ' ' + body_html).match(/\b(red|blue|green|black|white|yellow|purple|pink|orange|brown|grey|gray)\b/i);
     if (colorMatch) {
       color = colorMatch[0].toLowerCase();
-      console.log("Extracted color from product text:", color);
     }
   }
-
-  // Validate condition against allowed values
-  const validConditions = ['New', 'Refurbished', 'Used'] as const;
-  type ValidCondition = typeof validConditions[number];
-  let normalizedCondition: ValidCondition = 'New'; // Default value
-  
-  // Normalize condition value
-  if (condition !== null) {
-    // First try exact match
-    const exactMatch = validConditions.find(c => c === condition);
-    if (exactMatch) {
-      normalizedCondition = exactMatch;
-    } else {
-      // Try case-insensitive match
-      const caseInsensitiveMatch = validConditions.find(
-        c => c.toLowerCase() === condition?.toLowerCase()
-      );
-      
-      if (caseInsensitiveMatch) {
-        normalizedCondition = caseInsensitiveMatch;
-      } else {
-        // Try to match by similarity ("Uesd" should match "Used")
-        if (condition.toLowerCase().includes('new') || condition.toLowerCase() === 'brand new') {
-          normalizedCondition = 'New';
-        } else if (condition.toLowerCase().includes('used') || condition.toLowerCase().includes('uesd') || 
-                  condition.toLowerCase().includes('second hand')) {
-          normalizedCondition = 'Used';
-        } else if (condition.toLowerCase().includes('refurbished') || condition.toLowerCase().includes('refurb') || 
-                   condition.toLowerCase().includes('renewed')) {
-          normalizedCondition = 'Refurbished';
-        } else {
-          // Default to New if no match
-          console.log(`Condition "${condition}" is not valid. Using default value "New".`);
-          normalizedCondition = 'New';
-        }
-      }
-    }
-  } else {
-    // If no condition provided, default to New
-    console.log("No condition provided. Using default value 'New'.");
-    normalizedCondition = 'New';
-  }
-  
-  console.log("Normalized condition:", normalizedCondition);
-
-  // Parse tags into an array
-  const tagArray = tags ? tags.split(',').map(tag => tag.trim()) : [];
-  console.log("Product tags:", tagArray);
 
   console.log("Product price from Shopify:", mainVariant.price);
   console.log("Product quantity from Shopify:", mainVariant.inventory_quantity);
@@ -903,7 +654,7 @@ async function handleProductCreate(data: ShopifyProductData, storeId: string): P
     quantity: mainVariant.inventory_quantity || 0,
     size,
     color,
-    condition: normalizedCondition,
+    condition,
     shopify_product_id: data.admin_graphql_api_id,
     shopify_variant_id: mainVariant.admin_graphql_api_id,
     shopify_inventory_item_id: mainVariant.inventory_item_id ? `gid://shopify/InventoryItem/${mainVariant.inventory_item_id}` : null,
@@ -940,8 +691,8 @@ async function handleProductCreate(data: ShopifyProductData, storeId: string): P
 // Handler for product update events
 async function handleProductUpdate(data: ShopifyProductData, storeId: string): Promise<Item> {
   const supabase = await createClient();
-  const { id, title, body_html, vendor, product_type, variants, images, tags, category, status, options } = data;
-  console.log('Product update received')
+  const { id, title, body_html, vendor, product_type, variants, images, tags, category, status } = data;
+  console.log('Product update ')
   
   // Find the existing item by shopify_product_id with more flexible matching
   const { data: existingItems } = await supabase
@@ -1086,7 +837,6 @@ async function handleProductUpdate(data: ShopifyProductData, storeId: string): P
   }
 
   // Map the Shopify category to our database category using OpenAI
-  // Always use OpenAI for mapping, even if category data is provided in the webhook
   const categoryPath = await mapCategory(data);
   console.log("Category path from OpenAI:", categoryPath);
   
@@ -1097,154 +847,28 @@ async function handleProductUpdate(data: ShopifyProductData, storeId: string): P
   // Get the main variant
   const mainVariant = variants[0];
   
-  // Extract attributes based on options and variant data
-  let size: string | null = null;
-  let color: string | null = null;
-  let condition: string | null = null;
+  // Extract attributes
+  let size = null;
+  let color = null;
+  let condition = null;
   
-  // Try to extract values directly from options
-  if (options && options.length > 0 && variants && variants.length > 0) {
-    // Log all options for debugging
-    console.log("Options from Shopify:", JSON.stringify(options, null, 2));
-    console.log("Variant data:", JSON.stringify(variants[0], null, 2));
-    
-    // First, find which options correspond to size, color, and condition
-    const sizeOption = options.find(opt => 
-      opt.name.toLowerCase() === 'size' || 
-      opt.name.toLowerCase().includes('size')
-    );
-    
-    const colorOption = options.find(opt => 
-      opt.name.toLowerCase() === 'color' || 
-      opt.name.toLowerCase().includes('color') || 
-      opt.name.toLowerCase().includes('colour')
-    );
-    
-    const conditionOption = options.find(opt => 
-      opt.name.toLowerCase() === 'condition' || 
-      opt.name.toLowerCase().includes('condition') || 
-      opt.name.toLowerCase().includes('state')
-    );
-    
-    // Then get the values for each option from the variant
-    if (sizeOption) {
-      const optionIndex = sizeOption.position;
-      if (optionIndex === 1 && mainVariant.option1) size = mainVariant.option1;
-      else if (optionIndex === 2 && mainVariant.option2) size = mainVariant.option2;
-      else if (optionIndex === 3 && mainVariant.option3) size = mainVariant.option3;
-      console.log(`Found size option at position ${optionIndex}: ${size}`);
-    }
-    
-    if (colorOption) {
-      const optionIndex = colorOption.position;
-      if (optionIndex === 1 && mainVariant.option1) color = mainVariant.option1;
-      else if (optionIndex === 2 && mainVariant.option2) color = mainVariant.option2;
-      else if (optionIndex === 3 && mainVariant.option3) color = mainVariant.option3;
-      console.log(`Found color option at position ${optionIndex}: ${color}`);
-    }
-    
-    if (conditionOption) {
-      const optionIndex = conditionOption.position;
-      if (optionIndex === 1 && mainVariant.option1) condition = mainVariant.option1;
-      else if (optionIndex === 2 && mainVariant.option2) condition = mainVariant.option2;
-      else if (optionIndex === 3 && mainVariant.option3) condition = mainVariant.option3;
-      console.log(`Found condition option at position ${optionIndex}: ${condition}`);
-    }
-  }
-  
-  // If we couldn't extract the values from the options, try to extract from variant title
-  if ((!size || !color || !condition) && variants && variants.length > 0) {
-    const mainVariant = variants[0];
-    
-    if (mainVariant.title && mainVariant.title !== 'Default Title') {
-      console.log("Attempting to extract from variant title:", mainVariant.title);
-      const titleParts = mainVariant.title.split(' / ');
-      
-      // Try to identify each part based on pattern matching
-      for (const part of titleParts) {
-        const trimmedPart = part.trim();
-        
-        // Common size patterns
-        if (!size && /^(XS|S|M|L|XL|XXL)$/i.test(trimmedPart)) {
-          size = trimmedPart;
-          console.log("Extracted size from title:", size);
-        }
-        // Common color patterns
-        else if (!color && /^(Red|Blue|Green|Black|White|Yellow|Purple|Pink|Orange|Brown|Grey|Gray)$/i.test(trimmedPart)) {
-          color = trimmedPart;
-          console.log("Extracted color from title:", color);
-        }
-        // Common condition patterns
-        else if (!condition && /^(New|Used|Refurbished)$/i.test(trimmedPart)) {
-          condition = trimmedPart;
-          console.log("Extracted condition from title:", condition);
-        }
-      }
-    }
-  }
-  
-  // Extract color from title or description if still not found
+  // Find option values from the variant
+  if (mainVariant.option1 && mainVariant.option1 !== 'Default Title') size = mainVariant.option1;
+  if (mainVariant.option2) color = mainVariant.option2;
+  if (mainVariant.option3) condition = mainVariant.option3;
+
+  // Extract color from title or description if not in variant options
   if (!color) {
     const colorMatch = (title + ' ' + body_html).match(/\b(red|blue|green|black|white|yellow|purple|pink|orange|brown|grey|gray)\b/i);
     if (colorMatch) {
       color = colorMatch[0].toLowerCase();
-      console.log("Extracted color from product text:", color);
     }
   }
 
-  console.log("Product attributes - Size:", size, "Color:", color, "Condition:", condition);
   console.log("Product price from Shopify (update):", mainVariant.price);
   console.log("Product quantity from Shopify (update):", mainVariant.inventory_quantity);
   console.log("Inventory item ID:", mainVariant.inventory_item_id);
   console.log("Location ID:", data.location_id);
-
-  // Validate condition against allowed values
-  const validConditions = ['New', 'Refurbished', 'Used'] as const;
-  type ValidCondition = typeof validConditions[number];
-  let normalizedCondition: ValidCondition = 'New'; // Default value
-  
-  // Normalize condition value
-  if (condition !== null) {
-    // First try exact match
-    const exactMatch = validConditions.find(c => c === condition);
-    if (exactMatch) {
-      normalizedCondition = exactMatch;
-    } else {
-      // Try case-insensitive match
-      const caseInsensitiveMatch = validConditions.find(
-        c => c.toLowerCase() === condition?.toLowerCase()
-      );
-      
-      if (caseInsensitiveMatch) {
-        normalizedCondition = caseInsensitiveMatch;
-      } else if (condition) {
-        // Try to match by similarity ("Uesd" should match "Used")
-        if (condition.toLowerCase().includes('new') || condition.toLowerCase() === 'brand new') {
-          normalizedCondition = 'New';
-        } else if (condition.toLowerCase().includes('used') || condition.toLowerCase().includes('uesd') || 
-                  condition.toLowerCase().includes('second hand')) {
-          normalizedCondition = 'Used';
-        } else if (condition.toLowerCase().includes('refurbished') || condition.toLowerCase().includes('refurb') || 
-                   condition.toLowerCase().includes('renewed')) {
-          normalizedCondition = 'Refurbished';
-        } else {
-          // Default to New if no match
-          console.log(`Condition "${condition}" is not valid. Using default value "New".`);
-          normalizedCondition = 'New';
-        }
-      }
-    }
-  } else {
-    // If no condition provided, default to New
-    console.log("No condition provided. Using default value 'New'.");
-    normalizedCondition = 'New';
-  }
-  
-  console.log("Normalized condition:", normalizedCondition);
-
-  // Parse tags into an array
-  const tagArray = tags ? tags.split(',').map(tag => tag.trim()) : [];
-  console.log("Product tags:", tagArray);
 
   // Update the item record
   const { error: updateError } = await supabase
@@ -1259,11 +883,11 @@ async function handleProductUpdate(data: ShopifyProductData, storeId: string): P
       quantity: mainVariant.inventory_quantity || 0,
       size,
       color,
-      condition: normalizedCondition,
+      condition,
       shopify_variant_id: mainVariant.admin_graphql_api_id,
       shopify_inventory_item_id: mainVariant.inventory_item_id ? `gid://shopify/InventoryItem/${mainVariant.inventory_item_id}` : existingItem.shopify_inventory_item_id,
       shopify_location_id: data.location_id ? `gid://shopify/Location/${data.location_id}` : existingItem.shopify_location_id,
-      tags: tagArray,
+      tags: tags ? tags.split(", ") : [],
       status: status.toLowerCase(),
     })
     .eq("id", existingItem.id);
@@ -1277,118 +901,38 @@ async function handleProductUpdate(data: ShopifyProductData, storeId: string): P
 
   // Handle images
   if (images && images.length > 0) {
-    console.log(`Processing ${images.length} images from Shopify`);
-    
-    try {
-      // First, get all existing images for this item
-      const { data: existingImages, error: imageQueryError } = await supabase
-        .from("item_images")
-        .select("id, image_url, shopify_media_id")
-        .eq("item_id", existingItem.id);
-      
-      if (imageQueryError) {
-        console.error("Error fetching existing images:", imageQueryError);
-        throw imageQueryError;
-      }
-      
-      console.log(`Found ${existingImages?.length || 0} existing images in our database`);
-      
-      // Map of Shopify media IDs to our database record IDs
-      const existingImageMap = new Map();
-      existingImages?.forEach(img => {
-        if (img.shopify_media_id) {
-          existingImageMap.set(img.shopify_media_id, img.id);
-        }
-      });
-      
-      // Create a set of Shopify media IDs from the updated product
-      const shopifyMediaIds = new Set(images.map(img => img.admin_graphql_api_id));
-      
-      // Images that are no longer in Shopify should be deleted
-      const imagesToDelete = existingImages?.filter(img => 
-        img.shopify_media_id && 
-        !shopifyMediaIds.has(img.shopify_media_id)
-      ) || [];
-      
-      if (imagesToDelete.length > 0) {
-        console.log(`Deleting ${imagesToDelete.length} images that no longer exist in Shopify`);
-        
-        const imageIdsToDelete = imagesToDelete.map(img => img.id);
-        
-        const { error: deleteError } = await supabase
-          .from("item_images")
-          .delete()
-          .in("id", imageIdsToDelete);
-        
-        if (deleteError) {
-          console.error("Error deleting images:", deleteError);
-        }
-      }
-      
-      // Process the updated/new images from Shopify
-      const imagePromises = images.map(async (image, index) => {
-        const existingId = existingImageMap.get(image.admin_graphql_api_id);
-        
-        if (existingId) {
-          // Image already exists, update it
-          return supabase
-            .from("item_images")
-            .update({
-              image_url: image.src,
-              display_order: index
-            })
-            .eq("id", existingId);
-        } else {
-          // New image, insert it
-          return supabase
-            .from("item_images")
-            .insert({
-              item_id: existingItem.id,
-              image_url: image.src,
-              display_order: index,
-              shopify_media_id: image.admin_graphql_api_id
-            });
-        }
-      });
-      
-      await Promise.all(imagePromises);
-      console.log(`Successfully processed ${images.length} images for item`);
-    } catch (error) {
-      console.error("Error handling images:", error);
-      // Don't throw here, allow the update to complete even if image processing fails
-    }
-  } else if (images && images.length === 0) {
-    // If Shopify has no images, delete all our images
-    console.log("No images in Shopify product, deleting all existing images");
-    
-    const { error: deleteError } = await supabase
+    // First, mark all existing images as deleted
+    await supabase
       .from("item_images")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("item_id", existingItem.id);
-      
-    if (deleteError) {
-      console.error("Error deleting images:", deleteError);
-    }
+
+    // Then insert the updated images
+    const imagePromises = images.map(async (image, index) => {
+      return supabase.from("item_images").insert({
+        item_id: existingItem.id,
+        image_url: image.src,
+        display_order: index,
+        shopify_media_id: image.admin_graphql_api_id,
+      });
+    });
+
+    await Promise.all(imagePromises);
+    console.log(`Updated ${images.length} images for item`);
   }
 
   return existingItem;
 }
 
 // Handler for product deletion events
-async function handleProductDelete(data: { id: number }, storeId: string): Promise<void> {
+async function handleProductDelete(data: { id: number, admin_graphql_api_id: string }, storeId: string): Promise<void> {
   const supabase = await createClient();
-  
-  // Format the ID as GraphQL ID
-  const graphqlId = `gid://shopify/Product/${data.id}`;
   
   // Mark the item as deleted in the database
   const { error } = await supabase
     .from("items")
-    .update({ 
-      deleted_at: new Date().toISOString(),
-      status: 'deleted'
-    })
-    .or(`shopify_product_id.eq.${graphqlId},shopify_product_id.eq.${data.id}`);
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("shopify_product_id", data.admin_graphql_api_id);
 
   if (error) {
     console.error("Error marking item as deleted:", error);
