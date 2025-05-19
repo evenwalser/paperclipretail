@@ -56,10 +56,12 @@ export default function AddItemPage() {
   const [images, setImages] = useState<ImageFile[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFlashing, setIsFlashing] = useState(false);
+  const [ages, setAges] = useState<{ id: string; name: string }[]>([]);
   const [logoUrl, setLogoUrl] = useState("");
   const [brandSuggestions, setBrandSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [listOnShopify, setListOnShopify] = useState(true);
+  const [colors, setColors] = useState<{ id: string; name: string }[]>([]);
   const [inputMethod, setInputMethod] = useState<"camera" | "fileSelect">(
     "camera"
   );
@@ -121,6 +123,16 @@ export default function AddItemPage() {
     };
     getSessionAndStore();
 
+    const fetchAges = async () => {
+      const { data, error } = await supabase
+        .from("ages")
+        .select("*")
+        .order("name", { ascending: true });
+      if (error) console.error("Error fetching ages:", error);
+      else setAges(data || []);
+      console.log('ages data', data)
+    };
+    fetchAges();  
     const fetchCategories = async () => {
       const { data, error } = await supabase
         .from("categories")
@@ -150,6 +162,15 @@ export default function AddItemPage() {
       });
     };
   }, [images]);
+
+  useEffect(() => {
+    const fetchColors = async () => {
+      const { data, error } = await supabase.from("colors").select("*");
+      if (error) console.error("Error fetching colors:", error);
+      else setColors(data || []);
+    };
+    fetchColors();
+  }, []);
 
   // Reset lower-level categories when higher-level changes
   useEffect(() => {
@@ -433,6 +454,9 @@ export default function AddItemPage() {
         selectedCategories.level3 ||
         selectedCategories.level2 ||
         selectedCategories.level1;
+
+      const selectedColor = colors.find((c) => c.name === color);
+      const selectedAge = ages.find((a) => a.name === age);
       const { data: item, error: itemError } = await supabase
         .from("items")
         .insert({
@@ -446,6 +470,8 @@ export default function AddItemPage() {
           logo_url: logoUrl,
           age,
           color,
+          color_id: selectedColor?.id || null,
+          age_id: selectedAge?.id || null,
           available_in_store: availableInStore,
           list_on_paperclip: listOnPaperclip,
           store_id: user.store_id,
@@ -591,8 +617,8 @@ if (listOnPaperclip) {
     formData.append("description", itemDetails.description.trim());
     formData.append("price", priceNum.toString());
     formData.append("condition", condition);
-    formData.append("age", age);
-
+    formData.append("age", selectedAge?.name || "");
+    formData.append("colorId", selectedColor?.id || "")
     // Append categories
     
    let level1 = selectedCategories.level1 ? parseInt(selectedCategories.level1) : undefined;
@@ -881,6 +907,7 @@ if (listOnPaperclip) {
                 currentImageIndex={currentImageIndex}
                 onNavigate={setCurrentImageIndex}
                 itemDetails={itemDetails}
+                ages={ages}
                 onItemDetailsChange={setItemDetails}
                 categories={categories}
                 selectedCategories={selectedCategories}
@@ -896,6 +923,7 @@ if (listOnPaperclip) {
                 age={age}
                 onAgeChange={setAge}
                 color={color}
+                colors={colors}
                 onColorChange={setColor}
                 availableInStore={availableInStore}
                 onAvailableInStoreChange={setAvailableInStore}

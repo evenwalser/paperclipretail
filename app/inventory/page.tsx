@@ -39,6 +39,7 @@ export default function InventoryPage() {
   const [allItemsCategories, setAllItemsCategories] = useState<Category[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [colors, setColors] = useState<{ id: string; name: string }[]>([]);
   const [filters, setFilters] = useState({
     category: "all",
     search: "",

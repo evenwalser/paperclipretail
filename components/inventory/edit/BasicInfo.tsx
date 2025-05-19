@@ -2,6 +2,13 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
@@ -27,11 +34,13 @@ interface BasicInfoProps {
   fieldErrors: { name: string; price: string };
   onBrandChange: (value: string) => void;
   brandSuggestions: any[];
+  colors: { id: string; name: string }[];
   showSuggestions: boolean;
   onBrandSelect: (brand: any) => void;
   logoUrl: string;
   selectedTags: string[]; // Add this
   onTagsChange: (tags: string[]) => void;
+  ages: { id: string; name: string }[];
 }
 
 export default function BasicInfo({
@@ -41,7 +50,9 @@ export default function BasicInfo({
   quantity,
   brand,
   age,
+  ages,
   color,
+  colors,
   onChange,
   fieldErrors,
   onBrandChange,
@@ -133,63 +144,71 @@ export default function BasicInfo({
         />
       </div>
       <div className="relative">
-  <Label htmlFor="brand">Brand</Label>
-  
-  {/* Input with Logo Inside */}
-  <div className="relative flex items-center">
-    {logoUrl && (
-      <img
-        src={logoUrl}
-        alt="Brand Logo"
-        className="absolute right-3 h-6 w-6 object-contain"
-        onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
-      />
-    )}
-    <Input
-      id="brand"
-      type="text"
-      value={brand}
-      placeholder="Enter brand"
-      onChange={(e) => onBrandChange(e.target.value)}
-      className={`pl-${logoUrl ? "10" : "3"}`} // Adjust padding dynamically
-    />
-  </div>
+        <Label htmlFor="brand">Brand</Label>
 
-  <div className="space-y-2">
-  <Label htmlFor="age">Age</Label>
-  <Input
-    id="age"
-    value={age}
-    onChange={e => onChange({ age: e.target.value })}
-    placeholder="Enter age (e.g. 2 years)"
-  />
-</div>
-
-  {/* Suggestions Dropdown */}
-  {showSuggestions && brandSuggestions.length > 0 && (
-    <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-      {brandSuggestions.map((suggestion, index) => (
-        <li
-          key={index}
-          className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
-          onClick={() => onBrandSelect(suggestion)}
-        >
-          {suggestion.logo_url && (
+        {/* Input with Logo Inside */}
+        <div className="relative flex items-center">
+          {logoUrl && (
             <img
-              src={suggestion.logo_url}
-              alt={suggestion.name}
-              className="h-6 w-6 mr-2"
+              src={logoUrl}
+              alt="Brand Logo"
+              className="absolute right-3 h-6 w-6 object-contain"
               onError={(e) =>
                 ((e.target as HTMLImageElement).style.display = "none")
               }
             />
           )}
-          <span>{suggestion.name}</span>
-        </li>
-      ))}
-    </ul>
-  )}
-</div>
+          <Input
+            id="brand"
+            type="text"
+            value={brand}
+            placeholder="Enter brand"
+            onChange={(e) => onBrandChange(e.target.value)}
+            className={`pl-${logoUrl ? "10" : "3"}`} // Adjust padding dynamically
+          />
+        </div>
+
+        <div>
+        <Label htmlFor="age">Age</Label>
+        <Select value={age} onValueChange={(value) => onChange({ age: value })}>
+          <SelectTrigger id="age">
+            <SelectValue placeholder="Select age" />
+          </SelectTrigger>
+          <SelectContent>
+            {ages.map((ageOption) => (
+              <SelectItem key={ageOption.id} value={ageOption.name}>
+                {ageOption.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+        {/* Suggestions Dropdown */}
+        {showSuggestions && brandSuggestions.length > 0 && (
+          <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            {brandSuggestions.map((suggestion, index) => (
+              <li
+                key={index}
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                onClick={() => onBrandSelect(suggestion)}
+              >
+                {suggestion.logo_url && (
+                  <img
+                    src={suggestion.logo_url}
+                    alt={suggestion.name}
+                    className="h-6 w-6 mr-2"
+                    onError={(e) =>
+                      ((e.target as HTMLImageElement).style.display = "none")
+                    }
+                  />
+                )}
+                <span>{suggestion.name}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {/* <div>
         <Label>age</Label>
@@ -204,16 +223,22 @@ export default function BasicInfo({
         />
       </div> */}
       <div>
-        <Label>color</Label>
-        <Input
-          type="text"
+        <Label htmlFor="color">Color</Label>
+        <Select
           value={color}
-          placeholder="color"
-          onChange={(e) => {
-            const value = e.target.value;
-            onChange({ color: value });
-          }}
-        />
+          onValueChange={(value) => onChange({ color: value })}
+        >
+          <SelectTrigger id="color">
+            <SelectValue placeholder="Select color" />
+          </SelectTrigger>
+          <SelectContent>
+            {colors.map((colorOption) => (
+              <SelectItem key={colorOption.id} value={colorOption.name}>
+                {colorOption.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

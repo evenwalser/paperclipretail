@@ -65,6 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const paperclipItemId = getField(fields.paperclipItemId) || "";
     const name = getField(fields.name) || "";
     const description = getField(fields.description) || "";
+    const colorId = getField(fields.colorId) || "";
     const price = getField(fields.price) || "0";
     const quantity = getField(fields.quantity) || "1";
     const condition = getField(fields.condition) || "new";
@@ -90,6 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     formDataToSend.append("age", age);
     formDataToSend.append("color", color);
     formDataToSend.append("categoryId", categoryId);
+    formDataToSend.append("colorId", colorId);
     formDataToSend.append("packageSize", "Medium");
     tags.forEach((t: string, i: number) => formDataToSend.append(`tags[${i}]`, t));
 

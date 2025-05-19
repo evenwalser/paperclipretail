@@ -20,6 +20,7 @@ export async function generateLinkingToken() {
 
   // Generate a secure token
   const token = generateSecureToken();
+  console.log("🚀 ~ generateLinkingToken ~ token:", token)
   
   // Store the token in a new table called 'account_linking_tokens'
   const { error: tokenError } = await supabase
@@ -38,7 +39,7 @@ export async function generateLinkingToken() {
   }
 
   // Generate the deep link URL
-  const deepLinkUrl = `paperclip://link-account?token=${token}`;
+  const deepLinkUrl = ` https://paperclip.test-app.link?linkToken=${token}`;
   
   return { deepLinkUrl, token };
 }

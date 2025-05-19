@@ -1,4 +1,11 @@
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import ImageCarousel from "./ImageCarousel";
 import BasicInfoForm from "./BasicInfoForm";
 import CategorySelector from "./CategorySelector";
@@ -82,6 +89,8 @@ interface DetailsViewProps {
   selectedTags: string[];
   setSelectedTags: any;
   setListOnShopify: any;
+  colors: { id: string; name: string }[];
+  ages: { id: string; name: string }[];
 }
 
 export default function DetailsView({
@@ -100,8 +109,10 @@ export default function DetailsView({
   brand,
   onBrandChange,
   age,
+  ages,
   onAgeChange,
   color,
+  colors,
   onColorChange,
   availableInStore,
   onAvailableInStoreChange,
@@ -216,15 +227,21 @@ export default function DetailsView({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="age">Age</Label>
-          <Input
-            id="age"
-            value={age}
-            onChange={(e) => onAgeChange(e.target.value)}
-            placeholder="Enter age"
-          />
-        </div>
+        <div>
+        <Label htmlFor="age">Age</Label>
+        <Select value={age} onValueChange={onAgeChange}>
+          <SelectTrigger id="age">
+            <SelectValue placeholder="Select age" />
+          </SelectTrigger>
+          <SelectContent>
+            {ages.map((ageOption) => (
+              <SelectItem key={ageOption.id} value={ageOption.name}>
+                {ageOption.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
         {showSuggestions && brandSuggestions.length > 0 && (
           <ul className="absolute z-10 w-full bg-[#060d19] border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
@@ -303,12 +320,18 @@ export default function DetailsView({
     </div> */}
       <div>
         <Label htmlFor="color">Color</Label>
-        <Input
-          id="color"
-          value={color}
-          onChange={(e) => onColorChange(e.target.value)}
-          placeholder="Enter color"
-        />
+        <Select value={color} onValueChange={onColorChange}>
+          <SelectTrigger id="color">
+            <SelectValue placeholder="Select color" />
+          </SelectTrigger>
+          <SelectContent>
+            {colors.map((colorOption) => (
+              <SelectItem key={colorOption.id} value={colorOption.name}>
+                {colorOption.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <AvailabilityToggles
         availableInStore={availableInStore}

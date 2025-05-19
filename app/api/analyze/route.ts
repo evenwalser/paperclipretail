@@ -132,7 +132,26 @@ export async function POST(request: Request) {
 "width" - Determine the approximate width of the item as float value in cm
 "height" - Determine the approximate height of the item as float value in cm
 "brand" - Brand Identification: Carefully examine the image to identify and highlight any visible brand names, logos, or markings. Celebrate the brand in the description, emphasizing its reputation and value within this category.
-"color" - Determine the primary color or colors of the item based on the provided images.
+"color" - Identify the primary color(s) of the item based on the following list. Output only the color name(s), not the ID:
+- Black
+- White
+- Navy Blue
+- Grey
+- Beige/Tan
+- Brown
+- Red
+- Blue (medium/royal)
+- Green (olive/forest)
+- Pink
+- Purple
+- Yellow
+- Orange
+- Burgundy/Maroon
+- Teal/Turquoise
+- Gold
+- Silver
+- Neon Green
+- Multi-color
 "tags" - Generate a list of relevant tags that describe the item, such as 'Vintage', 'Designer', 'Handmade', 'Eco-friendly', 'Limited Edition', etc. Base these tags on the item's characteristics, condition, brand, and category.
 i want response in json string which i can parse`,
             },

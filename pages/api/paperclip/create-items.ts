@@ -86,6 +86,8 @@ export default async function handler(
       (Array.isArray(fields.categoryId)
         ? fields.categoryId[0]
         : fields.categoryId) || "";
+    const colorId =  (Array.isArray(fields.colorId) ? fields.colorId[0] : fields.colorId) || "";
+    console.log("🚀 ~ handler ~ colorId:", colorId);
     const retailId =
       (Array.isArray(fields.retailId) ? fields.retailId[0] : fields.retailId) ||
       "";
@@ -93,10 +95,9 @@ export default async function handler(
     const tagsField = fields.tags;
     console.log("🚀 ~ handler ~ tagsField:", tagsField);
     const tags = tagsField
-      ? (Array.isArray(tagsField) ? tagsField : [tagsField]).map((t) =>
-          t.toString()
-        )
-      : [];
+    ? JSON.parse(Array.isArray(tagsField) ? tagsField[0] : tagsField)
+    : [];
+      console.log('tags')
     console.log("🚀 ~ handler ~ tags:", tags);
     const brand = Array.isArray(fields.brand)
       ? fields.brand[0]
@@ -121,6 +122,7 @@ export default async function handler(
     formDataToSend.append("description", description.trim());
     formDataToSend.append("price", parseFloat(price).toString());
     formDataToSend.append("age", age.trim());
+    formDataToSend.append("colorId", colorId);
     formDataToSend.append(
       "conditionType",
       mapConditionToType(condition).toString()
@@ -130,7 +132,13 @@ export default async function handler(
     formDataToSend.append("size", size.trim());
     formDataToSend.append("retailId", retailId);
     formDataToSend.append("categoryId", categoryId);
-    tags.forEach((t, i) => formDataToSend.append(`tags[${i}]`, t));
+    interface Tag {
+      id: string;
+      name: string;
+    }
+
+    // The existing code with types
+    tags.forEach((t: Tag | string, i: number) => formDataToSend.append(`tags[${i}]`, typeof t === 'string' ? t : t.id));
 
     if (files.media) {
       const mediaArr = Array.isArray(files.media) ? files.media : [files.media];

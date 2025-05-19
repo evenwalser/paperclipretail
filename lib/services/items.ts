@@ -115,7 +115,9 @@ export async function getItems(
       item_images!inner (
         image_url,
         display_order
-      )
+      ),
+      colors:color_id (id, name),
+      ages:age_id (id, name)
       `,
       { count: "exact" }
     )
@@ -139,7 +141,10 @@ export async function getItems(
     query = query.in("age", filters.ages);
   }
   if (filters.colors?.length) {
-    query = query.in("color", filters.colors);
+    query = query.in("colors.name", filters.colors); // Updated to filter by color name
+  }
+  if (filters.ages?.length) {
+    query = query.in("ages.name", filters.ages); // Updated to filter by age name
   }
 
   // Apply sorting and pagination
@@ -155,7 +160,12 @@ export async function getItems(
         "get_category_hierarchy",
         { category_id: item.category_id }
       );
-      return { ...item, categories: error ? [] : categoryHierarchy };
+      return {
+        ...item,
+        categories: error ? [] : categoryHierarchy,
+        color: item.colors?.name || null, // Add color name
+        age: item.ages?.name || null,
+      };
     })
   );
 
