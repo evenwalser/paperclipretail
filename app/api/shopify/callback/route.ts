@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createShopifyProduct, getCategoryHierarchy, publishProduct } from "../create-product/route";
 
 interface ShopifyProduct {
   id: number;
@@ -60,6 +61,9 @@ export async function GET(req: Request) {
     .select()
     .single();
 
+    console.log("🚀 ~ GET ~ access_token:", access_token)
+    console.log("🚀 ~ GET ~ shop:", shop)
+
   // Import all existing products
   try {
     await importExistingProducts(shop, access_token, store.id);
@@ -67,9 +71,92 @@ export async function GET(req: Request) {
     console.error("Error importing existing products:", error);
   }
 
+  try {
+    await exportExistingItemsToShopify(shop, access_token, store.id);
+  } catch (error) {
+    console.error("Error exporting existing items to Shopify:", error);
+  }
+
   const redirectURL = new URL("/inventory", process.env.NEXT_PUBLIC_APP_URL);
   return NextResponse.redirect(redirectURL);
 }
+
+
+async function exportExistingItemsToShopify(shopName: string, accessToken: string, storeId: string) {
+  console.log("Starting export of existing Paperclip Retail items to Shopify...");
+  const supabase = await createClient();
+
+  // Fetch items that haven't been synced to Shopify
+  const { data: items, error: fetchError } = await supabase
+    .from("items")
+    .select("*")
+    .eq("store_id", storeId)
+    .is("shopify_product_id", null)
+    // Optionally filter by list_on_shopify if it exists in your schema
+    // .eq("list_on_shopify", true);
+
+  if (fetchError) {
+    console.error("Error fetching items:", fetchError);
+    throw fetchError;
+  }
+
+  console.log(`Found ${items.length} items to export to Shopify`);
+
+  for (const item of items) {
+    try {
+      // Fetch item images
+      const { data: images, error: imageError } = await supabase
+        .from("item_images")
+        .select("*")
+        .eq("item_id", item.id)
+        .order("display_order");
+
+      if (imageError) {
+        console.error(`Error fetching images for item ${item.id}:`, imageError);
+        continue; // Skip to next item on error
+      }
+
+      // Fetch category hierarchy
+      const categoryHierarchy = await getCategoryHierarchy(item.category_id, supabase);
+
+      // Create Shopify product
+      const shopifyProduct = await createShopifyProduct(
+        shopName,
+        accessToken,
+        item,
+        images,
+        categoryHierarchy
+      );
+
+      // Publish the product to the Online Store
+      await publishProduct(shopifyProduct.productId, shopName, accessToken);
+
+      // Update the item with Shopify IDs
+      const { error: updateError } = await supabase
+        .from("items")
+        .update({
+          shopify_product_id: shopifyProduct.productId,
+          shopify_variant_id: shopifyProduct.variantId,
+          shopify_inventory_item_id: shopifyProduct.inventoryItemId,
+          shopify_location_id: shopifyProduct.locationId,
+          list_on_shopify: true, // Set to true since it's now on Shopify
+        })
+        .eq("id", item.id);
+
+      if (updateError) {
+        console.error(`Error updating item ${item.id} with Shopify IDs:`, updateError);
+        continue; // Skip to next item on error
+      }
+
+      console.log(`Successfully exported item ${item.id} to Shopify with product ID ${shopifyProduct.productId}`);
+    } catch (error) {
+      console.error(`Error exporting item ${item.id} to Shopify:`, error);
+    }
+  }
+
+  console.log("Completed exporting items to Shopify");
+}
+
 
 async function importExistingProducts(shopName: string, accessToken: string, storeId: string) {
   console.log("Starting import of existing Shopify products...");
@@ -111,7 +198,9 @@ async function importExistingProducts(shopName: string, accessToken: string, sto
       }
 
       const productsData = await response.json();
+      console.log("🚀 ~ importExistingProducts ~ productsData:", productsData)
       const products = productsData.products;
+      console.log("🚀 ~ importExistingProducts ~ products:", products)
 
       if (!products || products.length === 0) {
         hasMoreProducts = false;
@@ -129,17 +218,36 @@ async function importExistingProducts(shopName: string, accessToken: string, sto
       // Process each product
       for (const product of products) {
         try {
-          // Call the product create webhook
-          await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/webhooks`, {
+          console.log("🚀 ~ importExistingProducts ~ product:", product)
+          // Add debug logging before webhook call
+          console.log("Calling webhook with product:", {
+            id: product.id,
+            title: product.title
+          });
+      
+          const webhookResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/shopify/webhooks`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "x-shopify-topic": "products/create",
               "x-shopify-shop-domain": shopName,
-              // Skip HMAC validation for internal calls
+              // Add this header to bypass HMAC validation for internal calls
+              "x-internal-call": "true"
             },
             body: JSON.stringify(product)
           });
+      
+          // Add response logging
+          const responseText = await webhookResponse.text();
+          console.log("Webhook response:", {
+            status: webhookResponse.status,
+            statusText: webhookResponse.statusText,
+            body: responseText
+          });
+      
+          if (!webhookResponse.ok) {
+            throw new Error(`Webhook failed: ${webhookResponse.status} - ${responseText}`);
+          }
           
           totalProcessed++;
           console.log(`Processed product ${totalProcessed}: ${product.title}`);

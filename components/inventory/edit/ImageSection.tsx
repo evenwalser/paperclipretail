@@ -24,7 +24,18 @@ export default function ImageSection({
   onReorder,
 }: ImageSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+  const isImage = (url: string) => {
+    // Check file extensions
+    if (/\.(jpg|jpeg|png|gif|webp)$/i.test(url)) return true;
+    
+    // Check Shopify URLs
+    if (url.includes('shopify.com')) {
+      // Check if URL contains image-related parameters or paths
+      return url.includes('/files/') && !url.includes('.mp4') && !url.includes('.webm');
+    }
+    
+    return false;
+  };
 
   return (
     <div className="space-y-4">

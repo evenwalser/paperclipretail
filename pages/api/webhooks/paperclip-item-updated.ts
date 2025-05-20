@@ -226,8 +226,45 @@ export default async function handler(
         console.log("[Webhook] Resolved category:", categoryId);
       }
     }
-    const color: string | null = typeof item.color    === 'string' ? item.color    : null;
+    const colorName = typeof item.color === "string" ? item.color.trim() : null;
+    const ageName   = typeof item.age   === "string" ? item.age.trim()   : null;
     const logoUrl: string | null = typeof item.logo_url === 'string' ? item.logo_url : null;
+
+    const getOrCreateLookup = async (
+      table: "colors" | "ages",
+      name: string
+    ) =>  {
+      // try to find existing row
+      const { data: found, error: findErr } = await supabase
+        .from(table)
+        .select("id")
+        .eq("name", name)
+        .limit(1)
+        .single();
+    
+      if (findErr && findErr.code !== "PGRST116") {
+        // PGRST116 = “no rows found”
+        throw findErr;
+      }
+      if (found) return found.id;
+    
+      // otherwise insert a new one
+      const { data: inserted, error: insertErr } = await supabase
+        .from(table)
+        .insert({ name })
+        .select("id")
+        .single();
+      if (insertErr) throw insertErr;
+      return inserted.id;
+    }
+    
+    // 3️⃣ Resolve the two FK IDs (or leave null)
+    let color_id: string | null = null;
+    let age_id:   string | null = null;
+    
+    if (colorName) color_id = await getOrCreateLookup("colors", colorName);
+    if (ageName)   age_id   = await getOrCreateLookup("ages",   ageName);
+    
     const { error: updateErr } = await supabase
       .from("items")
       .update({
@@ -240,7 +277,10 @@ export default async function handler(
         brand: item.brand ?? "",
         tags: item.tags ?? [],
         category_id: categoryId,
-        color:    color,
+        color:    colorName,
+        age: ageName,
+        color_id,
+        age_id,
         logo_url: logoUrl,
       })
       .eq("id", existing.id);

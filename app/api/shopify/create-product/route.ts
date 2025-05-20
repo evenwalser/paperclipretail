@@ -99,7 +99,7 @@ export async function POST(req: Request) {
   }
 }
 
-async function createShopifyProduct(
+export async function createShopifyProduct(
   shopName: string,
   accessToken: string,
   item: any,
@@ -554,7 +554,7 @@ async function getOnlineStorePublicationId(shopName: string, accessToken: string
   return onlineStorePub.node.id;
 }
 
-async function publishProduct(productId: string, shopName: string, accessToken: string) {
+export async function publishProduct(productId: string, shopName: string, accessToken: string) {
   const publicationId = await getOnlineStorePublicationId(
     shopName,
     accessToken
@@ -605,7 +605,7 @@ async function publishProduct(productId: string, shopName: string, accessToken: 
   // No return needed; product is returned from createShopifyProduct
 }
 
-async function getCategoryHierarchy(categoryId: string, supabase: any) {
+export async function getCategoryHierarchy(categoryId: string, supabase: any) {
   let hierarchy = [];
   let currentId = categoryId;
   while (currentId) {

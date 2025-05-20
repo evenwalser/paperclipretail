@@ -367,9 +367,20 @@ export default function EditItemPage() {
       newErrors.price = "Valid price is required";
       hasErrors = true;
     }
-    const filteredImages = images.filter((image) =>
-      /\.(jpg|jpeg|png|gif|webp)$/i.test(image.image_url)
-    );
+    const filteredImages = images.filter((image) => {
+      const url = image.image_url || "";
+      
+      // Check file extensions
+      if (/\.(jpg|jpeg|png|gif|webp)$/i.test(url)) return true;
+      
+      // Check Shopify URLs
+      if (url.includes('shopify.com')) {
+        return url.includes('/files/') && !url.includes('.mp4') && !url.includes('.webm');
+      }
+      
+      return false;
+    });
+    
     if (filteredImages.length === 0) {
       newErrors.images = "At least one image is required";
       hasErrors = true;

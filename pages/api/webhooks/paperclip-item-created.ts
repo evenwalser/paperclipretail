@@ -63,7 +63,10 @@ export default async function handler(
         return res.status(400).json({ error: "Missing signature header" });
       }
       if (signature) {
-        const expectedSignature = computeHMAC(rawBody, process.env.PAPERCLIP_WEBHOOK_SECRET || "");
+        const expectedSignature = computeHMAC(
+          rawBody,
+          process.env.PAPERCLIP_WEBHOOK_SECRET || ""
+        );
         if (signature !== expectedSignature) {
           return res.status(401).json({ error: "Invalid signature" });
         }
@@ -79,7 +82,7 @@ export default async function handler(
         (u: any) => typeof u === "string" && mediaUrls.push(u)
       );
 
-  // 2️⃣ Handle multipart/form-data
+    // 2️⃣ Handle multipart/form-data
   } else if (contentType.includes("multipart/form-data")) {
     console.log("Multipart form data detected");
     const form = new IncomingForm({ multiples: true });
@@ -88,33 +91,36 @@ export default async function handler(
     try {
       // Get the raw body first for HMAC verification
       const rawBody = await getRawBody(req);
-      console.log("🚀 ~ rawBody:", rawBody)
-      
+      console.log("🚀 ~ rawBody:", rawBody);
+
       // Verify HMAC if signature is present
       const signature = req.headers["x-paperclip-signature"];
-      console.log("🚀 ~ signature:", signature)
+      console.log("🚀 ~ signature:", signature);
 
-      if(!signature) {
+      if (!signature) {
         console.error("Missing signature header");
         return res.status(400).json({ error: "Missing signature header" });
       }
 
       if (signature) {
         console.log("Signature:", signature);
-        const expectedSignature = computeHMAC(rawBody, process.env.PAPERCLIP_WEBHOOK_SECRET || "");
-        console.log("🚀 ~ expectedSignature:", expectedSignature)
+        const expectedSignature = computeHMAC(
+          rawBody,
+          process.env.PAPERCLIP_WEBHOOK_SECRET || ""
+        );
+        console.log("🚀 ~ expectedSignature:", expectedSignature);
         if (signature !== expectedSignature) {
           return res.status(401).json({ error: "Invalid signature" });
         }
       }
 
       // Create a proper readable stream with all required methods
-      const { Readable } = require('stream');
+      const { Readable } = require("stream");
       const mockReq = new Readable({
         read() {
           this.push(rawBody);
           this.push(null);
-        }
+        },
       });
 
       // Add required properties
@@ -130,14 +136,14 @@ export default async function handler(
         resume: () => mockReq,
         destroy: () => {},
         on: (event: string, handler: Function) => {
-          if (event === 'data') {
+          if (event === "data") {
             process.nextTick(() => handler(rawBody));
           }
-          if (event === 'end') {
+          if (event === "end") {
             process.nextTick(() => handler());
           }
           return mockReq;
-        }
+        },
       });
 
       // Parse the form data using the mock request
@@ -213,7 +219,7 @@ export default async function handler(
       return res.status(400).json({ error: "Invalid form-data" });
     }
 
-  // 3️⃣ Unsupported content type
+    // 3️⃣ Unsupported content type
   } else {
     return res.status(415).json({ error: "Unsupported Content-Type" });
   }
@@ -269,8 +275,55 @@ export default async function handler(
         .limit(1);
       categoryId = defaults?.[0]?.id ?? null;
     }
-    const color = typeof item.color === "string" ? item.color : null;
+    // extract the raw strings
+    const colorName = typeof item.color === "string" ? item.color.trim() : null;
+    const ageName = typeof item.age === "string" ? item.age.trim() : null;
     const logoUrl = typeof item.logo_url === "string" ? item.logo_url : null;
+
+    // helper to find-or-create a lookup record
+    const getOrCreateLookup = async (
+      table: "colors" | "ages",
+      name: string
+    ) => {
+      // 1) try to find
+      const { data: found, error: findErr } = await supabase
+        .from(table)
+        .select("id")
+        .eq("name", name)
+        .limit(1)
+        .single();
+
+      if (findErr && findErr.code !== "PGRST116" /* no rows */) {
+        throw findErr;
+      }
+      if (found) {
+        return found.id;
+      }
+
+      // 2) insert new
+      const { data: inserted, error: insertErr } = await supabase
+        .from(table)
+        .insert({ name })
+        .select("id")
+        .single();
+
+      if (insertErr) {
+        throw insertErr;
+      }
+      return inserted.id;
+    };
+
+    // resolve the two lookup IDs (or leave null if no value given)
+    let color_id: string | null = null;
+    let age_id: string | null = null;
+
+    if (colorName) {
+      color_id = await getOrCreateLookup("colors", colorName);
+    }
+    if (ageName) {
+      age_id = await getOrCreateLookup("ages", ageName);
+    }
+
     // Insert item
     const insertPayload = {
       title: item.name,
@@ -278,7 +331,10 @@ export default async function handler(
       price: parseFloat(item.price),
       quantity: item.quantity ?? 1,
       category_id: categoryId,
-      color:    color,
+      color: colorName,
+      age: ageName,
+      color_id : color_id,
+      age_id : age_id,
       logo_url: logoUrl,
       condition: mapConditionFromMarketplace(item.condition_type),
       size: item.size ?? "",

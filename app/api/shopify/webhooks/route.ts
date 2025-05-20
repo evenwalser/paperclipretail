@@ -442,8 +442,9 @@ export async function POST(req: Request) {
     const topic = req.headers.get("x-shopify-topic");
     console.log("Topic:", topic);
     const shop = req.headers.get("x-shopify-shop-domain");
+    const isInternalCall = req.headers.get("x-internal-call");
     
-    if (!hmac || !topic || !shop) {
+    if (!topic || !shop) {
       return NextResponse.json({ error: "Missing required headers" }, { status: 400 });
     }
 
@@ -451,7 +452,11 @@ export async function POST(req: Request) {
     const rawBody = Buffer.from(await req.arrayBuffer());
     
     console.log("Received webhook:", topic, "from", shop);
-
+    if (!isInternalCall) {
+      console.log("Verifying external webhook");
+      if (!hmac) {
+        return NextResponse.json({ error: "Missing HMAC header" }, { status: 400 });
+      }
     // Verify the webhook's authenticity  
     const apiSecret = process.env.SHOPIFY_WEBHOOK_SECRET; 
 
@@ -469,9 +474,12 @@ export async function POST(req: Request) {
       console.log("Calculated HMAC:", calculatedHmac);
       console.log("Received HMAC:", hmac);
 
-    if (calculatedHmac !== hmac) {
-      console.log("Unauthorized: HMAC verification failed");
-      return NextResponse.json({ error: "Unauthorized: Invalid HMAC" }, { status: 401 });
+      if (calculatedHmac !== hmac) {
+        console.log("Unauthorized: HMAC verification failed");
+        return NextResponse.json({ error: "Unauthorized: Invalid HMAC" }, { status: 401 });
+      }
+    } else {
+      console.log("Internal call - skipping HMAC verification");
     }
 
     // Parse the JSON payload
@@ -600,7 +608,9 @@ async function handleProductCreate(data: ShopifyProductData, storeId: string): P
     .from("items")
     .select("id, shopify_product_id")
     .or(`shopify_product_id.eq.${data.admin_graphql_api_id},shopify_product_id.eq.gid://shopify/Product/${id}`)
+    .eq('store_id', storeId)
     .is('deleted_at', null);
+    
   
   // Handle existing items
   if (existingItems && existingItems.length > 0) {
@@ -1361,14 +1371,14 @@ async function handleProductUpdate(data: ShopifyProductData, storeId: string): P
     // If Shopify has no images, delete all our images
     console.log("No images in Shopify product, deleting all existing images");
     
-    const { error: deleteError } = await supabase
-      .from("item_images")
-      .delete()
-      .eq("item_id", existingItem.id);
+    // const { error: deleteError } = await supabase
+    //   .from("item_images")
+    //   .delete()
+    //   .eq("item_id", existingItem.id);
       
-    if (deleteError) {
-      console.error("Error deleting images:", deleteError);
-    }
+    // if (deleteError) {
+    //   console.error("Error deleting images:", deleteError);
+    // }
   }
 
   return existingItem;

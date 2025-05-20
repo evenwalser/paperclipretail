@@ -119,7 +119,7 @@ export async function POST(request: Request) {
 }
 
  "title" - Title Creation: Generate a captivating and specific title for the item, including the brand name if identifiable from the image, with a maximum of 50 characters. Tailor the title to make it appealing and relevant to the category.
-"description" - Write an engaging and detailed description suitable for a marketplace listing, ensuring all information is accurate and verifiable. The description should be tailored to the specific category, even if it’s newly identified.
+"description" - Write an engaging and detailed description suitable for a marketplace listing, ensuring all information is accurate and verifiable. The description should be tailored to the specific category, even if its newly identified.
 "brand" - Brand Identification: Carefully examine the image to identify and highlight any visible brand names, logos, or markings. Celebrate the brand in the description, emphasizing its reputation and value within this category.
 "price_low" - Low Price: Identify the best deals or lower-end prices for similar items.
 "price_avg" - Average Price: Determine the common market value for the item based on similar listings.
